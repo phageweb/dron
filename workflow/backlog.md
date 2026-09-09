@@ -66,7 +66,8 @@
 - [x] Verify the Iris smoke test with the Gazebo plugin
 - [x] Connect the custom cinewhoop model
 - [x] Verify motor mapping (matches the Iris reference; thrust path proven by `scripts/check_thrust_stand.sh`)
-- [ ] Redesign the rotor drive: the explicit velocity loop is unusable at a 3 in propeller's real inertia
+- [ ] Redesign the rotor drive onto `MulticopterMotorModel` fed from the plugin's `COMMAND` type (see [research](./research_rotor_simulation.md))
+- [ ] Fix the ground-truth attitude offset that makes `AHRS_EKF_TYPE 10` unusable; check the Iris reference first
 - [ ] Raise rotor speed to a realistic 3 in figure; thrust-to-weight is only 1.13, leaving no attitude margin
 - [ ] Tune attitude gains for a 0.240 kg airframe once the rotor drive is stable
 - [ ] Verify guided arm/takeoff (thrust verified on the stand; free flight still flips)
