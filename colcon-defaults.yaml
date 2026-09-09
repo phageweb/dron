@@ -1,0 +1,9 @@
+build:
+  symlink-install: true
+  base-paths:
+    - ros_ws/src
+  cmake-args:
+    - -DCMAKE_BUILD_TYPE=RelWithDebInfo
+test:
+  base-paths:
+    - ros_ws/src
