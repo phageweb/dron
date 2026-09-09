@@ -1,0 +1,125 @@
+diff --git a/libraries/AP_DDS/AP_DDS_Client.cpp b/libraries/AP_DDS/AP_DDS_Client.cpp
+index a5862bc..592535a 100644
+--- a/libraries/AP_DDS/AP_DDS_Client.cpp
++++ b/libraries/AP_DDS/AP_DDS_Client.cpp
+@@ -801,18 +801,18 @@ bool AP_DDS_Client::update_topic(ardupilot_msgs_msg_Status& msg)
+     uint8_t fs_iter = 0;
+     msg.failsafe_size = 0;
+     if (rc().in_rc_failsafe()) {
+-        msg.failsafe[fs_iter++] = Status::FS_RADIO;
++        msg.failsafe[fs_iter++] = 21; // ardupilot_msgs/Status FS_RADIO
+     }
+     if (battery.has_failsafed()) {
+-        msg.failsafe[fs_iter++] = Status::FS_BATTERY;
++        msg.failsafe[fs_iter++] = 22; // ardupilot_msgs/Status FS_BATTERY
+     }
+     // TODO: replace flag with function.
+     if (AP_Notify::flags.failsafe_gcs) {
+-        msg.failsafe[fs_iter++] = Status::FS_GCS;
++        msg.failsafe[fs_iter++] = 23; // ardupilot_msgs/Status FS_GCS
+     }
+     // TODO: replace flag with function.
+     if (AP_Notify::flags.failsafe_ekf) {
+-        msg.failsafe[fs_iter++] = Status::FS_EKF;
++        msg.failsafe[fs_iter++] = 24; // ardupilot_msgs/Status FS_EKF
+     }
+     msg.failsafe_size = fs_iter;
+ 
+@@ -1152,13 +1152,13 @@ void AP_DDS_Client::on_request(uxrSession* uxr_session, uxrObjectId object_id, u
+             bool param_isinf = true;
+             float param_value = 0.0f;
+             switch (param.value.type) {
+-            case ParameterType::PARAMETER_INTEGER: {
++            case 2: { // rcl_interfaces/ParameterType PARAMETER_INTEGER
+                 param_isnan = isnan(param.value.integer_value);
+                 param_isinf = isinf(param.value.integer_value);
+                 param_value = float(param.value.integer_value);
+                 break;
+             }
+-            case ParameterType::PARAMETER_DOUBLE: {
++            case 3: { // rcl_interfaces/ParameterType PARAMETER_DOUBLE
+                 param_isnan = isnan(param.value.double_value);
+                 param_isinf = isinf(param.value.double_value);
+                 param_value = float(param.value.double_value);
+@@ -1252,38 +1252,38 @@ void AP_DDS_Client::on_request(uxrSession* uxr_session, uxrObjectId object_id, u
+ 
+             vp = AP_Param::find(param_key, &var_type);
+             if (vp == nullptr) {
+-                get_parameters_response.values[i].type = ParameterType::PARAMETER_NOT_SET;
++                get_parameters_response.values[i].type = 0; // PARAMETER_NOT_SET
+                 successful_read &= false;
+                 continue;
+             }
+ 
+             switch (var_type) {
+             case AP_PARAM_INT8: {
+-                get_parameters_response.values[i].type = ParameterType::PARAMETER_INTEGER;
++                get_parameters_response.values[i].type = 2; // PARAMETER_INTEGER
+                 get_parameters_response.values[i].integer_value = ((AP_Int8 *)vp)->get();
+                 successful_read &= true;
+                 break;
+             }
+             case AP_PARAM_INT16: {
+-                get_parameters_response.values[i].type = ParameterType::PARAMETER_INTEGER;
++                get_parameters_response.values[i].type = 2; // PARAMETER_INTEGER
+                 get_parameters_response.values[i].integer_value = ((AP_Int16 *)vp)->get();
+                 successful_read &= true;
+                 break;
+             }
+             case AP_PARAM_INT32: {
+-                get_parameters_response.values[i].type = ParameterType::PARAMETER_INTEGER;
++                get_parameters_response.values[i].type = 2; // PARAMETER_INTEGER
+                 get_parameters_response.values[i].integer_value = ((AP_Int32 *)vp)->get();
+                 successful_read &= true;
+                 break;
+             }
+             case AP_PARAM_FLOAT: {
+-                get_parameters_response.values[i].type = ParameterType::PARAMETER_DOUBLE;
++                get_parameters_response.values[i].type = 3; // PARAMETER_DOUBLE
+                 get_parameters_response.values[i].double_value = vp->cast_to_float(var_type);
+                 successful_read &= true;
+                 break;
+             }
+             default: {
+-                get_parameters_response.values[i].type = ParameterType::PARAMETER_NOT_SET;
++                get_parameters_response.values[i].type = 0; // PARAMETER_NOT_SET
+                 successful_read &= false;
+                 break;
+             }
+diff --git a/libraries/AP_DDS/AP_DDS_ExternalControl.cpp b/libraries/AP_DDS/AP_DDS_ExternalControl.cpp
+index 22e95e8..363c204 100644
+--- a/libraries/AP_DDS/AP_DDS_ExternalControl.cpp
++++ b/libraries/AP_DDS/AP_DDS_ExternalControl.cpp
+@@ -25,9 +25,9 @@ bool AP_DDS_External_Control::handle_global_position_control(ardupilot_msgs_msg_
+         }
+ 
+         constexpr uint32_t MASK_POS_IGNORE =
+-            GlobalPosition::IGNORE_LATITUDE |
+-            GlobalPosition::IGNORE_LONGITUDE |
+-            GlobalPosition::IGNORE_ALTITUDE;
++            1U | // ardupilot_msgs/GlobalPosition IGNORE_LATITUDE
++            2U | // ardupilot_msgs/GlobalPosition IGNORE_LONGITUDE
++            4U;  // ardupilot_msgs/GlobalPosition IGNORE_ALTITUDE
+ 
+         if (!(cmd_pos.type_mask & MASK_POS_IGNORE)) {
+             Location loc(cmd_pos.latitude * 1E7, cmd_pos.longitude * 1E7, alt_cm, alt_frame);
+@@ -127,4 +127,4 @@ bool AP_DDS_External_Control::convert_alt_frame(const uint8_t frame_in,  Locatio
+ }
+ 
+ 
+-#endif // AP_DDS_ENABLED
+\ No newline at end of file
++#endif // AP_DDS_ENABLED
+diff --git a/libraries/AP_Scripting/generator/src/main.c b/libraries/AP_Scripting/generator/src/main.c
+index 58c2392..bf3ba2d 100644
+--- a/libraries/AP_Scripting/generator/src/main.c
++++ b/libraries/AP_Scripting/generator/src/main.c
+@@ -2115,7 +2115,7 @@ void emit_userdata_method(const struct userdata *data, const struct method *meth
+   }
+ 
+   if (static_cast) {
+-    char *var_type_name;
++    char *var_type_name = NULL;
+     switch (method->return_type.type) {
+       case TYPE_BOOLEAN:
+         var_type_name = "bool";
