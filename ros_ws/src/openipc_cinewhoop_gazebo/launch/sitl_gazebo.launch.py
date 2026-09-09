@@ -17,12 +17,23 @@ def generate_launch_description():
     params_file = PathJoinSubstitution([pkg_share, "config", "ardupilot_params.parm"])
     ardupilot_dir = LaunchConfiguration("ardupilot_dir")
     plugin_dir = LaunchConfiguration("plugin_dir")
+    bridge_bin = LaunchConfiguration("bridge_bin")
 
     return LaunchDescription([
         DeclareLaunchArgument(
             "ardupilot_dir",
             default_value=os.path.join(os.getcwd(), "external", "ardupilot"),
             description="Local official ArduPilot checkout containing build/sitl/bin/arducopter.",
+        ),
+        DeclareLaunchArgument(
+            "bridge_bin",
+            default_value=os.path.join(
+                os.getcwd(), "build", "ap_actuator_bridge", "ap_actuator_bridge"),
+            description=(
+                "Actuator bridge from scripts/build_actuator_bridge.sh. ArduPilot "
+                "publishes one Double per rotor and the motor models read one "
+                "Actuators array; without this the rotors never turn."
+            ),
         ),
         DeclareLaunchArgument(
             "plugin_dir",
@@ -34,10 +45,12 @@ def generate_launch_description():
             [plugin_dir, ":", EnvironmentVariable("GZ_SIM_SYSTEM_PLUGIN_PATH", default_value="")],
         ),
         LogInfo(msg=(
-            "Starting the custom cinewhoop Gazebo model and ArduPilot JSON SITL. "
-            "The preliminary rotor model still needs thrust and flight calibration."
+            "Starting the custom cinewhoop Gazebo model, the actuator bridge and "
+            "ArduPilot JSON SITL. Once armed the airframe holds a guided hover; "
+            "attitude gains are still ArduPilot defaults."
         )),
         IncludeLaunchDescription(PythonLaunchDescriptionSource(gazebo_launch)),
+        ExecuteProcess(cmd=[bridge_bin], output="screen"),
         ExecuteProcess(
             cmd=[
                 PathJoinSubstitution([ardupilot_dir, "build", "sitl", "bin", "arducopter"]),
