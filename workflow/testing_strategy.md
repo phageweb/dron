@@ -7,6 +7,7 @@ The project should prefer tests before or alongside implementation whenever the 
 1. Unit tests for deterministic logic.
 2. Integration tests for ROS 2 nodes, topics, services, launch files, and Gazebo bridges.
 3. E2E tests for complete user-facing simulation flows.
+4. CI/CD automation for every check that can run reproducibly under `nix develop`.
 
 ## Unit Tests
 
@@ -77,3 +78,7 @@ nix develop
 ```
 
 If a test requires external state, graphics, hardware, or a long-running simulator, document that requirement explicitly in the test name or workflow log.
+
+## CI/CD Rule
+
+When a test becomes stable and does not require manual GUI or hardware interaction, add it to [ci_cd.md](./ci_cd.md) and `scripts/ci.sh`.

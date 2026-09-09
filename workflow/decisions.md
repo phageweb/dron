@@ -47,3 +47,17 @@ Reason:
 
 - AP_DDS is the native ROS 2/DDS path in the ArduPilot ecosystem.
 - MAVROS is the larger and older MAVLink/ROS bridge, useful for diagnostics and fallback.
+
+## 2026-09-01: CI/CD
+
+Decision:
+
+- add GitHub Actions immediately
+- run CI through `nix develop`
+- start with flake checks and dev-shell smoke checks
+- extend CI with `colcon build`, `colcon test`, Gazebo headless tests, and SITL tests as those parts become stable
+
+Reason:
+
+- local and CI environments should share the same Nix-defined dependency graph.
+- skipped checks are acceptable early, but they must be explicit.

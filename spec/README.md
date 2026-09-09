@@ -17,6 +17,7 @@ Testovací pravidlo:
 - integrační testy pro ROS 2 topics, services, launch soubory a bridge
 - E2E testy pro celé scénáře jako Gazebo start, sensor topics, RViz/TF smoke test a autonomní demo
 - každá oprava chyby má mít ideálně reprodukční test nebo alespoň zapsaný ověřovací příkaz ve `workflow/`
+- pokud lze test spolehlivě automatizovat bez hardwaru nebo ruční GUI interakce, má být přidán do CI/CD pipeline
 
 Tato složka je rozdělená na dvě praktické větve:
 

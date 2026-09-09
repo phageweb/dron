@@ -30,6 +30,7 @@ This folder is the working layer next to `spec/`.
 - [Decisions](./decisions.md)
 - [Troubleshooting](./troubleshooting.md)
 - [Testing Strategy](./testing_strategy.md)
+- [CI/CD Pipeline](./ci_cd.md)
 
 ## How to Use
 
