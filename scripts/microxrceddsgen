@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Compatibility wrapper for current Micro-XRCE-DDS-Gen.
+# ArduPilot's AP_DDS waf rule still passes -default-container-prealloc-size,
+# which was removed from the current generator. SITL can use the generator's
+# default dynamic container policy; do not use this wrapper for a constrained
+# flight-controller firmware without reviewing its memory use.
+set -euo pipefail
+
+project_root="${PROJECT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+generator="${MICROXRCEDDSGEN_REAL:-$project_root/external/microxrcedds_gen/scripts/microxrceddsgen}"
+
+if [ ! -x "$generator" ]; then
+  echo "Micro XRCE-DDS generator unavailable: $generator" >&2
+  exit 2
+fi
+
+args=()
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "-default-container-prealloc-size" ]; then
+    if [ "$#" -lt 2 ]; then
+      echo "Missing value for -default-container-prealloc-size" >&2
+      exit 2
+    fi
+    shift 2
+    continue
+  fi
+  args+=("$1")
+  shift
+done
+
+exec "$generator" "${args[@]}"
