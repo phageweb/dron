@@ -64,6 +64,10 @@
 - Isolated the Iris DDS flight regression check in ROS domain 78 after a later manual demonstration detected a stale pre-takeoff altitude. This prevents any concurrent/local DDS session from being mistaken for the newly launched test vehicle.
 - A subsequent live Iris demonstration is currently blocked by external local-port ownership: the Agent cannot bind UDP/20199 and SITL cannot bind MAVLink TCP/5762, while process inspection from this workspace does not expose an owning `micro_ros_agent`, `arducopter`, or Gazebo process. Do not kill an unidentified external process; release those ports or restart the hosting session before rerunning `nix develop -c scripts/check_iris_dds_control.sh`.
 
+- Found the root cause behind both "Gazebo Transport does not work headlessly" observations: `gazebo.launch.py` pins the simulator and bridge to `GZ_PARTITION=openipc_cinewhoop`, and Transport only discovers peers inside the same partition. A CLI started from an ordinary shell therefore sees an empty graph. With the partition exported, `gz topic -l` returns 25 topics instead of 0, including the model `joint_state` stream that the motor-mapping work needs. Recorded in [troubleshooting](./troubleshooting.md); this closes the `gz topic -l` backlog item.
+- Re-ran `scripts/check_front_lidar.sh` unchanged: it passes. Three consecutive runs each reported the same 1.41 m nearest obstacle, and a direct read of the bridged scan showed 61 finite ranges between 1.413 m and 1.626 m, consistent with the world geometry. The earlier failure was environmental, not an Ogre rendering limitation: an orphaned `scripts/takeoff.py` from the previous session was still holding UDP/14550. The front-lidar check is deterministic here and now runs in baseline CI, closing the Milestone 9 subscriber item.
+- Cleared that orphaned process, which also released the UDP/20199 and TCP/5762 ports that had blocked the previous session's Iris rerun.
+
 ## Log Entry Template
 
 ```text

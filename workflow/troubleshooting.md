@@ -14,6 +14,35 @@ Fix:
 Verification after fix:
 ```
 
+## Gazebo Transport Returns Nothing
+
+Symptom:
+
+- `gz topic -l` lists no topics at all while Gazebo is demonstrably running
+- `gz topic -e -t <topic>` blocks and never delivers a message
+- the ROS bridge works, so the simulation looks healthy from ROS
+
+Root cause:
+
+`gazebo.launch.py` pins the simulator and the bridge to `GZ_PARTITION=openipc_cinewhoop`
+so that Transport discovery stays reliable on a host with several interfaces.
+Gazebo Transport only discovers peers inside the same partition, so a CLI started
+from an ordinary shell sees an empty graph. This is a configuration mismatch, not
+a headless or rendering limitation.
+
+Fix:
+
+```bash
+GZ_PARTITION=openipc_cinewhoop GZ_IP=127.0.0.1 gz topic -l
+GZ_PARTITION=openipc_cinewhoop GZ_IP=127.0.0.1 gz topic -e -t <topic> -n 1
+```
+
+Verification after fix:
+
+Without the partition `gz topic -l` returned 0 topics; with it the same command
+returned 25, including `/world/indoor_test/model/openipc_cinewhoop/joint_state`
+and the front-lidar scan topic.
+
 ## Known Risks Before Implementation
 
 ### ROS 2 Packages on NixOS

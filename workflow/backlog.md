@@ -35,7 +35,7 @@
 
 - [ ] Run `shapes.sdf`
 - [x] Add a headless Gazebo CI smoke test
-- [ ] List `gz topic -l`
+- [x] List `gz topic -l` (needs `GZ_PARTITION=openipc_cinewhoop`)
 - [x] Create a small custom world
 - [x] Add a simple sensor topic
 - [x] Bridge sensor topics into ROS 2 with `ros_gz_bridge`
@@ -79,7 +79,7 @@
 ## Milestone 9: Demo Nodes
 
 - [x] Implement `obstacle_monitor.py`
-- [ ] Verify subscriber behavior on the front lidar (headless Gazebo bridge exists, but its Ogre-rendered lidar has not emitted a scan)
+- [x] Verify subscriber behavior on the front lidar (`scripts/check_front_lidar.sh`, now in CI)
 - [x] Implement `trajectory_publisher.py`
 - [x] Implement `simple_indoor_autonomy.py`
 - [ ] Verify slow 0.5 m/s forward flight
