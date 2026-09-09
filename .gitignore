@@ -1,0 +1,21 @@
+# ROS 2 / colcon build artifacts
+/build/
+/install/
+/log/
+
+# Python build and test artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Locally cloned upstream sources used for SITL development
+/external/
+
+# Local ArduPilot SITL runtime state
+/logs/
+/eeprom.bin
+/ros2
+
+# ArduPilot SITL auto-downloaded SRTM terrain tiles
+/terrain/
