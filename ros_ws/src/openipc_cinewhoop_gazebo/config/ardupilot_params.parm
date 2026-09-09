@@ -1,0 +1,4 @@
+# Quad X baseline for the custom ArduPilot JSON SITL model.
+# Rotor thrust constants remain to be calibrated in Gazebo before flight tests.
+FRAME_CLASS 1
+FRAME_TYPE 1

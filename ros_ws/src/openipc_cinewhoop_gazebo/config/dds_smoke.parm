@@ -1,0 +1,3 @@
+# Dedicated endpoint for the local AP_DDS smoke test.  Avoids a workstation's
+# default UDP/2019 Agent session while leaving production defaults unchanged.
+DDS_UDP_PORT 20199

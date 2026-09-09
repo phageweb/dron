@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+<sdf version="1.10">
+  <world name="indoor_test">
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+
+    <gravity>0 0 -9.80665</gravity>
+    <magnetic_field>6e-06 2.3e-05 -4.2e-05</magnetic_field>
+    <atmosphere type="adiabatic"/>
+
+    <light name="ceiling_light" type="directional">
+      <pose>0 0 4 0 0 0</pose>
+      <cast_shadows>true</cast_shadows>
+      <direction>-0.3 0.4 -1</direction>
+      <diffuse>0.9 0.86 0.75 1</diffuse>
+    </light>
+
+    <model name="floor">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>6 6 0.05</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>6 6 0.05</size></box></geometry>
+          <material><diffuse>0.45 0.48 0.48 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="front_obstacle">
+      <static>true</static>
+      <pose>1.8 0 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.12 1.6 1.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.12 1.6 1.0</size></box></geometry>
+          <material><diffuse>0.75 0.28 0.20 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="side_obstacle">
+      <static>true</static>
+      <pose>0.4 -1.25 0.35 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1.1 0.10 0.7</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>1.1 0.10 0.7</size></box></geometry>
+          <material><diffuse>0.15 0.42 0.62 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <include>
+      <uri>model://openipc_cinewhoop</uri>
+      <!-- Floor surface is z=0.025; body half-height is 0.009. -->
+      <pose>0 0 0.035 0 0 0</pose>
+    </include>
+  </world>
+</sdf>

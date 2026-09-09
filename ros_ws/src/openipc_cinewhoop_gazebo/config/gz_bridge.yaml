@@ -1,0 +1,35 @@
+- ros_topic_name: "/clock"
+  gz_topic_name: "/clock"
+  ros_type_name: "rosgraph_msgs/msg/Clock"
+  gz_type_name: "gz.msgs.Clock"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/openipc_cinewhoop/imu"
+  gz_topic_name: "/world/indoor_test/model/openipc_cinewhoop/link/imu_link/sensor/imu/imu"
+  ros_type_name: "sensor_msgs/msg/Imu"
+  gz_type_name: "gz.msgs.IMU"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/openipc_cinewhoop/scan/front"
+  gz_topic_name: "/world/indoor_test/model/openipc_cinewhoop/link/front_lidar_link/sensor/front_lidar/scan"
+  ros_type_name: "sensor_msgs/msg/LaserScan"
+  gz_type_name: "gz.msgs.LaserScan"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/openipc_cinewhoop/range/down"
+  gz_topic_name: "/world/indoor_test/model/openipc_cinewhoop/link/rangefinder_link/sensor/down_range/scan"
+  ros_type_name: "sensor_msgs/msg/LaserScan"
+  gz_type_name: "gz.msgs.LaserScan"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/openipc_cinewhoop/camera/image_raw"
+  gz_topic_name: "/world/indoor_test/model/openipc_cinewhoop/link/camera_link/sensor/front_camera/image"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/openipc_cinewhoop/camera/camera_info"
+  gz_topic_name: "/world/indoor_test/model/openipc_cinewhoop/link/camera_link/sensor/front_camera/camera_info"
+  ros_type_name: "sensor_msgs/msg/CameraInfo"
+  gz_type_name: "gz.msgs.CameraInfo"
+  direction: GZ_TO_ROS
