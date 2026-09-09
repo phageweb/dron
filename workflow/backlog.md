@@ -65,8 +65,8 @@
 - [x] Add repeatable local SITL/Gazebo smoke test (upstream build remains opt-in)
 - [x] Verify the Iris smoke test with the Gazebo plugin
 - [x] Connect the custom cinewhoop model
-- [x] Verify motor mapping (`scripts/check_rotor_spin.sh`; reversed rotors fixed)
-- [ ] Verify guided arm/takeoff (directions fixed; rotor speed tracking still needs tuning)
+- [x] Verify motor mapping (matches the Iris reference; thrust path proven by `scripts/check_thrust_stand.sh`)
+- [ ] Verify guided arm/takeoff (thrust verified on the stand; free flight flips, needs attitude tuning for a 0.240 kg airframe)
 
 ## Milestone 8: ArduPilot DDS
 

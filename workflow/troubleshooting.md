@@ -43,50 +43,61 @@ Without the partition `gz topic -l` returned 0 topics; with it the same command
 returned 25, including `/world/indoor_test/model/openipc_cinewhoop/joint_state`
 and the front-lidar scan topic.
 
-## Rotors Spin Backwards and the Vehicle Never Climbs
+## Readings Taken From a Crashed Vehicle Are Not Evidence
 
 Symptom:
 
-- ArduPilot arms, accepts GUIDED and a takeoff request, and drives full throttle
-- reported altitude does not change
-- nothing is logged as an error in SITL, Gazebo, the Agent or the ROS graph
-
-Diagnostic commands:
-
-```bash
-GZ_PARTITION=openipc_cinewhoop GZ_IP=127.0.0.1 \
-  gz topic -e -t /world/indoor_test/model/openipc_cinewhoop/joint_state -n 1
-```
+- `joint_state` reports rotor speeds that look wrong: reversed signs, one joint
+  frozen at a constant value, or all four alternating between the same small
+  positive and negative number
+- the numbers do not change when model parameters change
 
 Root cause:
 
-The `ArduPilotPlugin` rotor control loop is explicit: each step it applies a
-torque bounded by `cmd_max` to a joint of inertia `izz`, so one step changes the
-rotor speed by `cmd_max * dt / izz`. A 3 in propeller has around 210x less
-inertia than the Iris rotor whose numbers were copied into this model
-(8.0e-07 against 1.676e-04), so the same torque ceiling produced a velocity step
-far larger than the target speed. The loop never converged, and two of the four
-rotors settled turning the wrong way.
-
-A reversed rotor does not merely lose efficiency. `gz-sim-lift-drag-system`
-skips a surface entirely when the blade travels opposite its `<forward>` vector,
-so those rotors contributed exactly zero force. Half the thrust disappeared
-silently, which left the vehicle below hover with no error anywhere.
+The vehicle had already tipped over and crashed before the sample was taken.
+A free quadrotor that cannot hold attitude flips within one to two seconds of
+throttle-up, so anything measured after that describes a wreck. The recurring
+`+-61.8 rad/s` alternation is a sampling artefact of this state, not a speed.
 
 Fix:
 
-Scale the joint damping and the torque ceiling to the real rotor inertia so the
-per-step velocity change stays small next to the commanded speed:
+Measure thrust with the airframe on the virtual thrust stand, where attitude
+cannot change and the reading means something:
 
-- `<damping>` 0.0002 to 0.00002
-- `<cmd_max>` / `<cmd_min>` 3.5 / -3.5 to 0.1 / -0.1
+```bash
+nix develop -c scripts/check_thrust_stand.sh
+```
+
+Correlate any free-flight rotor reading with attitude and time. A sample taken
+more than about a second after throttle-up on a free airframe is worthless
+until attitude control is working.
 
 Verification after fix:
 
-`scripts/check_rotor_spin.sh` asserts the measured Quad X directions and passes.
-Measured on a constrained thrust stand, all four rotors together give a
-thrust-to-weight ratio of 1.0006 at 1600 rad/s, so only two working rotors
-cannot leave the ground.
+The stand check measures a 60 m climb, so the servo path, rotor joints and lift
+surfaces all work. That result held both before and after an earlier change to
+the rotor damping and torque ceiling, which is how the change was shown to be
+unnecessary and, because it lowered the torque ceiling, actively worse.
+
+## Vehicle Flips Immediately After Throttle-Up
+
+Symptom:
+
+- ArduPilot arms, GUIDED and takeoff are accepted
+- the airframe rolls or pitches past 40 degrees within about 1.5 s and crashes
+- with the same model on the thrust stand, the climb is fine
+
+Diagnostics so far:
+
+The actuation and aerodynamics are not the cause. On the stand the same model
+climbs 60 m under real ArduPilot control with symmetric throttle. The channel
+map, rotation directions, `modelXYZToAirplaneXForwardZDown` and `gazeboXYZToNED`
+are all identical to the Iris reference that flies.
+
+What remains is attitude tuning. `ardupilot_params.parm` sets only `FRAME_CLASS`
+and `FRAME_TYPE`, so every gain comes from `copter.parm`, which targets a
+vehicle of one to two kilograms. This airframe is 0.240 kg with a roll inertia
+of 0.00022 kg m^2. Open item; see the backlog.
 
 ## Known Risks Before Implementation
 
