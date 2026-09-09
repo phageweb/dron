@@ -166,7 +166,19 @@ For `momentConstant`, the gz-sim example uses 0.016 m. Small propellers sit
 around 0.01 to 0.02 m. This value sets yaw authority directly and is the first
 thing to adjust if yaw is sluggish or divergent.
 
-## Proposed plan
+## Outcome
+
+Implemented on 2026-09-10 and it works. The rotor drive now uses four
+`MulticopterMotorModel` systems fed through `tools/ap_actuator_bridge` from the
+plugin's `COMMAND` output, and `scripts/check_guided_takeoff.sh` measures a
+repeatable guided takeoff that holds 2 m within 4 degrees of tilt. The
+intermittent NaN that crashed SITL disappeared with the force PID.
+
+Still open: the attitude gains are stock, so the controller works the motors
+harder than it should, and `motorConstant` and `momentConstant` are estimates
+rather than measurements of a real 3 in propeller.
+
+## Original plan
 
 1. Fix the ground-truth attitude offset so `AHRS_EKF_TYPE 10` becomes usable,
    checking the Iris reference first to see whether the 90 degree error is ours

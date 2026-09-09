@@ -66,12 +66,13 @@
 - [x] Verify the Iris smoke test with the Gazebo plugin
 - [x] Connect the custom cinewhoop model
 - [x] Verify motor mapping (matches the Iris reference; thrust path proven by `scripts/check_thrust_stand.sh`)
-- [ ] Redesign the rotor drive onto `MulticopterMotorModel` fed from the plugin's `COMMAND` type (see [research](./research_rotor_simulation.md))
+- [x] Redesign the rotor drive onto `MulticopterMotorModel` fed from the plugin's `COMMAND` type
 - [x] Fix the ground-truth attitude offset: the IMU sensor was missing the 180 degree roll into aircraft convention
-- [ ] Track down the intermittent NaN from Gazebo that crashes SITL with a floating point exception
-- [ ] Raise rotor speed to a realistic 3 in figure; thrust-to-weight is only 1.13, leaving no attitude margin
-- [ ] Tune attitude gains for a 0.240 kg airframe once the rotor drive is stable
-- [ ] Verify guided arm/takeoff (thrust verified on the stand; free flight still flips)
+- [x] Track down the intermittent NaN that crashed SITL (gone with the force PID removed)
+- [x] Raise rotor speed and thrust so the controller has attitude margin
+- [ ] Tune attitude gains for a 0.240 kg airframe; it flies but still works the motors hard
+- [ ] Calibrate `motorConstant` and `momentConstant` against real 3 in propeller data
+- [x] Verify guided arm/takeoff (`scripts/check_guided_takeoff.sh`)
 
 ## Milestone 8: ArduPilot DDS
 
@@ -87,7 +88,7 @@
 - [x] Verify subscriber behavior on the front lidar (`scripts/check_front_lidar.sh`, now in CI)
 - [x] Implement `trajectory_publisher.py`
 - [x] Implement `simple_indoor_autonomy.py`
-- [ ] Verify slow 0.5 m/s forward flight
+- [ ] Verify slow 0.5 m/s forward flight (now unblocked: the airframe holds a hover)
 - [x] Verify stop behavior below 0.8 m from an obstacle
 
 ## Milestone 10: Real Drone Build

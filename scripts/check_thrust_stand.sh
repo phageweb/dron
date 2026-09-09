@@ -15,12 +15,14 @@ project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
 
 sitl_bin="external/ardupilot/build/sitl/bin/arducopter"
+bridge_bin="build/ap_actuator_bridge/ap_actuator_bridge"
 plugin_dir="build/ardupilot_gazebo"
 model_path="ros_ws/src/openipc_cinewhoop_gazebo/models/openipc_cinewhoop/model.sdf"
 sitl_params="ros_ws/src/openipc_cinewhoop_gazebo/config/ardupilot_params.parm"
 min_climb="${MIN_CLIMB_M:-2.0}"
 
-for required_path in "$sitl_bin" "$plugin_dir/libArduPilotPlugin.so" "$model_path" "$sitl_params"; do
+for required_path in "$sitl_bin" "$bridge_bin" "$plugin_dir/libArduPilotPlugin.so" \
+  "$model_path" "$sitl_params"; do
   if [ ! -e "$required_path" ]; then
     echo "Thrust stand prerequisite unavailable: $required_path" >&2
     exit 2
@@ -29,19 +31,20 @@ done
 
 test_tmpdir="$(mktemp -d)"
 gazebo_pid=""
+bridge_pid=""
 sitl_pid=""
 
 cleanup() {
   # ArduCopter ignores SIGINT while waiting on its JSON peer, so never block on
   # `wait` here: a stray SITL keeps UDP/9002 and breaks the next run silently.
-  for pid in "$sitl_pid" "$gazebo_pid"; do
+  for pid in "$sitl_pid" "$bridge_pid" "$gazebo_pid"; do
     if [ -n "$pid" ]; then
       kill -INT "$pid" 2>/dev/null || true
     fi
   done
   for _ in $(seq 1 20); do
     remaining=false
-    for pid in "$sitl_pid" "$gazebo_pid"; do
+    for pid in "$sitl_pid" "$bridge_pid" "$gazebo_pid"; do
       if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
         remaining=true
       fi
@@ -51,7 +54,7 @@ cleanup() {
     fi
     sleep 0.5
   done
-  for pid in "$sitl_pid" "$gazebo_pid"; do
+  for pid in "$sitl_pid" "$bridge_pid" "$gazebo_pid"; do
     if [ -n "$pid" ]; then
       kill -9 "$pid" 2>/dev/null || true
     fi
@@ -105,6 +108,12 @@ export GZ_SIM_SYSTEM_PLUGIN_PATH="$project_root/$plugin_dir${GZ_SIM_SYSTEM_PLUGI
 gz sim -s -r -v 3 "$test_tmpdir/stand.sdf" >"$test_tmpdir/gazebo.log" 2>&1 &
 gazebo_pid=$!
 sleep 6
+
+# ArduPilot publishes one Double per rotor; the motor models read one Actuators
+# array. Without this bridge the rotors never turn.
+"$project_root/$bridge_bin" >"$test_tmpdir/bridge.log" 2>&1 &
+bridge_pid=$!
+sleep 1
 
 (
   cd external/ardupilot/ArduCopter
