@@ -1,4 +1,25 @@
 # Quad X baseline for the custom ArduPilot JSON SITL model.
-# Rotor thrust constants remain to be calibrated in Gazebo before flight tests.
+#
+# Everything not set here comes from copter.parm, which targets a vehicle of
+# one to two kilograms. This airframe is 0.240 kg with a roll/pitch inertia of
+# 0.00022 kg m^2 and a yaw inertia of 0.00038, so it reacts far faster. Attitude
+# gains are deliberately still at their defaults; see workflow/backlog.md.
 FRAME_CLASS 1
 FRAME_TYPE 1
+
+# The SDF maps 1100-1900 us onto zero-to-full rotor speed, but ArduPilot's
+# output range defaults to 1000-2000. Below 1100 the plugin computed a negative
+# rotor speed, so a disarmed vehicle sat on the floor turning itself slowly and
+# failed the compass field check ("Check mag field xy diff"). Matching the two
+# ranges also stops throttle above 1900 from exceeding the modelled maximum.
+MOT_PWM_MIN 1100
+MOT_PWM_MAX 1900
+
+# The simulated rotor produces thrust proportional to the square of commanded
+# speed, and speed is linear in throttle, so full expo inverts that curve exactly.
+MOT_THST_EXPO 1.0
+
+# MOT_THST_HOVER is deliberately left at its default. The model only reaches a
+# thrust-to-weight ratio of 1.13, so real hover sits near 94 % throttle; writing
+# that down would entrench a value that should disappear once rotor speed is
+# raised to something a 3 in cinewhoop actually turns.

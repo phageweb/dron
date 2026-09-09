@@ -89,12 +89,36 @@ Symptom:
 
 Diagnostics so far:
 
+Two prerequisites were found and fixed while investigating. ArduPilot's output
+range defaulted to 1000-2000 while the SDF maps 1100-1900, so a disarmed
+vehicle drove its rotors backwards, turned slowly on the floor and failed the
+compass check; `MOT_PWM_MIN`/`MOT_PWM_MAX` now match the model. `MOT_THST_EXPO`
+is 1.0 because the simulated thrust curve is exactly quadratic.
+
 The actuation and aerodynamics are not the cause. On the stand the same model
 climbs 60 m under real ArduPilot control with symmetric throttle. The channel
 map, rotation directions, `modelXYZToAirplaneXForwardZDown` and `gazeboXYZToNED`
 are all identical to the Iris reference that flies.
 
-What remains is attitude tuning. `ardupilot_params.parm` sets only `FRAME_CLASS`
+The rotor model itself is the obstacle, and parameter nudging does not resolve
+it. Three constraints conflict:
+
+- The physical inertia of a 3 in propeller (izz 8.0e-07) makes the plugin's
+  explicit velocity loop change rotor speed by 168 % of its target in a single
+  step at the configured torque ceiling. The disarmed airframe tumbles at over
+  1000 deg/s from that alone.
+- Raising the rotor inertia stabilises the loop, but the rotor then stores real
+  angular momentum: spin-up reaction reaches 0.36 N m per rotor, and a ten per
+  cent asymmetry gives the 0.00038 kg m^2 airframe 5500 deg/s^2 in yaw.
+- Lowering the joint damping twentyfold to cut yaw authority does not help,
+  because the reaction above comes from inertia rather than damping.
+
+A coherent redesign of the rotor drive is needed rather than further tuning.
+The most promising direction is kinematic velocity control (`useForce` 0), which
+removes the PID and its reaction torque entirely, paired with explicit yaw
+torque so the airframe still has authority about the vertical axis.
+
+What also remains is attitude tuning. `ardupilot_params.parm` sets only `FRAME_CLASS`
 and `FRAME_TYPE`, so every gain comes from `copter.parm`, which targets a
 vehicle of one to two kilograms. This airframe is 0.240 kg with a roll inertia
 of 0.00022 kg m^2. Open item; see the backlog.
