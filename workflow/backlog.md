@@ -70,9 +70,13 @@
 - [x] Fix the ground-truth attitude offset: the IMU sensor was missing the 180 degree roll into aircraft convention
 - [x] Track down the intermittent NaN that crashed SITL (gone with the force PID removed)
 - [x] Raise rotor speed and thrust so the controller has attitude margin
-- [ ] Tune attitude gains for a 0.240 kg airframe; it flies but still works the
-      motors hard, and decelerates slowly enough to overshoot a stop by 0.6 m
-- [ ] Calibrate `motorConstant` and `momentConstant` against real 3 in propeller data
+- [x] Calibrate `motorConstant` and `momentConstant` against real 3 in propeller
+      data; thrust to weight is now 5.9 instead of 3.0 by construction
+- [x] Scale the attitude rate gains to this airframe's authority, which is 7.7
+      times a ten-inch quad's; stock gains saturated the rate loop
+- [ ] Confirm the calibration on a thrust stand with the exact ducted propeller,
+      rather than from published motor figures and textbook coefficients
+- [ ] Tune the rate gains by a sweep rather than one authority-ratio calculation
 - [x] Verify guided arm/takeoff (`scripts/check_guided_takeoff.sh`)
 
 ## Milestone 8: ArduPilot DDS
@@ -95,7 +99,9 @@
 - [x] Find why DDS control cannot move the cinewhoop while MAVLink can and the Iris can
       (an orphaned demo node's `/ap/cmd_vel` replaced the GUIDED takeoff submode)
 - [ ] Shorten the stop: braking from 0.5 m/s takes about 0.6 m, so the spec's
-      0.8 m threshold leaves only ~0.2 m of real clearance to the wall
+      0.8 m threshold leaves only ~0.2 m of real clearance to the wall. The rotor
+      calibration did not change it, so it is the velocity controller's
+      deceleration limits rather than a lack of thrust
 - [x] Verify stop behavior below 0.8 m from an obstacle
 
 ## Milestone 11: Unified Launch

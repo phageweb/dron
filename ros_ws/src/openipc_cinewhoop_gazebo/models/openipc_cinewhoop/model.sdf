@@ -181,6 +181,29 @@
       The ArduPilot Gazebo plugin exchanges IMU and pose state as JSON with
       SITL and drives the four aerodynamic propeller joints below.
     -->
+    <!-- Rotor constants calibrated against a real 3 in cinewhoop rather than a
+         chosen thrust-to-weight ratio. Target hardware is 4x GEPRC SPEEDX2 1404
+         3850 KV on 4S with ducted 3 in propellers (D = 0.0762 m).
+
+         maxRotVelocity 3980 rad/s = 38000 RPM, about 59 % of the 64680 RPM that
+         3850 KV reaches unloaded at 16.8 V, which is the usual loaded fraction
+         for a small motor on a light propeller.
+
+         motorConstant = Ct * rho * D^4 / (4*pi^2)
+                       = 0.21 * 1.225 * 3.371e-05 / 39.478 = 2.20e-07
+         with Ct = 0.21, measured-consistent for a high-pitch three-blade FPV
+         propeller. Full throttle then gives 2.20e-07 * 3980^2 = 3.48 N per
+         rotor, or 355 g, matching community measurements of roughly 1400 g total
+         for 3 in props on 1404 motors. Thrust to weight is 5.9 against the
+         0.240 kg airframe, so hover sits near 41 % throttle instead of the 94 %
+         the previous uncalibrated figures produced.
+
+         momentConstant = (Cq/Ct) * D = 0.17 * 0.0762 = 0.013 m, which sets yaw
+         authority; small propellers sit between 0.01 and 0.02 m.
+
+         These are still derived from published motor figures and textbook
+         coefficients, not from a thrust stand with this exact propeller. See
+         workflow/research_rotor_simulation.md for the sources. -->
     <plugin filename="gz-sim-multicopter-motor-model-system"
             name="gz::sim::systems::MulticopterMotorModel">
       <robotNamespace>openipc_cinewhoop</robotNamespace>
@@ -190,9 +213,9 @@
       <actuator_number>0</actuator_number>
       <turningDirection>ccw</turningDirection>
       <motorType>velocity</motorType>
-      <maxRotVelocity>2600</maxRotVelocity>
-      <motorConstant>2.611e-07</motorConstant>
-      <momentConstant>0.005</momentConstant>
+      <maxRotVelocity>3980</maxRotVelocity>
+      <motorConstant>2.20e-07</motorConstant>
+      <momentConstant>0.013</momentConstant>
       <timeConstantUp>0.0125</timeConstantUp>
       <timeConstantDown>0.025</timeConstantDown>
       <rotorDragCoefficient>1.0e-05</rotorDragCoefficient>
@@ -208,9 +231,9 @@
       <actuator_number>1</actuator_number>
       <turningDirection>ccw</turningDirection>
       <motorType>velocity</motorType>
-      <maxRotVelocity>2600</maxRotVelocity>
-      <motorConstant>2.611e-07</motorConstant>
-      <momentConstant>0.005</momentConstant>
+      <maxRotVelocity>3980</maxRotVelocity>
+      <motorConstant>2.20e-07</motorConstant>
+      <momentConstant>0.013</momentConstant>
       <timeConstantUp>0.0125</timeConstantUp>
       <timeConstantDown>0.025</timeConstantDown>
       <rotorDragCoefficient>1.0e-05</rotorDragCoefficient>
@@ -226,9 +249,9 @@
       <actuator_number>2</actuator_number>
       <turningDirection>cw</turningDirection>
       <motorType>velocity</motorType>
-      <maxRotVelocity>2600</maxRotVelocity>
-      <motorConstant>2.611e-07</motorConstant>
-      <momentConstant>0.005</momentConstant>
+      <maxRotVelocity>3980</maxRotVelocity>
+      <motorConstant>2.20e-07</motorConstant>
+      <momentConstant>0.013</momentConstant>
       <timeConstantUp>0.0125</timeConstantUp>
       <timeConstantDown>0.025</timeConstantDown>
       <rotorDragCoefficient>1.0e-05</rotorDragCoefficient>
@@ -244,9 +267,9 @@
       <actuator_number>3</actuator_number>
       <turningDirection>cw</turningDirection>
       <motorType>velocity</motorType>
-      <maxRotVelocity>2600</maxRotVelocity>
-      <motorConstant>2.611e-07</motorConstant>
-      <momentConstant>0.005</momentConstant>
+      <maxRotVelocity>3980</maxRotVelocity>
+      <motorConstant>2.20e-07</motorConstant>
+      <momentConstant>0.013</momentConstant>
       <timeConstantUp>0.0125</timeConstantUp>
       <timeConstantDown>0.025</timeConstantDown>
       <rotorDragCoefficient>1.0e-05</rotorDragCoefficient>
@@ -268,10 +291,10 @@
       <imuName>imu_link::imu</imuName>
 
       <!-- Quad X mapping follows the Iris reference model, scaled for 3 in props. -->
-      <control channel="0"><jointName>rotor_0_joint</jointName><multiplier>2600</multiplier><offset>0</offset><servo_min>1100</servo_min><servo_max>1900</servo_max><type>COMMAND</type><cmd_topic>/model/openipc_cinewhoop/joint/rotor_0_joint/cmd</cmd_topic></control>
-      <control channel="1"><jointName>rotor_1_joint</jointName><multiplier>2600</multiplier><offset>0</offset><servo_min>1100</servo_min><servo_max>1900</servo_max><type>COMMAND</type><cmd_topic>/model/openipc_cinewhoop/joint/rotor_1_joint/cmd</cmd_topic></control>
-      <control channel="2"><jointName>rotor_2_joint</jointName><multiplier>2600</multiplier><offset>0</offset><servo_min>1100</servo_min><servo_max>1900</servo_max><type>COMMAND</type><cmd_topic>/model/openipc_cinewhoop/joint/rotor_2_joint/cmd</cmd_topic></control>
-      <control channel="3"><jointName>rotor_3_joint</jointName><multiplier>2600</multiplier><offset>0</offset><servo_min>1100</servo_min><servo_max>1900</servo_max><type>COMMAND</type><cmd_topic>/model/openipc_cinewhoop/joint/rotor_3_joint/cmd</cmd_topic></control>
+      <control channel="0"><jointName>rotor_0_joint</jointName><multiplier>3980</multiplier><offset>0</offset><servo_min>1100</servo_min><servo_max>1900</servo_max><type>COMMAND</type><cmd_topic>/model/openipc_cinewhoop/joint/rotor_0_joint/cmd</cmd_topic></control>
+      <control channel="1"><jointName>rotor_1_joint</jointName><multiplier>3980</multiplier><offset>0</offset><servo_min>1100</servo_min><servo_max>1900</servo_max><type>COMMAND</type><cmd_topic>/model/openipc_cinewhoop/joint/rotor_1_joint/cmd</cmd_topic></control>
+      <control channel="2"><jointName>rotor_2_joint</jointName><multiplier>3980</multiplier><offset>0</offset><servo_min>1100</servo_min><servo_max>1900</servo_max><type>COMMAND</type><cmd_topic>/model/openipc_cinewhoop/joint/rotor_2_joint/cmd</cmd_topic></control>
+      <control channel="3"><jointName>rotor_3_joint</jointName><multiplier>3980</multiplier><offset>0</offset><servo_min>1100</servo_min><servo_max>1900</servo_max><type>COMMAND</type><cmd_topic>/model/openipc_cinewhoop/joint/rotor_3_joint/cmd</cmd_topic></control>
     </plugin>
   </model>
 </sdf>

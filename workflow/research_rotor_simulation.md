@@ -174,9 +174,84 @@ plugin's `COMMAND` output, and `scripts/check_guided_takeoff.sh` measures a
 repeatable guided takeoff that holds 2 m within 4 degrees of tilt. The
 intermittent NaN that crashed SITL disappeared with the force PID.
 
-Still open: the attitude gains are stock, so the controller works the motors
-harder than it should, and `motorConstant` and `momentConstant` are estimates
-rather than measurements of a real 3 in propeller.
+## Calibration, 2026-09-10
+
+Done, and it forced the gain tuning along with it.
+
+Target hardware from [the model spec](../spec/01_model_dronu.md) is 4x GEPRC
+SPEEDX2 1404 3850 KV on 4S with ducted 3 in propellers. GEPRC publish no thrust
+table for the 3850 KV variant, so the numbers come from two independent figures:
+
+- RCINPOWER's GTS V3 1404 Plus 3850 KV, the same KV and stator class, is quoted
+  at 492 g max thrust on an open HQ T333 three-blade 3 in propeller and 421 g on
+  a ducted GF D63.
+- Community measurements of ducted 3 in props on 1404 motors give roughly
+  1400 g total, i.e. 350 g per motor, with a 250 g dry airframe.
+
+The ducted figure is the relevant one, and 350 g per rotor is what the model now
+produces. Treat the vendor's own numbers with care: the same page quotes 328 W at
+16.8 V, which is 19.5 A, against a stated maximum of 9.6 A.
+
+| Parameter | Was | Now | Where it comes from |
+|---|---|---|---|
+| `maxRotVelocity` | 2600 | 3980 | 38000 RPM, 59 % of 3850 KV x 16.8 V unloaded |
+| `motorConstant` | 2.611e-07 | 2.20e-07 | `Ct * rho * D^4 / (4*pi^2)`, Ct = 0.21 |
+| `momentConstant` | 0.005 | 0.013 | `(Cq/Ct) * D`, Cq/Ct = 0.17 |
+| `<multiplier>` | 2600 | 3980 | must track `maxRotVelocity` |
+
+Ct = 0.21 is not a textbook slow-flyer figure. It is what real FPV props need to
+explain their measured thrust: a 5 in racing prop making 1500 g at 27000 RPM
+implies Ct = 0.23 by the same formula, so 0.21 for a high-pitch three-blade 3 in
+is consistent rather than optimistic. The earlier 0.10 to 0.12 estimates in the
+table above are textbook values for low-pitch propellers and land far too low.
+
+Thrust to weight is now 5.9, so hover sits at sqrt(1/5.9) = 0.41 throttle.
+
+### The calibration broke flight until the gains followed
+
+The first calibrated takeoff overshot a 2 m target to 42 m. Scaling the vertical
+acceleration gains down made it worse, 54 m, which ruled the Z axis out. Two
+measurements then located the real fault:
+
+- On the thrust stand, where attitude is locked, the climb was accurate: 5.42 m
+  for a 5.0 m target. So the Z controller was fine all along.
+- In free flight the dataflash log showed `ThO 0.000` and a commanded descent of
+  `DCRt -2.5` m/s while the vehicle climbed at 15 m/s. Nothing was being
+  commanded upward, so the lift had to be coming from saturation.
+
+Reading the commanded rotor speeds during the climb confirmed it: one rotor
+pinned at the `MOT_SPIN_MIN` floor of 597 rad/s while the others ran 1500 to
+2200 rad/s, and which rotor saturated kept rotating. The rate loop was
+oscillating into the stops, and Copter gives throttle away to preserve attitude
+authority, which is why `ThO` read zero while the motors still averaged roughly
+the vehicle's weight in thrust.
+
+The cause is authority, not thrust. A full roll demand gives
+`2 * 3.485 N * 0.04455 m = 0.311 N m` against `Ixx = 0.00022`, which is
+1411 rad/s^2 or 80900 deg/s^2. A 1.5 kg ten-inch quad at a thrust-to-weight
+ratio of 2 manages about 10500 deg/s^2, so this airframe has **7.7 times** the
+angular acceleration per unit of controller output. Dividing the stock rate gains
+by 7.7 restored controlled flight on the first attempt:
+
+| Parameter | Default | Now |
+|---|---|---|
+| `ATC_RAT_RLL_P`, `ATC_RAT_PIT_P` | 0.135 | 0.018 |
+| `ATC_RAT_RLL_I`, `ATC_RAT_PIT_I` | 0.135 | 0.018 |
+| `ATC_RAT_RLL_D`, `ATC_RAT_PIT_D` | 0.0036 | 0.0005 |
+| `ATC_RAT_YAW_P` | 0.18 | 0.023 |
+| `ATC_RAT_YAW_I` | 0.018 | 0.0023 |
+
+Measured afterwards: guided takeoff peaks at 2.07 m and settles at 2.02 m for a
+2.00 m target with 10.0 degrees of worst tilt, against 2.24 m and 2.04 m before;
+the autonomy demo holds 1.04 m for a 1.0 m target, against 1.36 m before. The
+thrust stand is unchanged and baseline CI still passes.
+
+Still open: these are derived from published motor figures and textbook
+coefficients, not from a thrust stand with this exact ducted propeller, and the
+gains come from one authority-ratio calculation rather than a tuning sweep.
+Braking from 0.5 m/s still takes about 0.6 m, which the extra authority did not
+change, so that belongs to the velocity controller's deceleration limits rather
+than to thrust.
 
 ## Original plan
 
