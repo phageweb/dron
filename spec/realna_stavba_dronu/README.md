@@ -47,6 +47,7 @@ Všechny bench testy flight controlleru, ESC, motorů, ArduPilot konfigurace a R
 - [Rozhraní simulace vs. reálný dron](./02_rozhrani_sim_real.md) - co se nesmí lišit
 - [Tabulka komponent](./03_komponenty.md) - hmotnosti, napětí, konektory, datová rozhraní
 - [Bench checklist bez vrtulí](./04_bench_checklist.md) - celé oživení až po první nasazení vrtulí
+- [Díly pro CAD model](./05_cad_dily.md) - geometrie a montáž, na rozdíl od kusovníku
 
 ## Návaznost na simulaci
 

@@ -149,11 +149,18 @@
       (`spec/realna_stavba_dronu/04_bench_checklist.md`)
 - [ ] Weigh individual components, which needs the parts on a scale
 - [ ] Plan mechanical sensor placement, which needs the frame dry-fitted
-- [ ] Choose the front obstacle sensor. Nothing else in the build is blocked on a
+- [x] Choose the front obstacle sensor: LDRobot LD06, imported. Nothing else in the build is blocked on a
       single decision this hard: LD06 is the only candidate that gives a real
       `LaserScan` but weighs about as much as half the airframe, while a
       VL53L5CX-class sensor keeps the mass but halves the range. The simulated
-      front lidar has to be re-specified to whichever wins
+      front lidar has to be re-specified to it. Czech shops stock 360 degree
+      lidars only in the RPLidar class, which starts at 110 g, so it is an import
+- [ ] Re-specify the simulated `front_lidar` to the LD06's real parameters, and
+      decide whether to model the full 360 degrees or keep a forward window
+- [ ] Raise the model mass to match the chosen bill of materials, now that the
+      sensor is settled: about 306 g against the 240 g it flies on
+- [ ] Dry-fit the LD06. It has to see forward past the ducts without meeting a
+      propeller on a 128 mm frame, and that can still kill the choice
 - [ ] Revisit the 0.240 kg the simulation flies on. The published bill of
       materials sums to 238 g, but that omits wiring, screws and TPU, and the
       stock airframe's own dry weight puts the real figure nearer 264 g before
@@ -162,11 +169,14 @@
       Motor coordinates moved from 0.04455 m to 0.04525 m in both model files.
       The rate gains were deliberately not re-derived: the authority ratio moves
       from 7.7 to 7.8, which is inside the accuracy of the method that set them
-- [ ] Choose between RunCam WiFiLink 2 and EMAX Wyvern Link Alpha 200 mW. The
-      EMAX unit is 11 to 16 g lighter, which is the difference between just over
-      250 g and clearly over, but it publishes neither power draw nor range, and
-      RunCam quote up to 15 W for theirs
-- [ ] Decide what to do about the 250 g class, which the chosen airframe will exceed
+- [ ] Confirm the EMAX Wyvern Link Alpha over the RunCam WiFiLink 2. It is 11 to
+      16 g lighter for the same job, which the mass goal prefers, but EMAX publish
+      neither power draw nor range where RunCam quote up to 15 W. Those two
+      figures are what is missing
+- [x] Decide what to do about the 250 g class: there is no class to stay inside.
+      Mass is a standing goal and a tie-breaker between equals, not a gate. It
+      was silently deciding the front sensor by arithmetic, which is the wrong
+      way round
 - [ ] Close build phase 8, OpenIPC stream to `sensor_msgs/msg/Image`, with the
       WiFiLink 2 on a desk rather than on an airframe
 - [x] Prepare mapping from simulation topics to real sensors; the mapping was

@@ -69,6 +69,9 @@
             pkgs.gst_all_1.gstreamer
             pkgs.jdk17
             pkgs.ninja
+            # CAD for the physical build lives in cad_claude/ and cad_codex/;
+            # openscad renders those to PNG without a display.
+            pkgs.openscad
             pkgs.pkg-config
             pkgs.python3
             pkgs.python3Packages.pymavlink

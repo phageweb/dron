@@ -63,11 +63,19 @@ publikovaných údajů vidět, EMAX neuvádí spotřebu ani dosah.
 
 ## Přední obstacle senzor: nevyřešená volba
 
-| Kandidát | Hmotnost | Dosah | FOV | Rozhraní | Poznámka |
-| --- | ---: | --- | --- | --- | --- |
-| LDRobot LD06 | ~42 g, nepotvrzeno | 12 m | 360 stupňů | UART 230400, 5 V napájení, 3.3 V TTL | jediný, co dá skutečný `LaserScan`; ArduPilot ho podporuje jako proximity |
-| ST VL53L5CX (breakout) | ~2 g, nepotvrzeno | 4 m | 63 stupňů diagonálně, 8x8 zón, 60 Hz | I2C | nejblíž tomu, co simulace modeluje, ale poloviční dosah |
-| Benewake TF-Luna třída | ~5 g | 8 m | jeden bod | UART/I2C | jen jeden paprsek, ne scan |
+| Kandidát | Hmotnost | Dosah | FOV | Rozhraní | Dostupnost v ČR | Poznámka |
+| --- | ---: | --- | --- | --- | --- | --- |
+| LDRobot LD06 | ~42 g, nepotvrzeno | 12 m | 360 stupňů | UART 230400, 5 V | **není** - TME ho stáhlo z nabídky, jinak dovoz | jediný lehký, co dá skutečný `LaserScan`; ArduPilot ho podporuje jako proximity |
+| Slamtec RPLidar C1 | **110 g**, 55.6x55.6x41.3 mm | 12 m | 360 stupňů | UART | rpishop.cz, 2279 Kč | 360 stupňů skladem v ČR, ale je to 40 % hmotnosti dronu |
+| DFRobot TF-Luna | ~5 g | 8 m | jeden bod | UART/I2C | rpishop.cz, 799 Kč | skladem a lehký, ale jeden paprsek místo skenu |
+| Benewake TFmini-S | ~5 g | 12 m | jeden bod | UART/I2C | rpishop.cz, 1245 Kč | totéž, delší dosah |
+| ST VL53L5CX (breakout) | ~2 g, nepotvrzeno | 4 m | 63 stupňů, 8x8 zón, 60 Hz | I2C | neověřeno; LaskaKit vede jen jednozónový VL53L1X | nejblíž tomu, co simulace modeluje, ale poloviční dosah |
+
+**Dostupnost v ČR tu volbu zužuje víc než hmotnost.** České obchody vedou 360stupňové
+lidary jen v třídě RPLidar, která začíná na 110 g - to je 40 % hmotnosti celého
+dronu a 55 mm široký rotující válec na rámu se 128 mm rozvorem. Lehké senzory
+skladem jsou jednobodové. **Skutečný 2D sken v hmotnostní třídě dronu se v ČR
+nekoupí**; LD06 by byl dovoz.
 
 Simulace dnes modeluje přední lidar jako 61 vzorků přes 60 stupňů, 0.10 až 8.0 m.
 Tomu neodpovídá **žádný** z kandidátů přesně: LD06 má dosah i pokrytí, ale váhu,
@@ -96,5 +104,7 @@ rozhoduje 0.8 m + 0.6 m brzdné dráhy před překážkou, a to je uvnitř dosah
 - vybrat video jednotku mezi WiFiLink 2 a Wyvern Link Alpha
 - potvrdit hmotnost baterie, prodejci se liší o 5 g
 - srovnat hmotnost v modelu s reálným odhadem
-- rozhodnout, co znamená, že dron bude nad 250 g
+- ~~rozhodnout, co znamená, že dron bude nad 250 g~~ - žádná váhová třída se
+  nedrží, hmotnost je cíl a rozhodčí mezi rovnocennými variantami, ne limit,
+  viz [rozhodnutí](../../workflow/decisions.md)
 - zavřít fázi 8, OpenIPC stream do `sensor_msgs/msg/Image`, s kamerou na stole

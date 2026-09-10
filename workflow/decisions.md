@@ -91,3 +91,68 @@ Cost:
   25.5x25.5 mm pattern as several ArduPilot-supported H7 AIOs, so the swap is
   not impossible, but it means a full rebuild and a board that may not clear the
   frame bay. Recorded in case the mass estimate turns out to be a problem.
+
+## 2026-09-10: Mass Is a Goal, Not a Limit
+
+Decision:
+
+- there is no weight class to stay inside. The 250 g line is not a requirement
+  for this build and does not gate any component choice
+- mass stays a standing goal: where two options do the same job, the lighter one
+  wins, and build practice keeps the grams that cost nothing to keep
+- a component that buys real capability is allowed to cost mass, and the cost is
+  recorded rather than argued away
+
+Reason:
+
+- the estimate already lands near 264 g before any front obstacle sensor, so
+  treating 250 g as a gate would have decided the sensor by arithmetic rather
+  than by what the drone is for.
+- this is a camera platform with a research roadmap, not a machine built to fit
+  a regulatory class. Thrust to weight around 4.6 is still healthy for it.
+
+What it unblocks:
+
+- the front obstacle sensor can be chosen on capability. The LD06's objection
+  was never really its 42 g; what remains is where it mounts on a 128 mm ducted
+  frame and what it costs in flight time.
+- between two OpenIPC video units that do the same job, the 13.76 g EMAX Wyvern
+  Link Alpha is preferred over the 25 to 30 g RunCam WiFiLink 2, subject to
+  confirming the power draw and range EMAX do not publish.
+- the small savings - shortened motor leads, aluminium screws, a canopy that
+  suits the actual video unit rather than a DJI O4, a battery lead cut to length
+  - are worth ten to twenty grams together. They are build practice now, not a
+  rescue plan for a budget that no longer exists.
+
+## 2026-09-10: Front Obstacle Sensor is the LDRobot LD06, Imported
+
+Decision:
+
+- the front obstacle sensor is an LDRobot LD06, bought as an import rather than
+  from a Czech shop
+- the simulated `front_lidar` is re-specified to it: today's 61 samples across
+  60 degrees out to 8 m is a stand-in, not a model of anything real
+
+Reason:
+
+- it is the only sensor in the drone's weight class that produces a genuine 2D
+  scan, which is what `spec/08_rozsireni.md` needs for SLAM Toolbox, and
+  ArduPilot supports it natively as a proximity sensor - a layer that works
+  without ROS at all.
+- the simulation barely changes: today's forward fan is close to a window cut
+  out of an LD06's 360 degrees, where a VL53L5CX would mean re-specifying to 4 m
+  and a coarse 8 column grid.
+- mass is no longer a gate, and thrust to weight near 4.6 stays healthy.
+
+Availability forced the import, and that is the real cost:
+
+- Czech shops stock 360 degree lidars only in the RPLidar class, and the
+  lightest of those is 110 g in a 55 mm rotating cylinder - 40 per cent of this
+  drone's mass, on a 128 mm frame. Not a variant, a different aircraft.
+- the light sensors they do stock, TF-Luna at 799 Kc and TFmini-S at 1245 Kc,
+  are single-point. They would work for today's demo and would end SLAM.
+- TME lists the LD06 as withdrawn, so the source is AliExpress or Amazon.
+
+Open against it: where it mounts. It is a rotating unit that has to see forward
+past the ducts without meeting a propeller, on a frame with 128 mm between motor
+centres. That is a dry-fit question and it can still kill the choice.
