@@ -96,6 +96,19 @@ ld06_x           = 46;                         // where we are proposing to put 
 ld06_mast_h      = 16;
 ld06_z           = prop_z + prop_thickness + ld06_mast_h + ld06_h / 2;
 
+// --------------------------------------------------------------- placements
+// Where each board sits. These are proposals to be argued with, not measured
+// positions: the stack height follows from the standoffs, the rest from what
+// has to see out.
+fc_z       = 5;    // flight controller, just above the plate
+vtx_z      = 16;   // video board, stacked on standoffs above it
+cam_x      = 50;   // camera module out at the nose
+cam_z      = 6;
+rx_x       = -22;  // receiver behind, antenna trailing
+rx_y       = 16;
+rx_z       = 5;
+flow_x     = 20;   // optical flow under the plate, looking down
+
 // ------------------------------------------------------------------- helpers
 motor_positions = [
   [ arm_xy, -arm_xy], // motor_1 front right
@@ -103,6 +116,50 @@ motor_positions = [
   [ arm_xy,  arm_xy], // motor_3 front left
   [-arm_xy, -arm_xy], // motor_4 rear right
 ];
+
+// ------------------------------------------------------------ pcb primitives
+// The boards were plain cubes, which hid the things that actually constrain a
+// build: where the mounting pattern is, which edge the USB is on, how tall the
+// stack gets once components and standoffs are counted.
+
+pcb_t          = 1.6;   // ordinary 4-layer FPV board
+pcb_green      = [0.05, 0.32, 0.14];
+pcb_black      = [0.10, 0.10, 0.11];
+copper         = [0.72, 0.55, 0.30];
+metal          = [0.70, 0.71, 0.74];
+plastic_black  = [0.09, 0.09, 0.10];
+
+// A board with its mounting holes actually cut, so a standoff can be checked
+// against it instead of assumed.
+module pcb(l, w, mount = 0, hole_d = 2.2, t = pcb_t, col = pcb_green) {
+  difference() {
+    color(col) cube([l, w, t], center = true);
+    if (mount > 0)
+      for (sx = [-1, 1], sy = [-1, 1])
+        translate([sx * mount / 2, sy * mount / 2, 0])
+          cylinder(h = t + 1, d = hole_d, center = true, $fn = 20);
+  }
+}
+
+module chip(l, w, h, col = plastic_black) {
+  color(col) cube([l, w, h], center = true);
+}
+
+module usb_c() {
+  color(metal) cube([7.5, 3.2, 9], center = true);
+}
+
+module jst_sh(pins) {
+  color([0.85, 0.85, 0.88]) cube([pins * 1.0 + 2, 4, 2.8], center = true);
+}
+
+module ipex() {
+  color(metal) cylinder(h = 1.6, d = 3, center = true, $fn = 16);
+}
+
+module standoff(h) {
+  color(metal) cylinder(h = h, d = 4, center = true, $fn = 20);
+}
 
 // --------------------------------------------------------------------- parts
 module frame_plate() {
@@ -138,37 +195,97 @@ module propeller(x, y) {
             cube([prop_d / 2, prop_blade_w, prop_thickness], center = true);
 }
 
+// MicoAir H743 V2 45A AIO. Board 36 x 36 mm on a 25.5 mm pattern, STM32H743
+// with dual IMUs, and an ESC stage whose MOSFETs are metal-encapsulated - that
+// block is the tallest thing on the underside and it needs airflow.
 module flight_controller() {
-  part([0.10, 0.45, 0.20])
-    translate([0, 0, 3])
-      cube([fc_size, fc_size, fc_h], center = true);
-  // The 25.5 mm pattern, drawn so a mount can be checked against it.
-  for (sx = [-1, 1], sy = [-1, 1])
-    part([0.5, 0.5, 0.5])
-      translate([sx * fc_mount / 2, sy * fc_mount / 2, 3])
-        cylinder(h = fc_h + 2, d = 2, center = true, $fn = 16);
+  translate([0, 0, fc_z]) {
+    pcb(fc_size, fc_size, mount = fc_mount);
+
+    // Top side: MCU, the two gyros, the barometer.
+    translate([0, 0, pcb_t / 2 + 1.5]) chip(10, 10, 3, [0.12, 0.12, 0.13]);
+    translate([-11, 8, pcb_t / 2 + 1])  chip(3.5, 3.5, 1.2, [0.55, 0.55, 0.58]);
+    translate([-11, 2, pcb_t / 2 + 1])  chip(3.5, 3.5, 1.2, [0.55, 0.55, 0.58]);
+    translate([11, -9, pcb_t / 2 + 0.8]) chip(2.5, 2.5, 1, [0.30, 0.30, 0.32]);
+
+    // USB-C on one edge. Whether this stays reachable once the canopy and the
+    // battery are on is one of the questions the model exists to answer.
+    translate([-fc_size / 2 + 2, -10, pcb_t / 2 + 4.5]) rotate([0, 0, 90]) usb_c();
+
+    // UART headers: flow sensor, receiver, video.
+    translate([fc_size / 2 - 4, 10, pcb_t / 2 + 1.4]) jst_sh(6);
+    translate([fc_size / 2 - 4, 1, pcb_t / 2 + 1.4]) jst_sh(6);
+
+    // Underside: the encapsulated ESC block and the four motor pads.
+    translate([0, 0, -pcb_t / 2 - 2]) chip(26, 26, 4, [0.45, 0.45, 0.48]);
+    for (sx = [-1, 1], sy = [-1, 1])
+      translate([sx * 15, sy * 15, -pcb_t / 2 - 0.3])
+        color(copper) cylinder(h = 0.6, d = 3, center = true, $fn = 16);
+  }
 }
 
+// EMAX Wyvern Link Alpha, stacked above the flight controller on standoffs.
+// The 25.5 mm pattern is published; the board outline and the heatsink are
+// placeholders, so they stay translucent.
 module video_unit() {
-  part([0.15, 0.15, 0.18], false)
-    translate([12, 0, 14])
-      cube([vtx_size, vtx_size, vtx_h], center = true);
-  part([0.05, 0.05, 0.05], false)
-    translate([12 + vtx_size / 2, 0, 14])
-      rotate([0, 90, 0])
-        cylinder(h = lens_len, d = lens_d, $fn = 32);
+  // Standoffs between the two boards, which is where the stack height comes
+  // from rather than from a guessed gap.
+  for (sx = [-1, 1], sy = [-1, 1])
+    translate([sx * fc_mount / 2, sy * fc_mount / 2, (fc_z + vtx_z) / 2])
+      standoff(vtx_z - fc_z);
+
+  translate([0, 0, vtx_z]) {
+    color(pcb_black, placeholder_alpha)
+      difference() {
+        cube([vtx_size, vtx_size, pcb_t], center = true);
+        for (sx = [-1, 1], sy = [-1, 1])
+          translate([sx * fc_mount / 2, sy * fc_mount / 2, 0])
+            cylinder(h = pcb_t + 1, d = 2.2, center = true, $fn = 20);
+      }
+    // SoC under a heatsink; this unit runs hot enough that RunCam quote 15 W
+    // for the comparable WiFiLink and Mario ships a radiator and a fan.
+    color([0.55, 0.56, 0.60], placeholder_alpha)
+      translate([0, 0, pcb_t / 2 + 3]) cube([18, 18, 6], center = true);
+    color([0.85, 0.85, 0.88], placeholder_alpha)
+      translate([-vtx_size / 2 + 3, 0, pcb_t / 2 + 1.4]) ipex();
+  }
+
+  // Camera module on its ribbon, out at the nose, looking forward.
+  translate([cam_x, 0, cam_z]) {
+    color(pcb_black, placeholder_alpha) cube([14, 14, pcb_t], center = true);
+    color(plastic_black, placeholder_alpha)
+      rotate([0, 90, 0]) cylinder(h = lens_len, d = lens_d, $fn = 32);
+  }
 }
 
+// SpeedyBee ELRS Nano: a 10.4 x 18.4 mm board, an SX1280 and an ESP8285, and a
+// T-antenna on an IPEX pigtail that has to end up somewhere clear of carbon.
 module receiver() {
-  part([0.20, 0.20, 0.25])
-    translate([-20, 18, 4])
-      cube([rx_l, rx_w, rx_h], center = true);
+  translate([rx_x, rx_y, rx_z]) {
+    pcb(rx_l, rx_w, t = 1.0, col = pcb_black);
+    translate([-3, 0, 1.2]) chip(5, 5, 1.2, [0.30, 0.30, 0.32]);
+    translate([4, 0, 1.0]) chip(4, 3, 0.8, [0.30, 0.30, 0.32]);
+    translate([rx_l / 2 - 2, 0, 1.3]) ipex();
+    // The antenna, drawn because where it sits is a real constraint.
+    color([0.85, 0.75, 0.20])
+      translate([rx_l / 2 + 12, 0, 1]) rotate([0, 90, 0])
+        cylinder(h = 24, d = 1.2, center = true, $fn = 12);
+  }
 }
 
+// MicoAir MTF-02P, 21.6 x 16 x 6.5 mm, looking down: a flow camera at 42
+// degrees beside a 2 degree time-of-flight laser.
 module optical_flow() {
-  part([0.85, 0.85, 0.78])
-    translate([20, 0, -plate_thickness - flow_h / 2])
-      cube([flow_l, flow_w, flow_h], center = true);
+  translate([flow_x, 0, -plate_thickness - flow_h / 2]) {
+    pcb(flow_l, flow_w, t = 1.2, col = pcb_black);
+    translate([0, 0, 1.4]) chip(8, 8, 2, [0.20, 0.20, 0.22]);
+    // Downward optics on the underside.
+    color(plastic_black)
+      translate([-4, 0, -2]) cylinder(h = 3, d = 6, center = true, $fn = 24);
+    color([0.35, 0.05, 0.05])
+      translate([5, 0, -1.6]) cylinder(h = 2.4, d = 3, center = true, $fn = 20);
+    translate([0, flow_w / 2 - 2, 1.5]) jst_sh(4);
+  }
 }
 
 module battery() {
@@ -223,19 +340,27 @@ module flow_cone() {
       cylinder(h = 120, r1 = 0, r2 = 120 * tan(21), $fn = 48);
 }
 
+// ------------------------------------------------------- viewing the stack
+// The battery sits over the boards, so a close-up of the electronics needs it
+// out of the way. `explode` pulls the stack apart vertically, which is the only
+// way to see a board sandwich at all.
+explode      = 0;
+show_battery = true;
+show_ducts   = true;
+
 // ------------------------------------------------------------------ assembly
 module drone(show_checks = false) {
   frame_plate();
   for (p = motor_positions) {
-    duct(p[0], p[1]);
+    if (show_ducts) duct(p[0], p[1]);
     motor(p[0], p[1]);
     propeller(p[0], p[1]);
   }
-  flight_controller();
-  video_unit();
-  receiver();
-  optical_flow();
-  battery();
+  translate([0, 0, explode])      flight_controller();
+  translate([0, 0, explode * 2])  video_unit();
+  translate([0, 0, explode])      receiver();
+  translate([0, 0, -explode])     optical_flow();
+  if (show_battery) translate([0, 0, explode * 3]) battery();
   ld06();
 
   if (show_checks) {

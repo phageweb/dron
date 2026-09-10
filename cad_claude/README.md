@@ -21,6 +21,29 @@ lidaru dopředu a kužel optical flow dolů.
 | Izometrie | `drone.png` |
 | Půdorys | `drone_top.png` |
 | Bokorys | `drone_side.png` |
+| Elektronika, rozstřelená | `electronics.png` |
+
+Elektroniku zakrývá baterie, takže detail potřebuje odklidit ji i ducty:
+
+```bash
+openscad -o electronics.png --imgsize=1400,1000 --camera=0,0,16,60,0,28,200 \
+  -D show_battery=false -D show_ducts=false -D explode=14 drone.scad
+```
+
+## Desky
+
+Nejsou to kvádry. Každá deska má substrát, **vyříznuté montážní díry**,
+osazení a konektory, protože ty rozhodují o tom, co se kam vejde:
+
+- **FC MicoAir H743 V2 45A AIO** - deska 36 × 36 na roztečích 25.5, MCU, dvě
+  gyra, barometr, **USB-C na hraně** a čtyři UART konektory nahoře; zespodu
+  zapouzdřený ESC blok a motorové pady. Jestli po smontování zůstane USB
+  dosažitelné, je jedna z otázek, kvůli kterým model vznikl.
+- **Video EMAX Wyvern Link Alpha** - stojí na distančních sloupcích nad FC, takže
+  výška stacku vychází z nich a ne z odhadu. Kamerový modul je zvlášť, na nose.
+- **RX SpeedyBee ELRS Nano** - deska 10.4 × 18.4, SX1280, IPEX a anténa, která
+  taky musí někde skončit mimo karbon.
+- **MTF-02P** - optika dolů: flow kamera vedle laseru, oboje na spodní straně.
 
 ## Co model říká
 
