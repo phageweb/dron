@@ -28,6 +28,18 @@ class ScanHelpersTest(unittest.TestCase):
     def test_safe_forward_speed_allows_motion_at_the_threshold(self):
         self.assertEqual(safe_forward_speed(0.8, 0.8, 0.5), 0.5)
 
+    def test_braking_distance_moves_the_stop_decision_earlier(self):
+        self.assertEqual(safe_forward_speed(1.0, 0.8, 0.5, 0.6), 0.0)
+
+    def test_braking_distance_still_allows_motion_with_room_to_stop(self):
+        self.assertEqual(safe_forward_speed(1.5, 0.8, 0.5, 0.6), 0.5)
+
+    def test_braking_distance_boundary_is_inclusive(self):
+        self.assertEqual(safe_forward_speed(1.4, 0.8, 0.5, 0.6), 0.5)
+
+    def test_no_braking_distance_keeps_the_old_behaviour(self):
+        self.assertEqual(safe_forward_speed(0.8, 0.8, 0.5, 0.0), 0.5)
+
     def test_scan_is_unusable_before_any_scan_arrives(self):
         self.assertFalse(scan_is_usable(None, 0.5))
 

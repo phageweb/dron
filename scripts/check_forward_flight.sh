@@ -241,8 +241,19 @@ held = re.search(r"Holding: obstacle at ([\d.]+) m", log)
 if held is None:
     sys.exit("The demo never held for the obstacle; it only stopped publishing.")
 held_at = float(held.group(1))
-if abs(held_at - 0.8) > 0.15:
-    sys.exit(f"Held at {held_at:.2f} m, not near the 0.80 m stop distance.")
+# The node stops at the clearance it wants to keep plus the distance it takes to
+# stop: 0.80 m of wanted clearance and a 0.60 m measured braking distance. Assert
+# the safety property rather than a narrow window, because where the vehicle
+# happens to be when it first looks depends on its takeoff excursion: it must
+# decide no later than the threshold, and never as late as the bare clearance.
+WANTED_CLEARANCE_M = 0.80
+STOP_THRESHOLD_M = WANTED_CLEARANCE_M + 0.60
+if held_at > STOP_THRESHOLD_M + 0.05:
+    sys.exit(f"Held at {held_at:.2f} m, past the {STOP_THRESHOLD_M:.2f} m "
+             "stop threshold, so it reacted late.")
+if held_at < WANTED_CLEARANCE_M:
+    sys.exit(f"Held at {held_at:.2f} m, already inside the "
+             f"{WANTED_CLEARANCE_M:.2f} m clearance it is supposed to keep.")
 
 # It also has to come to rest rather than creep: a zero velocity command is not
 # a position hold, so drift would show up as a still-rising x.
@@ -256,7 +267,9 @@ if max(settled) - min(settled) > 0.15:
 # ahead of base_link (0.04455 offset plus the 0.0381 propeller radius).
 WALL_FACE_X = 1.74
 NOSE_AHEAD_M = 0.083
-MIN_CLEARANCE_M = 0.10
+# With the braking distance accounted for, the vehicle should now keep most of
+# the 0.80 m it aims for rather than scraping past with 0.16 m.
+MIN_CLEARANCE_M = 0.50
 clearance = WALL_FACE_X - (peak_x + NOSE_AHEAD_M)
 print(f"  held at {held_at:.2f} m from the wall; closest rotor tip cleared it "
       f"by {clearance:.2f} m")

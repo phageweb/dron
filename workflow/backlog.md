@@ -98,10 +98,10 @@
 - [x] Verify slow 0.5 m/s forward flight (`scripts/check_forward_flight.sh`)
 - [x] Find why DDS control cannot move the cinewhoop while MAVLink can and the Iris can
       (an orphaned demo node's `/ap/cmd_vel` replaced the GUIDED takeoff submode)
-- [ ] Shorten the stop: braking from 0.5 m/s takes about 0.6 m, so the spec's
-      0.8 m threshold leaves only ~0.2 m of real clearance to the wall. The rotor
-      calibration did not change it, so it is the velocity controller's
-      deceleration limits rather than a lack of thrust
+- [x] Stop with real clearance: the demo now decides at the wanted clearance plus
+      the measured 0.6 m braking distance, which took the margin to the wall from
+      0.16 m to 0.82 m. The braking itself is ArduPilot's deliberate motion
+      shaping, so the decision moves earlier rather than the braking getting harder
 - [x] Verify stop behavior below 0.8 m from an obstacle
 
 ## Milestone 11: Unified Launch

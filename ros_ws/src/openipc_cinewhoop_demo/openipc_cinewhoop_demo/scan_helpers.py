@@ -21,9 +21,18 @@ def safe_forward_speed(
     nearest_range: Optional[float],
     stop_distance: float,
     forward_speed: float,
+    braking_distance: float = 0.0,
 ) -> float:
-    """Return forward speed only when a valid scan clears the stop distance."""
-    if nearest_range is None or nearest_range < stop_distance:
+    """Return forward speed only when a valid scan clears the stop distance.
+
+    The vehicle cannot stop where it decides to. ArduPilot shapes horizontal
+    motion with a jerk limit of 5 m/s^3, an acceleration limit of 2.5 m/s^2 and a
+    velocity loop gain of 2.0, so a stop from 0.5 m/s coasts about 0.6 m. That
+    smoothness is wanted on a camera platform, which means the decision has to
+    come early rather than the braking get harder, so the threshold is the
+    clearance to keep plus the distance it takes to stop.
+    """
+    if nearest_range is None or nearest_range < stop_distance + braking_distance:
         return 0.0
     return forward_speed
 

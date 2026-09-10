@@ -228,6 +228,31 @@ Both obstacles in `indoor_test.sdf` now stand taller than the cruise altitude.
 When adding geometry to that world, check it against the flight altitude rather
 than only against the vehicle's resting height.
 
+## A Velocity Command Is Not a Brake
+
+Symptom:
+
+- the autonomy demo stops for the wall exactly as designed, yet ends up far
+  closer to it than the configured stop distance
+- measured: it held 0.80 m from the obstacle and came to rest 0.16 m from it
+
+Cause:
+
+ArduPilot shapes horizontal motion on purpose. `PSC_NE_VEL_P` defaults to 2.0,
+the acceleration limit `WPNAV_ACCEL` to 2.5 m/s^2 and the jerk limit to
+5 m/s^3, which together coast about 0.6 m when a 0.5 m/s command drops to zero.
+Measured from Gazebo ground truth at 59 Hz: speed decayed 0.50 to 0.15 m/s over
+1.1 s, an effective 0.3 m/s^2, nowhere near the 2.5 m/s^2 limit.
+
+This is not a defect. Smooth stops are the point of a camera platform, so the
+fix is to decide earlier rather than to brake harder. `safe_forward_speed` now
+takes a braking distance and stops at clearance plus braking distance, which
+took the measured margin from 0.16 m to 0.82 m.
+
+Worth knowing when measuring this: the vehicle also drifts about 0.35 m forward
+during the guided takeoff itself, before any velocity command is published, so a
+trajectory read after takeoff does not start at the origin.
+
 ## Known Risks Before Implementation
 
 ### ROS 2 Packages on NixOS

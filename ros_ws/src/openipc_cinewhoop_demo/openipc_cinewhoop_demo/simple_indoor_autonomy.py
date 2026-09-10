@@ -49,6 +49,10 @@ class SimpleIndoorAutonomy(Node):
         self.declare_parameter("cmd_vel_topic", "/ap/cmd_vel")
         self.declare_parameter("forward_speed_mps", 0.5)
         self.declare_parameter("stop_distance_m", 0.8)
+        # Measured from Gazebo ground truth: a stop from 0.5 m/s coasts about
+        # 0.6 m under ArduPilot's default horizontal motion shaping. Without
+        # this the vehicle held 0.8 m from the wall and then drifted to 0.2 m.
+        self.declare_parameter("braking_distance_m", 0.6)
         self.declare_parameter("takeoff_altitude_m", 1.0)
         self.declare_parameter("scan_timeout_s", 0.5)
         self.declare_parameter("pose_topic", "/ap/pose/filtered")
@@ -221,7 +225,8 @@ class SimpleIndoorAutonomy(Node):
             speed = safe_forward_speed(
                 self._nearest,
                 float(self.get_parameter("stop_distance_m").value),
-                float(self.get_parameter("forward_speed_mps").value))
+                float(self.get_parameter("forward_speed_mps").value),
+                float(self.get_parameter("braking_distance_m").value))
 
         if speed == 0.0 and not self._stopped_logged:
             # A fresh scan can still be all inf or nan, so nearest may be None.
