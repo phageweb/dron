@@ -169,6 +169,12 @@
       Motor coordinates moved from 0.04455 m to 0.04525 m in both model files.
       The rate gains were deliberately not re-derived: the authority ratio moves
       from 7.7 to 7.8, which is inside the accuracy of the method that set them
+- [ ] Order a ZH1.5T-4P to JST-SH adapter with the LD06, or plan to reterminate
+      its cable. The lidar's connector is 1.5 mm pitch and AIO UART headers are
+      usually 1.0 mm
+- [ ] Watch the 5 V rail. The LD06 is a brushed motor drawing 300 mA at startup
+      on the same BEC as the flow sensor and the receiver. Current is not the
+      problem; noise might be
 - [ ] Confirm the EMAX Wyvern Link Alpha over the RunCam WiFiLink 2. It is 11 to
       16 g lighter for the same job, which the mass goal prefers, but EMAX publish
       neither power draw nor range where RunCam quote up to 15 W. Those two

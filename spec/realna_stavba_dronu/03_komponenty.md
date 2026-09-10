@@ -83,6 +83,40 @@ VL53L5CX má úhel a váhu, ale poloviční dosah. Až bude senzor vybraný, mus
 `front_lidar` v modelu upravit na jeho skutečné parametry, protože demo se
 rozhoduje 0.8 m + 0.6 m brzdné dráhy před překážkou, a to je uvnitř dosahu obou.
 
+## Elektrické propojení: sedí to k sobě?
+
+Kontrola proti tomu, co MicoAir H743 V2 45A AIO nabízí: vstup 2-6S, BEC **5 V/2 A**
+a 12 V/2 A, **7 UARTů** a 45A ESC.
+
+| Spotřebič | Napájení | Odběr | Sběrnice |
+| --- | --- | ---: | --- |
+| Motory 4× 1404 3850KV | z ESC, 4S | špička 10 A na motor | ESC pady |
+| SpeedyBee ELRS Nano | 5 V | jednotky mA | UART, CRSF |
+| MicoAir MTF-02P | 5 V | 40 mA | UART 115200, MAVLink |
+| LDRobot LD06 | 4.5-5.5 V | **300 mA rozběh, 180 mA provoz** | UART 230400, jednosměrný |
+| EMAX Wyvern Link Alpha | **2-6S přímo z baterie** | neuvádí se | WiFi, telemetrie po UART |
+
+**Napěťově i kapacitně to vychází s rezervou:**
+
+- 5 V větev: 300 mA (LD06 při rozběhu) + 40 mA (flow) + jednotky mA (RX) je
+  zhruba **360 mA proti 2 A**, tedy pod pětinou.
+- UARTy: RX, flow, lidar a telemetrie k videu jsou **4 ze 7**.
+- ESC 45 A proti špičce 10 A na motor je předimenzované, což nevadí.
+- 4S LiHV má 17.4 V naplno, Wyvern bere 2-6S, takže sedí.
+
+**Tři věci, které z toho ale plynou a nejsou zadarmo:**
+
+1. **LD06 má konektor ZH1.5T-4P**, rozteč 1.5 mm. UARTy na AIO deskách bývají
+   JST-SH 1.0 mm. **Bude potřeba redukce**, nebo přepájet konektor. Objednat
+   rovnou s lidarem.
+2. **LD06 je motorek na sdílené 5 V větvi.** Kartáčový motor, který se rozbíhá
+   na 300 mA, sedí na stejném BEC jako optical flow a přijímač. Proudově je to
+   v pohodě, ale rušení na 5 V větvi je reálné riziko pro senzory i pro gyro.
+   Stojí za to počítat s kondenzátorem u lidaru a s tím, že se to bude měřit.
+3. **Spotřebu videa nikdo neuvádí.** EMAX ji nepublikuje; RunCam u srovnatelného
+   WiFiLinku 2 udává až 15 W. To je jediné číslo v celém rozpočtu, které chybí,
+   a je to zároveň největší spotřebič mimo motory.
+
 ## Poznámky, které vyplynuly z rešerše
 
 - **Chlazení není detail.** Na ArduPilot fóru je u OpenIPC hlavní varování přes
