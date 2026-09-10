@@ -28,6 +28,11 @@ cleanup() {
     kill "$node_pid" 2>/dev/null || true
     wait "$node_pid" 2>/dev/null || true
   fi
+  # `ros2 run` is a wrapper and its child outlives it, so killing the wrapper
+  # alone leaked one publisher per run. Harmless here, but it is the same leak
+  # that made the autonomy demo's /ap/cmd_vel poison a later flight test.
+  pkill -9 -f "openipc_cinewhoop_demo/lib/openipc_cinewhoop_demo/trajectory_publisher" \
+    2>/dev/null || true
   rm -rf "$test_tmpdir"
 }
 trap cleanup EXIT

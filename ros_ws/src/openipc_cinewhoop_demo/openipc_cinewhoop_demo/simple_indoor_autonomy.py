@@ -17,6 +17,7 @@ from openipc_cinewhoop_demo.scan_helpers import (
     nearest_valid_range,
     safe_forward_speed,
     scan_is_usable,
+    takeoff_needs_retry,
 )
 
 # ArduPilot's own message package lives in the opt-in DDS workspace, so it is
@@ -52,6 +53,11 @@ class SimpleIndoorAutonomy(Node):
         self.declare_parameter("scan_timeout_s", 0.5)
         self.declare_parameter("pose_topic", "/ap/pose/filtered")
         self.declare_parameter("status_topic", "/ap/status")
+        # An accepted takeoff that does not lift the vehicle is re-requested
+        # after this long; ArduPilot auto-disarms after ten seconds on the
+        # ground, so the window has to be well inside that.
+        self.declare_parameter("takeoff_retry_s", 3.0)
+        self.declare_parameter("climb_margin_m", 0.15)
         # With auto_takeoff false the node only publishes velocity and expects
         # something else to have put the vehicle in the air.
         self.declare_parameter("auto_takeoff", True)
@@ -62,6 +68,8 @@ class SimpleIndoorAutonomy(Node):
         self._stopped_logged = False
         self._altitude = None
         self._armed = False
+        self._takeoff_time = None
+        self._altitude_at_takeoff = None
 
         scan_topic = self.get_parameter("scan_topic").value
         self.create_subscription(
@@ -103,6 +111,11 @@ class SimpleIndoorAutonomy(Node):
 
     def _on_pose(self, msg: PoseStamped):
         self._altitude = msg.pose.position.z
+
+    def _since_takeoff_s(self):
+        if self._takeoff_time is None:
+            return 0.0
+        return (self.get_clock().now() - self._takeoff_time).nanoseconds / 1e9
 
     def _scan_age_s(self):
         if self._last_scan_time is None:
@@ -164,6 +177,19 @@ class SimpleIndoorAutonomy(Node):
             target = float(self.get_parameter("takeoff_altitude_m").value)
             if self._altitude is not None and self._altitude >= target * 0.8:
                 self._enter(CRUISE)
+            elif not self._armed:
+                # ArduPilot auto-disarms after ten seconds on the ground, so a
+                # takeoff that never started leaves the vehicle disarmed.
+                self.get_logger().warn("Disarmed before the climb; re-arming.")
+                self._enter(ARM)
+            elif takeoff_needs_retry(
+                    self._altitude, self._altitude_at_takeoff,
+                    self._since_takeoff_s(),
+                    float(self.get_parameter("takeoff_retry_s").value),
+                    float(self.get_parameter("climb_margin_m").value)):
+                self.get_logger().warn(
+                    "Takeoff was accepted but nothing moved; requesting again.")
+                self._enter(TAKEOFF)
         elif self._state == CRUISE:
             self._cruise(fresh)
 
@@ -183,6 +209,10 @@ class SimpleIndoorAutonomy(Node):
 
     def _on_takeoff(self, result):
         if result is not None and result.status:
+            # Record where the vehicle was, so the climb can be confirmed
+            # against ground truth rather than against the service reply.
+            self._altitude_at_takeoff = self._altitude
+            self._takeoff_time = self.get_clock().now()
             self._enter(CLIMB)
 
     def _cruise(self, fresh):

@@ -5,6 +5,7 @@ from openipc_cinewhoop_demo.scan_helpers import (
     nearest_valid_range,
     safe_forward_speed,
     scan_is_usable,
+    takeoff_needs_retry,
 )
 
 
@@ -38,3 +39,18 @@ class ScanHelpersTest(unittest.TestCase):
 
     def test_scan_is_unusable_past_the_timeout(self):
         self.assertFalse(scan_is_usable(0.51, 0.5))
+
+    def test_takeoff_is_given_time_before_it_is_judged(self):
+        self.assertFalse(takeoff_needs_retry(0.03, 0.03, 2.9, 3.0, 0.15))
+
+    def test_takeoff_is_retried_when_the_vehicle_never_moved(self):
+        self.assertTrue(takeoff_needs_retry(0.03, 0.03, 3.0, 3.0, 0.15))
+
+    def test_takeoff_is_not_retried_once_the_climb_is_visible(self):
+        self.assertFalse(takeoff_needs_retry(0.25, 0.03, 3.0, 3.0, 0.15))
+
+    def test_takeoff_is_retried_without_any_altitude_telemetry(self):
+        self.assertTrue(takeoff_needs_retry(None, None, 3.0, 3.0, 0.15))
+
+    def test_takeoff_is_retried_when_the_vehicle_sank(self):
+        self.assertTrue(takeoff_needs_retry(-0.1, 0.03, 4.0, 3.0, 0.15))

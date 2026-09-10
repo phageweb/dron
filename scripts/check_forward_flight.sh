@@ -53,6 +53,27 @@ source install/setup.bash
 source "$agent_setup"
 set -u
 
+# Fail loudly rather than blaming the vehicle: a leftover demo node from an
+# earlier run keeps commanding GUIDED velocity, which replaces the takeoff and
+# holds the new vehicle on the ground while every service still reports success.
+# Ask ROS rather than matching process command lines, which also match this
+# script's own shell.
+# DDS keeps a dead node in the graph for a few seconds, so back-to-back runs
+# would trip on the previous run's corpse. A real survivor stays.
+stale_node=true
+for _ in $(seq 1 10); do
+  if ! ros2 node list 2>/dev/null | grep -Fxq /simple_indoor_autonomy; then
+    stale_node=false
+    break
+  fi
+  sleep 1
+done
+if [ "$stale_node" = true ]; then
+  echo "A simple_indoor_autonomy node is already running; it would command" >&2
+  echo "/ap/cmd_vel into this run's vehicle and prevent takeoff. Stop it first." >&2
+  exit 1
+fi
+
 test_tmpdir="$(mktemp -d)"
 gazebo_pid=""
 bridge_pid=""
@@ -74,6 +95,12 @@ cleanup() {
     fi
   done
   pkill -9 -f "$project_root/$sitl_bin" 2>/dev/null || true
+  # `ros2 run` is a wrapper whose child does not die with it, and an orphaned
+  # demo node keeps publishing /ap/cmd_vel. A GUIDED velocity command replaces
+  # the takeoff submode, so one survivor silently pins the next run's vehicle to
+  # the floor at zero throttle while every service still reports success.
+  pkill -9 -f "$project_root/install/openipc_cinewhoop_demo/lib/openipc_cinewhoop_demo/simple_indoor_autonomy" 2>/dev/null || true
+  pkill -9 -f "parameter_bridge --ros-args -p config_file:=$project_root" 2>/dev/null || true
   if [ -n "${KEEP_LOGS:-}" ]; then
     cp -r "$test_tmpdir" "$KEEP_LOGS" 2>/dev/null || true
     echo "logs kept in $KEEP_LOGS" >&2
@@ -167,15 +194,23 @@ def pose():
 start = time.time()
 samples = []
 speeds = []
+track = []
 while time.time() - start < 75:
     p = pose()
     if p is not None:
         samples.append(p)
+        track.append((time.time() - start, p[0], p[1]))
     if len(samples) % 5 == 0:
         v = motor_speed()
         if v is not None:
             speeds.append(v)
     time.sleep(1)
+
+# The trajectory separates a braking overshoot from a slow drift: a zero
+# velocity command is not a position hold, so the vehicle can creep for as long
+# as the run lasts.
+print("  trajectory (t, x, z): " + "  ".join(
+    f"{t:.0f}s {x:.2f} {z:.2f}" for t, x, z in track[::5]))
 
 if speeds:
     print(f"  commanded rotor speed: max {max(speeds):.0f} rad/s, "
@@ -200,9 +235,33 @@ if peak_alt < 0.6:
     sys.exit(f"Never climbed: peak altitude {peak_alt:.2f} m.")
 if peak_x < 0.25:
     sys.exit(f"Never moved forward: furthest x {peak_x:.2f} m.")
-# The obstacle face is at x = 1.74 and the lidar sits 0.073 m ahead of the
-# origin, so stopping 0.8 m short means the body should hold well below 1.0 m.
-if peak_x > 1.10:
-    sys.exit(f"Flew too close to the wall: reached x {peak_x:.2f} m.")
+
+# The demo must stop because it saw the wall, not because it ran out of run.
+held = re.search(r"Holding: obstacle at ([\d.]+) m", log)
+if held is None:
+    sys.exit("The demo never held for the obstacle; it only stopped publishing.")
+held_at = float(held.group(1))
+if abs(held_at - 0.8) > 0.15:
+    sys.exit(f"Held at {held_at:.2f} m, not near the 0.80 m stop distance.")
+
+# It also has to come to rest rather than creep: a zero velocity command is not
+# a position hold, so drift would show up as a still-rising x.
+settled = [x for x, _ in samples[-10:]]
+if max(settled) - min(settled) > 0.15:
+    sys.exit(f"Never settled: x still moved over {max(settled) - min(settled):.2f} m "
+             "in the last samples.")
+
+# Geometry of the world and the model, not a guess: the obstacle face is at
+# x = 1.74 and the forward-most point of the airframe is a rotor tip 0.083 m
+# ahead of base_link (0.04455 offset plus the 0.0381 propeller radius).
+WALL_FACE_X = 1.74
+NOSE_AHEAD_M = 0.083
+MIN_CLEARANCE_M = 0.10
+clearance = WALL_FACE_X - (peak_x + NOSE_AHEAD_M)
+print(f"  held at {held_at:.2f} m from the wall; closest rotor tip cleared it "
+      f"by {clearance:.2f} m")
+if clearance < MIN_CLEARANCE_M:
+    sys.exit(f"Came within {clearance:.2f} m of the wall, under the "
+             f"{MIN_CLEARANCE_M:.2f} m minimum.")
 print("Forward flight check passed: took off, advanced and held short of the wall.")
 PY

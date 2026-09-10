@@ -157,24 +157,76 @@ Symptom:
 - `/ap/status` confirms `armed: true`
 - commanded rotor speed reaches only the arm idle (260 rad/s) and falls back to
   zero, and Gazebo ground truth shows the airframe never leaves z = 0.03 m
+- the same airframe takes off over MAVLink, and the Iris takes off over these
+  same DDS services
 
-What is ruled out:
+Cause:
 
-- Not the demo node: a manual `ros2 service call` sequence, identical to the one
-  `check_iris_dds_control.sh` uses, fails the same way.
-- Not arming order: gating takeoff on `/ap/status.armed` changes nothing.
-- Not the velocity command racing the takeoff: holding off `cmd_vel` until the
-  climb finishes changes nothing, and publishing `cmd_vel` with `linear.z` of
-  0.5 m/s does not lift it either.
-- Not missing defaults: adding `copter.parm` changes nothing.
-- Not the airframe: the same vehicle takes off and holds 2 m through MAVLink
-  (`scripts/check_guided_takeoff.sh`), and the Iris takes off through these same
-  DDS services (`scripts/check_iris_dds_control.sh`).
+A leftover `simple_indoor_autonomy` node from an earlier run was still
+publishing `/ap/cmd_vel`. `ros2 run` is a wrapper whose child does not die with
+it, so killing the recorded PID left the node alive; it then commanded GUIDED
+velocity into the *next* run's vehicle.
 
-So the fault sits between AP_DDS and this particular vehicle configuration. The
-most likely candidate is Copter's `auto_armed` latch, which normally becomes true
-when a throttle stick rises and which MAVLink `NAV_TAKEOFF` sets on its own.
-Reproduce with `scripts/check_forward_flight.sh`, which currently fails here.
+That is enough to prevent takeoff entirely. A velocity command replaces the
+GUIDED TakeOff submode, and the position-control submodes call
+`make_safe_ground_handling()` while `land_complete` is still true, so throttle
+output stays at exactly zero. Every service still answers success, which is why
+this reads as a vehicle or DDS fault rather than a stray process.
+
+Diagnostics that settle it:
+
+```bash
+# Is anything already driving the vehicle?
+ros2 node list | grep simple_indoor_autonomy
+ros2 topic echo /ap/cmd_vel --once
+```
+
+The decisive evidence is in SITL's own dataflash log, which records the guided
+target every cycle:
+
+```bash
+# GUIP Type=4 with a non-zero vX/vY is a velocity target, not a takeoff.
+# CTUN ThO=0.000 with DAlt pinned at the ground altitude confirms the
+# position controller was never given a climb.
+python3 - external/ardupilot/ArduCopter/logs/<latest>.BIN <<'EOF'
+from pymavlink import mavutil
+m = mavutil.mavlink_connection(__import__("sys").argv[1])
+while (msg := m.recv_match()) is not None:
+    if msg.get_type() in ("GUIP", "CTUN", "MSG"):
+        print(msg)
+EOF
+```
+
+Fix:
+
+- `scripts/check_forward_flight.sh` now `pkill`s the node and the ROS/Gazebo
+  bridge by their full install paths, and refuses to start while a
+  `/simple_indoor_autonomy` node is still in the ROS graph.
+- `scripts/check_ros_graph.sh` had the same leak with `trajectory_publisher`.
+  It was harmless in itself but ran in baseline CI, leaving one orphan per run.
+
+Do not trust a service reply as proof that a command took effect. The demo node
+now re-requests takeoff when the altitude does not actually rise, which is also
+what finally made the sequence survive a slow EKF start.
+
+## A Level Lidar Sees Nothing Above a Low Obstacle
+
+Symptom:
+
+- the autonomy demo takes off and then logs `Holding: no valid range in the scan`
+- the bridged `LaserScan` is all `inf` in flight, but reads correctly on the ground
+
+Cause:
+
+`front_obstacle` stood exactly 1.0 m tall while the demo cruises at 1.0 m, so
+the level front lidar passed over its top, and the world has no walls inside the
+8 m maximum range. The node was right to hold: it genuinely could not see.
+
+Fix:
+
+Both obstacles in `indoor_test.sdf` now stand taller than the cruise altitude.
+When adding geometry to that world, check it against the flight altitude rather
+than only against the vehicle's resting height.
 
 ## Known Risks Before Implementation
 

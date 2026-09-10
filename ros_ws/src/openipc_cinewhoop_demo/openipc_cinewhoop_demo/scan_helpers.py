@@ -37,3 +37,24 @@ def scan_is_usable(age_s: Optional[float], timeout_s: float) -> bool:
     if age_s is None:
         return False
     return age_s <= timeout_s
+
+
+def takeoff_needs_retry(
+    altitude: Optional[float],
+    altitude_at_request: Optional[float],
+    elapsed_s: float,
+    timeout_s: float,
+    margin_m: float,
+) -> bool:
+    """Return whether an accepted takeoff request visibly did nothing.
+
+    ArduPilot answers /ap/experimental/takeoff with success as soon as GUIDED
+    accepts the request, but the climb only starts once the EKF has a position
+    solution. Before then the vehicle sits armed at idle and auto-disarms ten
+    seconds later, so the only trustworthy confirmation is the altitude itself.
+    """
+    if elapsed_s < timeout_s:
+        return False
+    if altitude is None or altitude_at_request is None:
+        return True
+    return altitude - altitude_at_request < margin_m

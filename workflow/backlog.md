@@ -70,7 +70,8 @@
 - [x] Fix the ground-truth attitude offset: the IMU sensor was missing the 180 degree roll into aircraft convention
 - [x] Track down the intermittent NaN that crashed SITL (gone with the force PID removed)
 - [x] Raise rotor speed and thrust so the controller has attitude margin
-- [ ] Tune attitude gains for a 0.240 kg airframe; it flies but still works the motors hard
+- [ ] Tune attitude gains for a 0.240 kg airframe; it flies but still works the
+      motors hard, and decelerates slowly enough to overshoot a stop by 0.6 m
 - [ ] Calibrate `motorConstant` and `momentConstant` against real 3 in propeller data
 - [x] Verify guided arm/takeoff (`scripts/check_guided_takeoff.sh`)
 
@@ -90,8 +91,11 @@
 - [x] Implement `simple_indoor_autonomy.py`
 - [x] Guard against a stale scan; a dead lidar used to leave the last range in place
 - [x] Give the demo node its own arm/mode/takeoff through the ArduPilot services
-- [ ] Verify slow 0.5 m/s forward flight (`scripts/check_forward_flight.sh` reproduces the blocker)
-- [ ] Find why DDS control cannot move the cinewhoop while MAVLink can and the Iris can
+- [x] Verify slow 0.5 m/s forward flight (`scripts/check_forward_flight.sh`)
+- [x] Find why DDS control cannot move the cinewhoop while MAVLink can and the Iris can
+      (an orphaned demo node's `/ap/cmd_vel` replaced the GUIDED takeoff submode)
+- [ ] Shorten the stop: braking from 0.5 m/s takes about 0.6 m, so the spec's
+      0.8 m threshold leaves only ~0.2 m of real clearance to the wall
 - [x] Verify stop behavior below 0.8 m from an obstacle
 
 ## Milestone 10: Real Drone Build
