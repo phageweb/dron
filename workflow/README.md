@@ -25,6 +25,7 @@ This folder is the working layer next to `spec/`.
 
 ## Files
 
+- [Running the Demo](./running.md)
 - [Backlog](./backlog.md)
 - [Progress Log](./log.md)
 - [Decisions](./decisions.md)
