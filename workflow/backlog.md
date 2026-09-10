@@ -110,6 +110,19 @@
 
 ## Milestone 9: Demo Nodes
 
+- [ ] Compensate the front scan for vehicle attitude. The lidar is bolted to the
+      airframe, so leaning points its forward beams at the floor, which then
+      returns a range like a wall. At 1 m and the demo's gentle lean there is
+      margin; at 0.5 m, 20 degrees is enough to stop the vehicle for the ground.
+      The fix is to transform returns into a gravity-aligned frame through TF and
+      drop anything below a height threshold - the TF tree is already correct and
+      `/ap/pose/filtered` already carries the orientation
+- [ ] Write the test first: pitch the vehicle in simulation and assert the
+      forward scan does not report the floor. The Gazebo sensor is rigidly
+      attached exactly as the real one is, so this is reproducible before it is
+      ever flown
+
+
 - [x] Implement `obstacle_monitor.py`
 - [x] Verify subscriber behavior on the front lidar (`scripts/check_front_lidar.sh`, now in CI)
 - [x] Implement `trajectory_publisher.py`

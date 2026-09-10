@@ -340,6 +340,52 @@ hardware: LDROBOT give the LD06 a pitching angle of 0 to 2 degrees, so a real
 unit sitting 35 mm off the ground will see the floor somewhere between 1 and 4 m,
 and only altitude takes it out of range.
 
+## In Flight the Floor Becomes a Wall When the Drone Leans
+
+The parked case above has a sibling that has not been dealt with, and it is the
+more dangerous one. The LD06 is bolted to the airframe, so its scan plane leans
+with the vehicle. Nose down by an angle, and the forward beams point at the
+floor; the floor then returns a range like any wall would.
+
+Where that lands, for a horizontal scan plane pitched by theta at height h, is
+just `h / tan(theta)`:
+
+| Lean | at 1.0 m | at 0.5 m | at 0.3 m |
+| ---: | ---: | ---: | ---: |
+| 5° | 11.4 m | 5.7 m | 3.4 m |
+| 10° | 5.7 m | 2.8 m | 1.7 m |
+| 20° | 2.7 m | **1.4 m** | 0.8 m |
+| 30° | 1.7 m | 0.9 m | 0.5 m |
+| 35° | **1.4 m** | 0.7 m | 0.4 m |
+
+The demo stops below 1.40 m, so the bold cells are where the vehicle stops for
+the ground. At its 1 m cruise and the gentle lean 0.5 m/s needs, there is a wide
+margin. **Halve the altitude and 20 degrees is enough**, and 20 degrees is not an
+aggressive manoeuvre.
+
+Nothing in the code handles this today, and the simulation reproduces it
+faithfully, because the Gazebo sensor is rigidly attached in exactly the same
+way. That makes it testable before it is ever flown.
+
+What the options are, worst to best:
+
+- **A gimbal.** Correct, and out of the question at 42 g of lidar on a 306 g
+  aircraft.
+- **Cap the lean angle.** Cheap, and it only moves the problem: it caps speed
+  too, and says nothing about flying low.
+- **Tilt the mount up a few degrees.** Buys margin nose-down and spends it
+  nose-up, where the ceiling then arrives instead.
+- **Transform the scan and filter by height.** Every return becomes a point in a
+  gravity-aligned frame using the vehicle's attitude, and anything below a
+  height threshold is dropped as ground. This is the real answer, it handles
+  roll as well as pitch, and the pieces already exist: the TF tree is correct
+  and verified, and `/ap/pose/filtered` carries the orientation that
+  `trajectory_publisher` already subscribes to.
+
+Note that ArduPilot compensates proximity data with attitude in its own
+avoidance layer, so if the LD06 is also wired to the flight controller, that path
+and the ROS path handle this separately and can disagree.
+
 ## A Velocity Command Is Not a Brake
 
 Symptom:
