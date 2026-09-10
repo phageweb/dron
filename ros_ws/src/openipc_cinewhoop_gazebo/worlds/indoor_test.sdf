@@ -24,10 +24,10 @@
       <static>true</static>
       <link name="link">
         <collision name="collision">
-          <geometry><box><size>6 6 0.05</size></box></geometry>
+          <geometry><box><size>10 6 0.05</size></box></geometry>
         </collision>
         <visual name="visual">
-          <geometry><box><size>6 6 0.05</size></box></geometry>
+          <geometry><box><size>10 6 0.05</size></box></geometry>
           <material><diffuse>0.45 0.48 0.48 1</diffuse></material>
         </visual>
       </link>
@@ -37,9 +37,14 @@
          At 1.0 m tall this one ended exactly at the cruise height, so the level
          front lidar passed over its top and the scan came back all inf; the
          autonomy node then held on the ground truth that it could not see. -->
+    <!-- At x = 1.8 the wall face sat 1.74 m from the spawn while the demo decides
+         at 0.80 m of wanted clearance plus 0.60 m of braking, so the vehicle
+         reached cruise and stopped almost at once - correct, and impossible to
+         watch. From 4.5 it gets about 3 m of visible forward flight, six seconds
+         at the demo's 0.5 m/s. -->
     <model name="front_obstacle">
       <static>true</static>
-      <pose>1.8 0 1.0 0 0 0</pose>
+      <pose>4.5 0 1.0 0 0 0</pose>
       <link name="link">
         <collision name="collision"><geometry><box><size>0.12 1.6 2.0</size></box></geometry></collision>
         <visual name="visual">

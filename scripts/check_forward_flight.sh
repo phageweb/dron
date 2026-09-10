@@ -151,8 +151,9 @@ ros2 run openipc_cinewhoop_demo simple_indoor_autonomy \
   --ros-args -p takeoff_altitude_m:=1.0 >"$test_tmpdir/demo.log" 2>&1 &
 demo_pid=$!
 
-# The world places the front obstacle face at x = 1.74 and the vehicle starts
-# at the origin, so a healthy run travels forward and then holds short of it.
+# The vehicle starts at the origin and the front obstacle stands ahead of it, so
+# a healthy run travels forward and then holds short of it. Where "ahead" is
+# comes from the world file below rather than from a number written twice.
 python3 - "$test_tmpdir" <<'PY'
 import re
 import subprocess
@@ -262,10 +263,18 @@ if max(settled) - min(settled) > 0.15:
     sys.exit(f"Never settled: x still moved over {max(settled) - min(settled):.2f} m "
              "in the last samples.")
 
-# Geometry of the world and the model, not a guess: the obstacle face is at
-# x = 1.74 and the forward-most point of the airframe is a rotor tip 0.083 m
-# ahead of base_link (0.04455 offset plus the 0.0381 propeller radius).
-WALL_FACE_X = 1.74
+# Geometry of the world and the model, not a guess. The obstacle face is read
+# out of the world file, because it moved once already and a copy of it here
+# would have gone stale silently. The forward-most point of the airframe is a
+# rotor tip 0.083 m ahead of base_link: the 0.04525 m motor offset plus the
+# 0.0381 m propeller radius.
+world = open("ros_ws/src/openipc_cinewhoop_gazebo/worlds/indoor_test.sdf").read()
+front = re.search(
+    r'<model name="front_obstacle">.*?<pose>([-\d.]+)[^<]*</pose>.*?'
+    r'<box><size>([-\d.]+)', world, re.S)
+if front is None:
+    sys.exit("Could not read the front obstacle's pose out of the world file.")
+WALL_FACE_X = float(front.group(1)) - float(front.group(2)) / 2
 NOSE_AHEAD_M = 0.083
 # With the braking distance accounted for, the vehicle should now keep most of
 # the 0.80 m it aims for rather than scraping past with 0.16 m.
