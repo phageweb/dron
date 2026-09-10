@@ -27,7 +27,7 @@
 
 - [x] Create a simple TF tree
 - [x] Run `robot_state_publisher`
-- [ ] Run RViz2
+- [ ] Run RViz2 (launched by `display.launch.py`; needs a screen to confirm)
 - [x] Save an RViz configuration (`cinewhoop.rviz`; visual check still needs a GUI)
 - [x] Verify `tf2_tools view_frames`
 
@@ -97,6 +97,16 @@
 - [ ] Shorten the stop: braking from 0.5 m/s takes about 0.6 m, so the spec's
       0.8 m threshold leaves only ~0.2 m of real clearance to the wall
 - [x] Verify stop behavior below 0.8 m from an obstacle
+
+## Milestone 11: Unified Launch
+
+- [x] Bring Gazebo, both bridges, `robot_state_publisher`, RViz2, the Agent and
+      SITL up from `sitl_gazebo.launch.py`
+- [x] Make `sitl:=false` print how to run SITL in a separate terminal
+- [x] Fix `display.launch.py`, where `rviz:=false` did not actually stop RViz2
+- [x] Verify Gazebo and ArduPilot topics plus TF from one launch
+      (`scripts/check_unified_launch.sh`)
+- [ ] Confirm on a screen that RViz shows the model, TF and the lidar correctly
 
 ## Milestone 10: Real Drone Build
 

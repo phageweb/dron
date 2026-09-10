@@ -1,34 +1,71 @@
+"""One launch for the whole demo: Gazebo, bridges, RViz, the Agent and SITL.
+
+This is phase 12 of the iteration plan. Every heavyweight upstream piece stays
+optional, because the ArduPilot, ardupilot_gazebo and Micro XRCE-DDS Agent
+builds live in the ignored `external/` tree rather than in the Nix shell:
+
+    ros2 launch openipc_cinewhoop_gazebo sitl_gazebo.launch.py
+    ros2 launch openipc_cinewhoop_gazebo sitl_gazebo.launch.py gui:=true
+    ros2 launch openipc_cinewhoop_gazebo sitl_gazebo.launch.py sitl:=false
+
+The demo nodes are deliberately not started here; run them separately so their
+output stays readable, as the iteration plan asks.
+"""
+
 import os
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription, LogInfo, SetEnvironmentVariable
+from launch.actions import (
+    DeclareLaunchArgument,
+    ExecuteProcess,
+    IncludeLaunchDescription,
+    LogInfo,
+    SetEnvironmentVariable,
+    TimerAction,
+)
+from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import EnvironmentVariable, LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import (
+    EnvironmentVariable,
+    LaunchConfiguration,
+    PathJoinSubstitution,
+)
 from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
     pkg_share = FindPackageShare("openipc_cinewhoop_gazebo")
-    gazebo_launch = PathJoinSubstitution([
-        pkg_share,
+    gazebo_launch = PathJoinSubstitution([pkg_share, "launch", "gazebo.launch.py"])
+    display_launch = PathJoinSubstitution([
+        FindPackageShare("openipc_cinewhoop_description"),
         "launch",
-        "gazebo.launch.py",
+        "display.launch.py",
     ])
     params_file = PathJoinSubstitution([pkg_share, "config", "ardupilot_params.parm"])
+    dds_params_file = PathJoinSubstitution([pkg_share, "config", "dds_smoke.parm"])
+
     ardupilot_dir = LaunchConfiguration("ardupilot_dir")
     plugin_dir = LaunchConfiguration("plugin_dir")
     bridge_bin = LaunchConfiguration("bridge_bin")
+    agent_bin = LaunchConfiguration("agent_bin")
+    agent_setup = LaunchConfiguration("agent_setup")
+    agent_port = LaunchConfiguration("agent_port")
+    rviz = LaunchConfiguration("rviz")
+    agent = LaunchConfiguration("agent")
+    sitl = LaunchConfiguration("sitl")
+
+    workspace_root = os.getcwd()
 
     return LaunchDescription([
         DeclareLaunchArgument(
             "ardupilot_dir",
-            default_value=os.path.join(os.getcwd(), "external", "ardupilot"),
+            default_value=os.path.join(workspace_root, "external", "ardupilot"),
             description="Local official ArduPilot checkout containing build/sitl/bin/arducopter.",
         ),
         DeclareLaunchArgument(
             "bridge_bin",
             default_value=os.path.join(
-                os.getcwd(), "build", "ap_actuator_bridge", "ap_actuator_bridge"),
+                workspace_root, "build", "ap_actuator_bridge", "ap_actuator_bridge"),
             description=(
                 "Actuator bridge from scripts/build_actuator_bridge.sh. ArduPilot "
                 "publishes one Double per rotor and the motor models read one "
@@ -37,33 +74,112 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             "plugin_dir",
-            default_value=os.path.join(os.getcwd(), "build", "ardupilot_gazebo"),
+            default_value=os.path.join(workspace_root, "build", "ardupilot_gazebo"),
             description="Directory containing libArduPilotPlugin.so built from ardupilot_gazebo.",
+        ),
+        DeclareLaunchArgument(
+            "agent_setup",
+            default_value=os.path.join(
+                workspace_root, "external", "dds_ws", "install", "setup.bash"),
+            description=(
+                "Setup script of the local Micro XRCE-DDS Agent workspace from "
+                "scripts/build_dds_workspace.sh. It is sourced for the Agent so "
+                "the launch works whether or not the caller sourced it."
+            ),
+        ),
+        DeclareLaunchArgument(
+            "agent_bin",
+            default_value=os.path.join(
+                workspace_root, "external", "dds_ws", "install", "lib",
+                "micro_ros_agent", "micro_ros_agent"),
+            description="Micro XRCE-DDS Agent executable; Nixpkgs does not package it.",
+        ),
+        DeclareLaunchArgument(
+            "agent_port",
+            default_value="20199",
+            # Must match DDS_UDP_PORT in config/dds_smoke.parm.
+            description="UDP port the Agent listens on, matching dds_smoke.parm.",
+        ),
+        DeclareLaunchArgument(
+            "rviz", default_value="true",
+            description="Start robot_state_publisher with RViz2; false leaves TF only.",
+        ),
+        DeclareLaunchArgument(
+            "agent", default_value="true",
+            description="Start the Micro XRCE-DDS Agent so the /ap/ topics appear.",
+        ),
+        DeclareLaunchArgument(
+            "sitl", default_value="true",
+            description="Start ArduPilot SITL here; false prints how to run it separately.",
         ),
         SetEnvironmentVariable(
             "GZ_SIM_SYSTEM_PLUGIN_PATH",
             [plugin_dir, ":", EnvironmentVariable("GZ_SIM_SYSTEM_PLUGIN_PATH", default_value="")],
         ),
         LogInfo(msg=(
-            "Starting the custom cinewhoop Gazebo model, the actuator bridge and "
-            "ArduPilot JSON SITL. Once armed the airframe holds a guided hover; "
-            "attitude gains are still ArduPilot defaults."
+            "Starting the custom cinewhoop Gazebo model, the actuator bridge, the "
+            "ROS/Gazebo bridge, RViz and ArduPilot JSON SITL with DDS. Once armed "
+            "the airframe holds a guided hover; attitude gains are still "
+            "ArduPilot defaults."
         )),
+
         IncludeLaunchDescription(PythonLaunchDescriptionSource(gazebo_launch)),
+
+        # robot_state_publisher and RViz2 read the URDF, which is the description
+        # package's business rather than a second copy of it here.
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(display_launch),
+            launch_arguments={"use_sim_time": "true", "rviz": rviz}.items(),
+        ),
+
         ExecuteProcess(cmd=[bridge_bin], output="screen"),
+
+        # The Agent needs its own workspace on the library path, so source it.
         ExecuteProcess(
-            cmd=[
-                PathJoinSubstitution([ardupilot_dir, "build", "sitl", "bin", "arducopter"]),
-                "--wipe",
-                "--model", "JSON",
-                "--speedup", "1",
-                "--slave", "0",
-                "-I0",
-                "--sim-address=127.0.0.1",
-                "--sim-port-out=9002",
-                "--serial0=udpclient:127.0.0.1:14550",
-                "--defaults", params_file,
-            ],
+            cmd=["bash", "-c",
+                 ["set -e; source ", agent_setup, "; exec ", agent_bin,
+                  " udp4 -p ", agent_port]],
             output="screen",
+            condition=IfCondition(agent),
+        ),
+
+        TimerAction(
+            # SITL opens the JSON control socket immediately and gives up on a
+            # simulator that is not there yet, so let Gazebo load the model and
+            # the plugin first.
+            period=6.0,
+            actions=[
+                ExecuteProcess(
+                    cmd=[
+                        PathJoinSubstitution(
+                            [ardupilot_dir, "build", "sitl", "bin", "arducopter"]),
+                        "--wipe",
+                        "--model", "JSON",
+                        "--speedup", "1",
+                        "--slave", "0",
+                        "-I0",
+                        "--sim-address=127.0.0.1",
+                        "--sim-port-out=9002",
+                        "--serial0=udpclient:127.0.0.1:14550",
+                        "--defaults", [params_file, ",", dds_params_file],
+                    ],
+                    output="screen",
+                    condition=IfCondition(sitl),
+                ),
+            ],
+        ),
+
+        LogInfo(
+            condition=UnlessCondition(sitl),
+            msg=[
+                "SITL was not started. Run it in another terminal from "
+                "external/ardupilot/ArduCopter:\n  ",
+                PathJoinSubstitution(
+                    [ardupilot_dir, "build", "sitl", "bin", "arducopter"]),
+                " --wipe --model JSON --speedup 1 --slave 0 -I0"
+                " --sim-address=127.0.0.1 --sim-port-out=9002"
+                " --serial0=udpclient:127.0.0.1:14550 --defaults ",
+                params_file, ",", dds_params_file,
+            ],
         ),
     ])

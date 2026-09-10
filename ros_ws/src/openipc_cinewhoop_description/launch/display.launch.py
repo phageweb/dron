@@ -45,5 +45,8 @@ def generate_launch_description():
             arguments=["-d", rviz_config],
             parameters=[{"use_sim_time": use_sim_time}],
             output="screen",
+            # Without this, rviz:=false still started RViz2; the headless TF
+            # check had been launching a GUI it never used.
+            condition=IfCondition(rviz),
         ),
     ])

@@ -52,8 +52,29 @@ Use E2E tests for:
 - TF tree is connected
 - obstacle monitor receives front lidar data
 - autonomy node arms/takes off/stops in the simulated environment
+- one launch brings up Gazebo, the bridges, TF and the ArduPilot topics together
 
 E2E tests may be slower and can be marked separately from fast checks.
+
+The heavyweight ones are opt-in rather than part of `scripts/ci.sh`, because
+they need the ignored `external/` builds of ArduPilot, `ardupilot_gazebo` and the
+Micro XRCE-DDS Agent, which Nixpkgs does not provide:
+
+| Check | What it proves |
+| --- | --- |
+| `scripts/check_sitl_gazebo.sh` | custom Gazebo state reaches SITL as JSON |
+| `scripts/check_thrust_stand.sh` | the rotors and lift model produce a measured climb |
+| `scripts/check_guided_takeoff.sh` | a free airframe arms, climbs and holds over MAVLink |
+| `scripts/check_sitl_dds.sh` | the `/ap/` topic and service graph appears |
+| `scripts/check_sitl_dds_control.sh` | the DDS service request path is accepted |
+| `scripts/check_iris_dds_control.sh` | the upstream Iris reference flies over DDS |
+| `scripts/check_forward_flight.sh` | the autonomy demo takes off, creeps and stops |
+| `scripts/check_unified_launch.sh` | one launch serves Gazebo, ArduPilot and TF |
+
+Whatever these start, they must also clean up. A `ros2 run` wrapper's child
+outlives the wrapper, and one leftover node publishing `/ap/cmd_vel` silently
+prevents the next run from ever taking off, so a new check that launches a node
+needs either a process-group kill or a targeted `pkill` on its install path.
 
 ## Verification Log
 
