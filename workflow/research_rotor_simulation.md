@@ -233,6 +233,12 @@ ratio of 2 manages about 10500 deg/s^2, so this airframe has **7.7 times** the
 angular acceleration per unit of controller output. Dividing the stock rate gains
 by 7.7 restored controlled flight on the first attempt:
 
+> Later correction: the arm was 0.04455 m here, from a 126 mm wheelbase that was
+> an assumption rather than the frame's figure. GEPRC publish 128 mm, so the arm
+> is 0.04525 m and the ratio is 7.8 rather than 7.7. The numbers above are left
+> as they were measured; 1.6 per cent is inside the accuracy of the method and
+> the gains were not re-derived for it.
+
 | Parameter | Default | Now |
 |---|---|---|
 | `ATC_RAT_RLL_P`, `ATC_RAT_PIT_P` | 0.135 | 0.018 |
