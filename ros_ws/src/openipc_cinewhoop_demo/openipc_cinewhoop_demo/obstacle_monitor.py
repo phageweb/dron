@@ -3,7 +3,7 @@ from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan
 
-from openipc_cinewhoop_demo.scan_helpers import nearest_valid_range
+from openipc_cinewhoop_demo.scan_helpers import nearest_valid_range, scan_is_usable
 
 
 class ObstacleMonitor(Node):
@@ -12,8 +12,12 @@ class ObstacleMonitor(Node):
         self.declare_parameter("scan_topic", "/openipc_cinewhoop/scan/front")
         self.declare_parameter("warn_distance_m", 0.8)
         self.declare_parameter("log_period_s", 0.5)
+        self.declare_parameter("scan_timeout_s", 1.0)
 
         self._last_log_time = self.get_clock().now()
+        self._started_at = self.get_clock().now()
+        self._last_scan_time = None
+        self._silent_logged = False
         topic = self.get_parameter("scan_topic").value
         self.create_subscription(
             LaserScan,
@@ -21,10 +25,30 @@ class ObstacleMonitor(Node):
             self._on_scan,
             qos_profile_sensor_data,
         )
+        # A monitor that simply goes quiet when its sensor dies is worse than
+        # no monitor, so silence is reported rather than left to be noticed.
+        self.create_timer(0.2, self._check_alive)
         self.get_logger().info(f"Listening for LaserScan on {topic}")
+
+    def _silent_for_s(self):
+        """Seconds since the last scan, or since startup while none has come."""
+        reference = self._last_scan_time or self._started_at
+        return (self.get_clock().now() - reference).nanoseconds / 1e9
+
+    def _check_alive(self):
+        timeout = float(self.get_parameter("scan_timeout_s").value)
+        silent_for = self._silent_for_s()
+        if scan_is_usable(silent_for, timeout) or self._silent_logged:
+            return
+        what = "yet" if self._last_scan_time is None else "any more"
+        self.get_logger().warning(
+            f"No front lidar scan {what} after {silent_for:.1f} s")
+        self._silent_logged = True
 
     def _on_scan(self, msg: LaserScan):
         now = self.get_clock().now()
+        self._last_scan_time = now
+        self._silent_logged = False
         period = float(self.get_parameter("log_period_s").value)
         if (now - self._last_log_time).nanoseconds / 1e9 < period:
             return
@@ -47,6 +71,11 @@ def main(args=None):
     node = ObstacleMonitor()
     try:
         rclpy.spin(node)
+    except KeyboardInterrupt:
+        # Ctrl-C and a TERM to the process group are how these nodes are always
+        # stopped, so a traceback on the way out is noise, not information.
+        pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()

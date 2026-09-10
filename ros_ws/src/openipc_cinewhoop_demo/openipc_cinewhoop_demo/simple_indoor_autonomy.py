@@ -264,6 +264,11 @@ def main(args=None):
     node = SimpleIndoorAutonomy()
     try:
         rclpy.spin(node)
+    except KeyboardInterrupt:
+        # Ctrl-C and a TERM to the process group are how these nodes are always
+        # stopped, so a traceback on the way out is noise, not information.
+        pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
