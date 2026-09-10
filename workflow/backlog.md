@@ -57,10 +57,14 @@
 
 ## Milestone 6: Sensors
 
-- [ ] Explain the static front-lidar reading. Parked at the origin it reports
-      1.41 m ahead where the world puts the wall 4.37 m away, and it reported the
-      same before the wall moved, so it is not the wall. The flying path measures
-      correctly, so this is about the parked case
+- [x] Explain the static front-lidar reading: parked, the lidar sits 37 mm above
+      the floor and the fan's lowest rays graze it, giving a constant-depth plane
+      at h/phi. In flight the floor is out of range, so nothing is affected. The
+      demo's 1.40 m stop distance and the 1.412 m floor return are closer than
+      they look, which constrains raising either
+- [ ] Give the front lidar a little more ground clearance, or tilt it up a
+      degree, so the parked case measures the room instead of the floor and the
+      stop distance is not bounded by an artefact
 
 
 - [x] Add IMU

@@ -285,7 +285,7 @@ it:
 ros2 topic echo --once --field linear_acceleration /openipc_cinewhoop/imu
 ```
 
-## Unexplained: a Static Scan That Does Not Match the World
+## A Parked Front Lidar Measures the Floor, Not the Room
 
 Symptom:
 
@@ -296,25 +296,41 @@ Symptom:
 - the same 1.41 m was reported before that obstacle was moved from x = 1.8 to
   x = 4.5, when its face was 1.67 m away, so the reading does not track the wall
 
-What is known:
+Cause:
 
-- the shape of the scan is a flat surface perpendicular to +X: the minimum is
-  dead ahead and the returns grow as 1/cos, reaching 1.63 m at 30 degrees, which
-  is 1.41 / cos(30) to three digits
-- `gz model --list` shows all four models present, and the loaded world file is
-  the one on disk, reached through the install symlink
-- the flying path is unaffected and verified: `check_forward_flight.sh` measures
-  a stop at x = 3.37 m with 0.99 m of rotor clearance, which sums to the 4.44 m
-  the world puts the wall face at
+The lidar is grazing the floor. Parked, `front_lidar_link` sits 37 mm above the
+floor surface, and the rendered fan is not perfectly flat: its lowest rays fall
+by a small angle. For a sensor at height h whose rays depress by an angle phi,
+the floor is struck at range `r = (h / phi) / cos(theta)`, which is a plane of
+constant depth - exactly the shape measured. From h = 0.037 m and a depth of
+1.412 m, phi comes out at 0.026 rad, about 1.5 degrees.
 
-Not yet explained. Candidates worth eliminating in order: whether the vehicle is
-really at the origin in that scenario, whether a gpu_lidar at 12 mm above the
-floor grazes the floor box, and whether the first scans published while the
-render scene is still loading are being read.
+Evidence, in the order that settled it:
 
-Until it is understood, `scripts/check_front_lidar.sh` only proves the bridge
-delivers a plausible finite range to the demo node, which is what it was written
-for. It is not evidence about the geometry.
+- the returns lie on a plane of constant depth, not at a constant range, so it
+  is a surface perpendicular to the view axis rather than a ring
+- the vehicle really is at the origin and level, and `gz model` confirms the
+  loaded scene has the wall at x = 4.5 with the floor at the origin
+- the reading is identical at 5 s and at 25 s, so it is not a half-loaded scene
+- an obstacle moved to x = 1.0 is measured exactly right, at 0.867 m, which is
+  1.0 less the 0.06 half-thickness and the lidar's own 0.073 m offset. Near
+  geometry is fine; the floor return simply arrives before anything further
+- spawning the vehicle higher moved the plane from 1.412 m to 1.267 m rather
+  than removing it, which is `h / phi` changing, not a fixed clip distance
+
+Consequences:
+
+- **In flight nothing is affected.** At the demo's 1 m altitude the floor would
+  be struck at about 38 m, far past the sensor's 8 m maximum, so no return comes
+  back at all. `check_forward_flight.sh` measures a stop at x = 3.37 m with
+  0.99 m of rotor clearance, summing to the 4.44 m where the world puts the wall.
+- `scripts/check_front_lidar.sh` runs parked, so the range it sees is the floor.
+  It proves the bridge delivers a finite range to the demo node, which is what it
+  was written for, and it is not evidence about the room.
+- The margin is thinner than it looks. The demo stops below 1.40 m and the parked
+  floor return sits at 1.412 m. Raising the stop distance, or hovering much below
+  0.3 m, would let the floor read as an obstacle. Worth remembering before either
+  number is changed.
 
 ## A Velocity Command Is Not a Brake
 

@@ -197,6 +197,12 @@
 - All four demo nodes now exit quietly on Ctrl-C instead of printing an rclpy traceback over the shutdown.
 - `scripts/menu.sh` lists everything runnable in one place, marks what cannot run yet and why, and warns before the entries that boot a simulator and then say nothing for minutes. That was written after a run of the forward-flight check looked like a hang when it was simply headless and silent.
 
+- Chased down the front-lidar reading that did not match the world, because an unexplained number in a sensor path is where this project keeps finding real defects. It is the floor: parked, the lidar sits 37 mm above it and the rendered fan's lowest rays graze it, which puts a plane of constant depth at h over phi. From 0.037 m and 1.412 m, phi is about 1.5 degrees. Written up in [troubleshooting](./troubleshooting.md) with the evidence in the order that settled it.
+- Five things had to be eliminated, and each ruled out a different story. The returns lie on a plane of constant depth rather than at constant range, so it is a surface, not a ring. The vehicle really is at the origin and level. The scene really has the wall at 4.5 with all four models present, loaded from the file on disk. The reading is the same at 5 s and 25 s, so it is not a half-built render. And an obstacle moved to x = 1.0 measures exactly right at 0.867 m, so near geometry is fine and the floor return simply arrives first.
+- The one that settled it was spawning the vehicle higher: the plane moved from 1.412 m to 1.267 m instead of disappearing, which is h over phi changing rather than a fixed clip distance.
+- Nothing in flight is affected, and that is worth stating rather than assuming: at the demo's 1 m altitude the floor would be struck near 38 m, past the sensor's 8 m maximum, so no return comes back. The forward flight check's stop at x = 3.37 m with 0.99 m of clearance still sums to the 4.44 m the world puts the wall face at.
+- One consequence is worth carrying forward. The demo stops below 1.40 m and the parked floor return sits at 1.412 m, which is twelve millimetres of margin. Raising the stop distance would make the floor read as an obstacle. On the backlog to give the lidar some ground clearance or a degree of up-tilt, so the number is bounded by the room rather than by an artefact.
+
 ## Log Entry Template
 
 ```text
