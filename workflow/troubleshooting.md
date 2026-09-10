@@ -148,6 +148,34 @@ Verification after fix:
 and could no longer see the services. With the domain removed it passes again
 and measures 584.19 m to 586.18 m.
 
+## DDS Control Accepts Everything and the Cinewhoop Stays Put
+
+Symptom:
+
+- `/ap/prearm_check`, `/ap/mode_switch`, `/ap/arm_motors` and
+  `/ap/experimental/takeoff` all return success
+- `/ap/status` confirms `armed: true`
+- commanded rotor speed reaches only the arm idle (260 rad/s) and falls back to
+  zero, and Gazebo ground truth shows the airframe never leaves z = 0.03 m
+
+What is ruled out:
+
+- Not the demo node: a manual `ros2 service call` sequence, identical to the one
+  `check_iris_dds_control.sh` uses, fails the same way.
+- Not arming order: gating takeoff on `/ap/status.armed` changes nothing.
+- Not the velocity command racing the takeoff: holding off `cmd_vel` until the
+  climb finishes changes nothing, and publishing `cmd_vel` with `linear.z` of
+  0.5 m/s does not lift it either.
+- Not missing defaults: adding `copter.parm` changes nothing.
+- Not the airframe: the same vehicle takes off and holds 2 m through MAVLink
+  (`scripts/check_guided_takeoff.sh`), and the Iris takes off through these same
+  DDS services (`scripts/check_iris_dds_control.sh`).
+
+So the fault sits between AP_DDS and this particular vehicle configuration. The
+most likely candidate is Copter's `auto_armed` latch, which normally becomes true
+when a throttle stick rises and which MAVLink `NAV_TAKEOFF` sets on its own.
+Reproduce with `scripts/check_forward_flight.sh`, which currently fails here.
+
 ## Known Risks Before Implementation
 
 ### ROS 2 Packages on NixOS

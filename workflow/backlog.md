@@ -88,7 +88,10 @@
 - [x] Verify subscriber behavior on the front lidar (`scripts/check_front_lidar.sh`, now in CI)
 - [x] Implement `trajectory_publisher.py`
 - [x] Implement `simple_indoor_autonomy.py`
-- [ ] Verify slow 0.5 m/s forward flight (now unblocked: the airframe holds a hover)
+- [x] Guard against a stale scan; a dead lidar used to leave the last range in place
+- [x] Give the demo node its own arm/mode/takeoff through the ArduPilot services
+- [ ] Verify slow 0.5 m/s forward flight (`scripts/check_forward_flight.sh` reproduces the blocker)
+- [ ] Find why DDS control cannot move the cinewhoop while MAVLink can and the Iris can
 - [x] Verify stop behavior below 0.8 m from an obstacle
 
 ## Milestone 10: Real Drone Build

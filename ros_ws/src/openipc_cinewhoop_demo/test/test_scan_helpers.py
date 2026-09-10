@@ -1,7 +1,11 @@
 import math
 import unittest
 
-from openipc_cinewhoop_demo.scan_helpers import nearest_valid_range, safe_forward_speed
+from openipc_cinewhoop_demo.scan_helpers import (
+    nearest_valid_range,
+    safe_forward_speed,
+    scan_is_usable,
+)
 
 
 class ScanHelpersTest(unittest.TestCase):
@@ -22,3 +26,15 @@ class ScanHelpersTest(unittest.TestCase):
 
     def test_safe_forward_speed_allows_motion_at_the_threshold(self):
         self.assertEqual(safe_forward_speed(0.8, 0.8, 0.5), 0.5)
+
+    def test_scan_is_unusable_before_any_scan_arrives(self):
+        self.assertFalse(scan_is_usable(None, 0.5))
+
+    def test_scan_is_usable_inside_the_timeout(self):
+        self.assertTrue(scan_is_usable(0.2, 0.5))
+
+    def test_scan_is_usable_exactly_at_the_timeout(self):
+        self.assertTrue(scan_is_usable(0.5, 0.5))
+
+    def test_scan_is_unusable_past_the_timeout(self):
+        self.assertFalse(scan_is_usable(0.51, 0.5))

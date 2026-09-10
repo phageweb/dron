@@ -26,3 +26,14 @@ def safe_forward_speed(
     if nearest_range is None or nearest_range < stop_distance:
         return 0.0
     return forward_speed
+
+
+def scan_is_usable(age_s: Optional[float], timeout_s: float) -> bool:
+    """Return whether a scan that last arrived age_s ago can still be trusted.
+
+    A stale scan is more dangerous than no scan at all: the last reading may
+    show clear air while the vehicle has since flown up to an obstacle.
+    """
+    if age_s is None:
+        return False
+    return age_s <= timeout_s
