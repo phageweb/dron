@@ -48,6 +48,7 @@ Všechny bench testy flight controlleru, ESC, motorů, ArduPilot konfigurace a R
 - [Tabulka komponent](./03_komponenty.md) - hmotnosti, napětí, konektory, datová rozhraní
 - [Bench checklist bez vrtulí](./04_bench_checklist.md) - celé oživení až po první nasazení vrtulí
 - [Díly pro CAD model](./05_cad_dily.md) - geometrie a montáž, na rozdíl od kusovníku
+- [Kde se co koupí](./06_nakup.md) - nákupní seznam, ceny a dostupnost
 
 ## Návaznost na simulaci
 
