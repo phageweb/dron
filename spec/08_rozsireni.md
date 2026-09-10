@@ -2,6 +2,50 @@
 
 Struktura projektu má počítat s tím, že ROS 2 nody napsané pro simulaci půjdou později s minimálními změnami použít na skutečném OpenIPC cinewhoopu.
 
+## Stihne pozemní počítač rekonstruovat místnost?
+
+Pásmo ani výpočet ne. LD06 vzorkuje pevných 4500 Hz, při 10 otáčkách za sekundu
+tedy **450 bodů na otáčku** s rozlišením 0.8 stupně.
+
+| | |
+| --- | ---: |
+| Syrový protokol LD06 | 13.5 kB/s = **108 kbit/s** |
+| Kapacita UART 230400 | 23.0 kB/s |
+| Jako ROS `LaserScan` | 36.0 kB/s = **288 kbit/s** |
+| Podíl na 8 Mbit/s videu | **3.6 %** |
+
+Výpočetně je 450 bodů na 10 Hz pro SLAM Toolbox na notebooku nic - běžné 2D
+lidary dávají násobně víc bodů rychleji.
+
+Latence taky ne. Při 40 až 100 ms, což je řád OpenIPC, se dron v demo rychlosti
+0.5 m/s posune **2 až 5 cm**. To je pro mapování v pohodě; pro regulační smyčku
+už ne, ale ta na zemi běžet nemá.
+
+### Čím to skutečně padá
+
+**Není naplánovaná datová cesta.** V kusovníku je ELRS, jehož telemetrie zvládá
+stovky bajtů za sekundu, a OpenIPC WiFi. Lidar musí jet po **WiFi lince vedle
+videa** - wfb-ng datový kanál umí, ale nikdo to zatím nerozhodl ani neověřil.
+
+**Náklon dronu.** SLAM předpokládá vodorovný 2D řez. Nakloněný dron řeže
+místnost šikmo a bere do skenu podlahu, viz
+[troubleshooting](../workflow/troubleshooting.md). Pro zastavování před
+překážkou to je nepříjemnost; **pro SLAM je to horší**, protože mapa se
+integruje v čase a špatné skeny ji trvale poškodí. Kompenzace náklonu je
+podmínka, ne vylepšení.
+
+**Drift odometrie.** 2D SLAM potřebuje odhad pohybu. Uvnitř ho dá optical flow s
+dolním rangefinderem přes EKF ArduPilotu, a ten driftuje.
+
+**Výška řezu se hýbe.** Když dron stoupá a klesá, 2D řez putuje po stěnách a
+nábytku. Co bylo v jedné výšce zeď, je v jiné volný prostor.
+
+**wfb-ng ztrácí pakety schválně.** Vysílá bez potvrzování s dopřednou korekcí,
+takže část skenů prostě nedorazí. SLAMu to nevadí, ale kanál se musí nastavit.
+
+Shrnuto: **stihne to snadno**, a jestli z toho vyleze použitelná mapa, rozhoduje
+kompenzace náklonu a odometrie, ne výkon ani linka.
+
 ## SLAM
 
 Připravené vstupy:

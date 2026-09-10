@@ -117,6 +117,10 @@
       The fix is to transform returns into a gravity-aligned frame through TF and
       drop anything below a height threshold - the TF tree is already correct and
       `/ap/pose/filtered` already carries the orientation
+- [ ] Decide how lidar data reaches the ground. ELRS telemetry carries hundreds
+      of bytes per second and the scan needs 108 kbit/s raw, so it has to ride
+      the OpenIPC WiFi link beside the video - about 3.6 per cent of an 8 Mbit/s
+      stream. wfb-ng has a data channel; nobody has configured or measured it
 - [ ] Write the test first: pitch the vehicle in simulation and assert the
       forward scan does not report the floor. The Gazebo sensor is rigidly
       attached exactly as the real one is, so this is reproducible before it is
