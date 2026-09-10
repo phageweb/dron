@@ -24,9 +24,13 @@ rozumné bloky.
 
 | Díl | Rozměry | Uchycení | Zdroj |
 | --- | --- | --- | --- |
-| Rozvor | 128 mm mezi protilehlými motory | - | GEPRC |
-| Karbonová deska | tloušťka 2.5 mm | - | prodejce |
-| Motor GEPRC SPEEDX2 1404 | ⌀18.2 × 13.8 mm, hřídel ⌀1.5 mm, vývody 160 mm | dle 1404 standardu, neověřeno | vendor |
+| Rozvor | 128 mm mezi protilehlými motory | - | **GEPRC, stránka rámu V3** |
+| Karbonová deska | tloušťka 2.5 mm | - | GEPRC V3 |
+| Rám - uchycení FC | - | 25.5 × 25.5 mm | GEPRC V3 |
+| Rám - uchycení VTX | - | **20 × 20 mm i 25.5 × 25.5 mm** | GEPRC V3 |
+| Rám - uchycení motoru | - | **9 × 9 mm** | GEPRC V3 |
+| Rám - uchycení kamery | - | 20 mm | GEPRC V3 |
+| Motor GEPRC SPEEDX2 1404 | ⌀18.2 × 13.8 mm, hřídel ⌀1.5 mm, vývody 160 mm | 9 × 9 mm, viz rám | vendor |
 | Vrtule HQ DT76MMX3 V2 | ⌀76 mm, 3 listy | náboj na ⌀1.5 mm hřídel | vendor |
 | FC MicoAir H743 V2 45A AIO | 36 × 36 × 8 mm | **25.5 × 25.5 mm** | vendor |
 | RX SpeedyBee ELRS Nano | 10.4 × 18.4 mm | lepený/stahovací | vendor |
@@ -45,7 +49,7 @@ datasheetu nebo změřit**, až díly dorazí:
 | Díl | Co chybí | Kde to vzít |
 | --- | --- | --- |
 | **EMAX Wyvern Link Alpha** | rozměr desky (uchycení 25.5 × 25.5 je známé), rozměr kamerového modulu, vyložení objektivu | manuál EMAX; objektiv je 19 mm |
-| Rám GEP-CL30 V3 | vnitřní a vnější průměr ductu, výška ductu, obrys spodní desky, rozmístění stojin, prostor pod kanopou | výkres GEPRC, nebo změřit |
+| Rám GEP-CL30 V3 | vnitřní a vnější průměr ductu, výška ductu, obrys spodní desky, rozmístění stojin, prostor pod kanopou | výkres GEPRC, nebo změřit; V3 stránka je neuvádí |
 | Motor 1404 | rozteč montážních děr (obvykle 9 × 9 mm u 1404, neověřeno) | datasheet |
 | MTF-02P | poloha a průměr montážních děr | MicoAir |
 
@@ -54,6 +58,18 @@ deska jsou to nejdůležitější, co zbývá dohledat**. LD06 už dohledaný je
 rozměry, rozteče i výška okna jsou v tabulce výš, z montážního výkresu
 v datasheetu. Ten výkres je v PDF jako obrázek, takže z něj text nevytáhne -
 stránku je potřeba vyrenderovat a přečíst očima.
+
+## Pozor na záměnu V1 a V3
+
+Prodejci vedou pod jménem „GEP-CL30" i **starší rám**, a jeho čísla jsou jiná:
+rozvor **126 mm**, desky 2.0 mm nahoře i dole a 3.0 mm ramena, hmotnost 62.6 g,
+celkově 180 × 180 × 38 mm a **vnitřní průměr ductu 79 mm**.
+
+Pro V3 platí čísla z tabulky výš, tedy rozvor 128 mm, desky 2.5 mm a 78 g. Ta
+jediná věc, která se ze staršího listu hodí, je **vnitřní průměr ductu 79 mm** -
+vrtule je u obou stejná 3", takže se dá převzít jako odhad, dokud GEPRC nevydá
+výkres V3. V modelu je proto duct označený jako odhad, i když to číslo odněkud
+je.
 
 ## Co model musí zodpovědět
 

@@ -33,10 +33,12 @@ arm_xy           = wheelbase / 2 / sqrt(2);   // 45.25, quad X diagonal
 plate_thickness  = 2.5;                        // verified: 2.5 mm carbon
 plate_size       = 105;                        // PLACEHOLDER: frame outline
 
-// Verified: GEPRC SPEEDX2 1404, 18.2 x 13.8 mm, 1.5 mm shaft.
+// Verified: GEPRC SPEEDX2 1404, 18.2 x 13.8 mm, 1.5 mm shaft, on the frame's
+// 9 x 9 mm bolt pattern.
 motor_d          = 18.2;
 motor_h          = 13.8;
 motor_shaft_d    = 1.5;
+motor_mount      = 9;
 
 // Verified: HQProp DT76MMX3 V2, 76 mm three-blade.
 prop_d           = 76;
@@ -45,11 +47,12 @@ prop_z           = 10;                         // PLACEHOLDER: above the plate
 prop_blades      = 3;
 prop_blade_w     = 9;
 
-// PLACEHOLDER: the whole duct. Nothing about it is measured yet, and it is the
-// single most important thing to get from GEPRC's drawing, because it decides
-// where anything can be mounted without meeting a propeller.
-duct_inner_d     = prop_d + 4;
-duct_outer_d     = duct_inner_d + 8;
+// Still an estimate, but no longer invented. GEPRC do not publish duct geometry
+// for the V3; the older GEP-CL30 sheet gives an inner diameter of 79 mm and an
+// overall 180 x 180 x 38 mm, and both frames swing the same 3 inch propeller.
+// The outer diameter follows from that overall width: 180 = 2 x (44.5 + R).
+duct_inner_d     = 79;
+duct_outer_d     = 91;
 duct_h           = 20;
 duct_z           = -9;
 
@@ -191,6 +194,12 @@ module motor(x, y) {
       cylinder(h = motor_h, d = motor_d, $fn = 48);
       cylinder(h = motor_h + 4, d = motor_shaft_d, $fn = 12);
     }
+  // The 9 x 9 mm bolt pattern the frame provides, drawn so a mount or a spacer
+  // can be checked against it.
+  for (sx = [-1, 1], sy = [-1, 1])
+    color(copper)
+      translate([x + sx * motor_mount / 2, y + sy * motor_mount / 2, -1])
+        cylinder(h = 3, d = 2, $fn = 12);
 }
 
 module propeller(x, y) {

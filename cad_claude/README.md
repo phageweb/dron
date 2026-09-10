@@ -59,6 +59,13 @@ osazení a konektory, protože ty rozhodují o tom, co se kam vejde:
 ## Průhledné díly jsou odhady
 
 Co je průsvitné, není měřené: ducty, kanopa, deska Wyvernu a stožár lidaru.
+Ducty jsou nejblíž pravdě z těch odhadů - vnitřní průměr 79 mm je z listu
+staršího rámu a vnější 91 mm vychází z jeho celkové šířky 180 mm. GEPRC
+geometrii ductu pro V3 nezveřejňuje.
+
+Ověřené je naopak celé uchycení: rozvor 128 mm, desky 2.5 mm, FC 25.5 × 25.5,
+motory 9 × 9, kamera 20 mm a VTX buď 20 × 20, nebo 25.5 × 25.5 - takže Wyvern
+Link se svými 25.5 na rám sedí.
 
 **LD06 už odhad není.** Je podle montážního výkresu z datasheetu: 38.59 × 38.59
 × 33.30 mm, rotující hlava ⌀35.29 × 12.60, rozteče 28.20 × 28.20 s dírami ⌀2.5,
