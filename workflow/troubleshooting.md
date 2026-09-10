@@ -123,6 +123,31 @@ and `FRAME_TYPE`, so every gain comes from `copter.parm`, which targets a
 vehicle of one to two kilograms. This airframe is 0.240 kg with a roll inertia
 of 0.00022 kg m^2. Open item; see the backlog.
 
+## AP_DDS Topics Never Appear in ros2
+
+Symptom:
+
+- the Agent log shows AP_DDS connecting and creating publishers and repliers
+- `ros2 topic list` shows only `/parameter_events` and `/rosout`
+- the check fails with "AP_DDS services did not appear"
+
+Root cause:
+
+`micro_ros_agent` has no domain option and does not follow `ROS_DOMAIN_ID`, so
+it always joins the default domain. Setting `ROS_DOMAIN_ID` for a DDS test only
+moves `ros2` away from the Agent and hides every `/ap/` topic.
+
+Fix:
+
+Do not set `ROS_DOMAIN_ID` in a test that talks to the Agent. Isolate concurrent
+runs with the Agent's UDP port instead (`DDS_UDP_PORT`, see `dds_smoke.parm`).
+
+Verification after fix:
+
+`scripts/check_iris_dds_control.sh` had been given a ROS domain for isolation
+and could no longer see the services. With the domain removed it passes again
+and measures 584.19 m to 586.18 m.
+
 ## Known Risks Before Implementation
 
 ### ROS 2 Packages on NixOS

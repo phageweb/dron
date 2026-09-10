@@ -3,6 +3,9 @@
 # This is opt-in: it needs local ignored ArduPilot, Agent and Gazebo builds.
 set -eo pipefail
 
+# Altitudes are decimal-point strings; a comma locale makes printf reject them.
+export LC_ALL=C
+
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ardupilot_dir="$project_root/external/ardupilot"
 agent_setup="$project_root/external/dds_ws/install/setup.bash"
@@ -26,8 +29,10 @@ done
 set +u
 source "$agent_setup"
 set -u
-# Keep DDS service discovery isolated from any other local SITL demonstration.
-export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-78}"
+# Isolation comes from the dedicated Agent port below, not from a ROS domain:
+# micro_ros_agent has no domain option and does not follow ROS_DOMAIN_ID, so
+# setting one only hides the Agent's topics from ros2 and the check then fails
+# with "AP_DDS services did not appear".
 
 test_tmpdir="$(mktemp -d)"
 gazebo_pid=""
@@ -40,11 +45,24 @@ cleanup() {
       kill -INT "$pid" 2>/dev/null || true
     fi
   done
+  for _ in $(seq 1 20); do
+    remaining=false
+    for pid in "$sitl_pid" "$agent_pid" "$gazebo_pid"; do
+      if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+        remaining=true
+      fi
+    done
+    if [ "$remaining" = false ]; then
+      break
+    fi
+    sleep 0.5
+  done
   for pid in "$sitl_pid" "$agent_pid" "$gazebo_pid"; do
     if [ -n "$pid" ]; then
-      wait "$pid" 2>/dev/null || true
+      kill -9 "$pid" 2>/dev/null || true
     fi
   done
+  pkill -9 -f "$sitl_bin" 2>/dev/null || true
   rm -rf "$test_tmpdir"
 }
 trap cleanup EXIT
