@@ -17,6 +17,23 @@ def nearest_valid_range(
     return min(valid)
 
 
+def range_reading(
+    ranges: Iterable[float],
+    range_min: float,
+    range_max: float,
+) -> float:
+    """Collapse a rangefinder's beams into one distance, the way hardware does.
+
+    A time-of-flight rangefinder reports the closest surface inside its cone,
+    which is why the simulated sensor is a small fan rather than one ray. With
+    nothing in range the result is +inf: sensor_msgs/msg/Range says a reading
+    outside [range_min, range_max] means no detection, and +inf is how the
+    Gazebo lidar already says it.
+    """
+    nearest = nearest_valid_range(ranges, range_min, range_max)
+    return math.inf if nearest is None else nearest
+
+
 def safe_forward_speed(
     nearest_range: Optional[float],
     stop_distance: float,

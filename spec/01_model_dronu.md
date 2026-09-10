@@ -17,9 +17,9 @@
 | Parametr | Hodnota pro první model | Poznámka |
 | --- | ---: | --- |
 | Celková hmotnost | 0.240 kg | cílová hodnota z požadavku |
-| Wheelbase | 0.126 m | vzdálenost diagonálně protilehlých motorů |
-| Rameno od středu k motoru | 0.063 m | half wheelbase pro quad X diagonálu |
-| Souřadnice motoru vůči středu | +/-0.04455 m X/Y | `0.063 / sqrt(2)` |
+| Wheelbase | 0.128 m | GEPRC uvádí pro CineLog30 V3; původní odhad byl 0.126 m |
+| Rameno od středu k motoru | 0.064 m | half wheelbase pro quad X diagonálu |
+| Souřadnice motoru vůči středu | +/-0.04525 m X/Y | `0.064 / sqrt(2)` |
 | Průměr vrtule | 0.0762 m | 3" |
 | Poloměr vrtule | 0.0381 m | pro vizualizaci a kolize |
 | Baterie | 4S 750 mAh | simulovat hlavně hmotností a napětím |
@@ -87,10 +87,10 @@ První plánované rozmístění v ROS `base_link`:
 
 | Motor | Poloha | Souřadnice vůči středu |
 | --- | --- | --- |
-| `motor_1` | front right | x = +0.04455, y = -0.04455 |
-| `motor_2` | rear left | x = -0.04455, y = +0.04455 |
-| `motor_3` | front left | x = +0.04455, y = +0.04455 |
-| `motor_4` | rear right | x = -0.04455, y = -0.04455 |
+| `motor_1` | front right | x = +0.04525, y = -0.04525 |
+| `motor_2` | rear left | x = -0.04525, y = +0.04525 |
+| `motor_3` | front left | x = +0.04525, y = +0.04525 |
+| `motor_4` | rear right | x = -0.04525, y = -0.04525 |
 
 Toto je pracovní pořadí. Během ověření ArduPilot SITL se musí potvrdit, že směr rotace a mixer odpovídají pluginu. Pokud se dron převrací, první diagnostika je mapování motorů a znaménka momentů.
 

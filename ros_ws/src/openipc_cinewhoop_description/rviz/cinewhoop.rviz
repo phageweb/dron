@@ -28,13 +28,11 @@ Visualization Manager:
       Topic:
         Value: /openipc_cinewhoop/scan/front
       Value: true
-    - Class: rviz_default_plugins/LaserScan
+    - Class: rviz_default_plugins/Range
       Enabled: true
       Name: Down Range
-      Size (m): 0.03
-      Style: Spheres
       Color: 255; 170; 60
-      Color Transformer: FlatColor
+      Alpha: 0.5
       Topic:
         Value: /openipc_cinewhoop/range/down
       Value: true

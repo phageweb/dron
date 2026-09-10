@@ -11,6 +11,8 @@
   <exec_depend>ros_gz_bridge</exec_depend>
   <!-- sitl_gazebo.launch.py includes display.launch.py for robot_state_publisher and RViz2. -->
   <exec_depend>openipc_cinewhoop_description</exec_depend>
+  <!-- gazebo.launch.py runs range_adapter next to the bridge. -->
+  <exec_depend>openipc_cinewhoop_demo</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

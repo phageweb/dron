@@ -62,4 +62,14 @@ def generate_launch_description():
             output="screen",
             condition=IfCondition(use_bridge),
         ),
+        # Part of the bridge rather than of the demo: without it the logical
+        # rangefinder topic would carry a LaserScan in simulation and a Range on
+        # hardware, which the demo nodes are not allowed to notice.
+        Node(
+            package="openipc_cinewhoop_demo",
+            executable="range_adapter",
+            parameters=[{"use_sim_time": True}],
+            output="screen",
+            condition=IfCondition(use_bridge),
+        ),
     ])

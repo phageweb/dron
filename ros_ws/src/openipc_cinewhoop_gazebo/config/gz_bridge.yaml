@@ -5,7 +5,7 @@
   direction: GZ_TO_ROS
 
 - ros_topic_name: "/openipc_cinewhoop/imu"
-  gz_topic_name: "/world/indoor_test/model/openipc_cinewhoop/link/imu_link/sensor/imu/imu"
+  gz_topic_name: "/world/indoor_test/model/openipc_cinewhoop/link/imu_link/sensor/imu_ros/imu"
   ros_type_name: "sensor_msgs/msg/Imu"
   gz_type_name: "gz.msgs.IMU"
   direction: GZ_TO_ROS
@@ -16,7 +16,10 @@
   gz_type_name: "gz.msgs.LaserScan"
   direction: GZ_TO_ROS
 
-- ros_topic_name: "/openipc_cinewhoop/range/down"
+# The logical /openipc_cinewhoop/range/down is a sensor_msgs/msg/Range, which is
+# what the MTF-02P's driver publishes on hardware. Gazebo can only produce a
+# LaserScan, so it lands here and range_adapter owns the logical name.
+- ros_topic_name: "/openipc_cinewhoop/range/down_raw"
   gz_topic_name: "/world/indoor_test/model/openipc_cinewhoop/link/rangefinder_link/sensor/down_range/scan"
   ros_type_name: "sensor_msgs/msg/LaserScan"
   gz_type_name: "gz.msgs.LaserScan"

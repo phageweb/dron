@@ -40,10 +40,13 @@ Tento checklist slouží jako závěrečná definice hotového dema.
 
 ## Senzory
 
-- [ ] `/openipc_cinewhoop/imu` publikuje `sensor_msgs/msg/Imu`
-- [ ] `/openipc_cinewhoop/range/down` publikuje `sensor_msgs/msg/Range`
-- [ ] `/openipc_cinewhoop/scan/front` publikuje `sensor_msgs/msg/LaserScan`
-- [ ] `/openipc_cinewhoop/camera/image_raw` publikuje `sensor_msgs/msg/Image`
+- [x] `/openipc_cinewhoop/imu` publikuje `sensor_msgs/msg/Imu`
+- [x] `/openipc_cinewhoop/range/down` publikuje `sensor_msgs/msg/Range`
+- [x] `/openipc_cinewhoop/scan/front` publikuje `sensor_msgs/msg/LaserScan`
+- [x] `/openipc_cinewhoop/camera/image_raw` publikuje `sensor_msgs/msg/Image`
+
+  Všechny čtyři kontroluje `scripts/check_sensor_interface.sh` v baseline CI,
+  spolu s framy a orientací os.
 - [ ] lidar v RViz2 ukazuje zdi/překážky před dronem
 - [ ] dolní rangefinder reaguje na výšku nad podlahou
 

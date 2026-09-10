@@ -3,6 +3,7 @@ import unittest
 
 from openipc_cinewhoop_demo.scan_helpers import (
     nearest_valid_range,
+    range_reading,
     safe_forward_speed,
     scan_is_usable,
     takeoff_needs_retry,
@@ -66,3 +67,18 @@ class ScanHelpersTest(unittest.TestCase):
 
     def test_takeoff_is_retried_when_the_vehicle_sank(self):
         self.assertTrue(takeoff_needs_retry(-0.1, 0.03, 4.0, 3.0, 0.15))
+
+
+class RangeReadingTest(unittest.TestCase):
+    def test_reports_the_closest_surface_in_the_cone(self):
+        self.assertAlmostEqual(
+            range_reading([1.4, 1.1, 0.9, 1.2, 1.5], 0.05, 5.0), 0.9)
+
+    def test_reports_infinity_when_the_cone_is_empty(self):
+        # Range treats anything outside [min_range, max_range] as no detection,
+        # and an altitude hold that read 5.0 m as a real floor would be wrong.
+        self.assertEqual(
+            range_reading([math.inf, math.inf], 0.05, 5.0), math.inf)
+
+    def test_ignores_readings_the_sensor_cannot_make(self):
+        self.assertEqual(range_reading([math.nan, 0.01, 9.0], 0.05, 5.0), math.inf)
