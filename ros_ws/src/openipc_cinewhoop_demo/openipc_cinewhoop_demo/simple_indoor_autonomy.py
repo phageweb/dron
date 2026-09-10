@@ -6,6 +6,8 @@ readable and slow rather than clever: every step is a named state and the
 vehicle refuses to move whenever it cannot see.
 """
 
+import math
+
 import rclpy
 from geometry_msgs.msg import PoseStamped, TwistStamped
 from rclpy.node import Node
@@ -14,7 +16,7 @@ from sensor_msgs.msg import LaserScan
 from std_srvs.srv import Trigger
 
 from openipc_cinewhoop_demo.scan_helpers import (
-    nearest_valid_range,
+    nearest_in_sector,
     safe_forward_speed,
     scan_is_usable,
     takeoff_needs_retry,
@@ -55,6 +57,10 @@ class SimpleIndoorAutonomy(Node):
         self.declare_parameter("braking_distance_m", 0.6)
         self.declare_parameter("takeoff_altitude_m", 1.0)
         self.declare_parameter("scan_timeout_s", 0.5)
+        # The LD06 sweeps all 360 degrees, so "the obstacle ahead" has to say
+        # how far ahead it means. Without this the vehicle stops for the wall
+        # behind it, on hardware exactly as in simulation.
+        self.declare_parameter("forward_sector_deg", 60.0)
         self.declare_parameter("pose_topic", "/ap/pose/filtered")
         self.declare_parameter("status_topic", "/ap/status")
         # Service names are parameters for the same reason the topic names are:
@@ -118,7 +124,11 @@ class SimpleIndoorAutonomy(Node):
             f"{'will arm and take off' if self._auto else 'velocity only'}.")
 
     def _on_scan(self, msg: LaserScan):
-        self._nearest = nearest_valid_range(msg.ranges, msg.range_min, msg.range_max)
+        sector = math.radians(
+            float(self.get_parameter("forward_sector_deg").value))
+        self._nearest = nearest_in_sector(
+            msg.ranges, msg.angle_min, msg.angle_increment,
+            msg.range_min, msg.range_max, sector)
         self._last_scan_time = self.get_clock().now()
 
     def _on_status(self, msg):

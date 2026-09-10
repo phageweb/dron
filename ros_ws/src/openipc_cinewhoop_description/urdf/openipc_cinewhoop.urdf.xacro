@@ -76,7 +76,9 @@
        place the measurement in front of the drone instead of below it. -->
   <xacro:fixed_box_link name="optical_flow_link" xyz="0 0 -0.016" rpy="0 ${pi/2} 0" size="0.018 0.018 0.006" material="sensor"/>
   <xacro:fixed_box_link name="rangefinder_link" xyz="0.020 0 -0.016" rpy="0 ${pi/2} 0" size="0.014 0.014 0.008" material="sensor"/>
-  <xacro:fixed_box_link name="front_lidar_link" xyz="0.073 0 0.002" size="0.018 0.030 0.014" material="sensor"/>
+  <!-- On a mast above the propeller plane; see the SDF for why, and cad_claude/
+       for the geometry that forces it. -->
+  <xacro:fixed_box_link name="front_lidar_link" xyz="0.046 0 0.050" size="0.0386 0.0386 0.0333" material="camera"/>
 
   <xacro:motor name="motor_1" x="${arm}" y="-${arm}"/>
   <xacro:motor name="motor_2" x="-${arm}" y="${arm}"/>

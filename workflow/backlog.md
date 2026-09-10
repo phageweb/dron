@@ -62,9 +62,9 @@
       at h/phi. In flight the floor is out of range, so nothing is affected. The
       demo's 1.40 m stop distance and the 1.412 m floor return are closer than
       they look, which constrains raising either
-- [ ] Give the front lidar a little more ground clearance, or tilt it up a
-      degree, so the parked case measures the room instead of the floor and the
-      stop distance is not bounded by an artefact
+- [x] Give the front lidar more ground clearance: the LD06's mast did it. Parked,
+      it now reports the wall at 4.39 m rather than the floor at 1.41 m, so the
+      stop distance is no longer bounded by an artefact
 
 
 - [x] Add IMU
@@ -155,8 +155,10 @@
       VL53L5CX-class sensor keeps the mass but halves the range. The simulated
       front lidar has to be re-specified to it. Czech shops stock 360 degree
       lidars only in the RPLidar class, which starts at 110 g, so it is an import
-- [ ] Re-specify the simulated `front_lidar` to the LD06's real parameters, and
-      decide whether to model the full 360 degrees or keep a forward window
+- [x] Re-specify the simulated `front_lidar` to the LD06: the full 360 degrees at
+      1 degree resolution, 10 Hz, 0.02 to 12 m, on a mast above the propellers.
+      The demo nodes take a forward sector instead of the whole scan, because
+      the real sensor reports what is behind the vehicle too
 - [ ] Raise the model mass to match the chosen bill of materials, now that the
       sensor is settled: about 306 g against the 240 g it flies on
 - [ ] Dry-fit the LD06. It has to see forward past the ducts without meeting a

@@ -144,4 +144,31 @@ if [ "$stopped" != "0.0" ]; then
 fi
 echo "  with a dead lidar: twist.linear.x = $stopped"
 
+echo "==> simple_indoor_autonomy ignores what is behind it"
+# The LD06 sweeps the whole circle, so a wall behind the vehicle appears in the
+# same scan as the clear air ahead. Taking the minimum over the whole array
+# would stop the demo dead; only the forward sector may count.
+setsid ros2 topic pub -r 10 -w 1 --qos-reliability best_effort \
+  /openipc_cinewhoop/scan/front sensor_msgs/msg/LaserScan \
+  "{header: {frame_id: front_lidar_link}, angle_min: -3.14159, angle_max: 1.5708,
+    angle_increment: 1.5708, range_min: 0.02, range_max: 12.0,
+    ranges: [0.3, 5.0, 5.0, 5.0]}" \
+  >"$test_tmpdir/scan.log" 2>&1 &
+scan_pid=$!
+
+behind="none"
+for _ in $(seq 1 40); do
+  behind="$(forward_speed)"
+  [ "$behind" != "none" ] && [ "$behind" != "0.0" ] && break
+  sleep 0.25
+done
+stop_scan
+if [ "$behind" = "none" ] || [ "$behind" = "0.0" ]; then
+  echo "A wall 0.3 m behind stopped the demo (got '$behind'); the forward" >&2
+  echo "sector is not being applied." >&2
+  cat "$test_tmpdir/autonomy.log" >&2
+  exit 1
+fi
+echo "  wall 0.3 m behind, clear ahead: twist.linear.x = $behind"
+
 echo "Sensor dropout check passed."

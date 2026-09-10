@@ -2,6 +2,7 @@ import math
 import unittest
 
 from openipc_cinewhoop_demo.scan_helpers import (
+    nearest_in_sector,
     nearest_valid_range,
     range_reading,
     safe_forward_speed,
@@ -82,3 +83,38 @@ class RangeReadingTest(unittest.TestCase):
 
     def test_ignores_readings_the_sensor_cannot_make(self):
         self.assertEqual(range_reading([math.nan, 0.01, 9.0], 0.05, 5.0), math.inf)
+
+
+class NearestInSectorTest(unittest.TestCase):
+    # A four-point scan starting behind the vehicle: behind, right, ahead, left.
+    RANGES = [0.5, 3.0, 2.0, 3.0]
+    ANGLE_MIN = -math.pi
+    INCREMENT = math.pi / 2
+
+    def nearest(self, sector_deg):
+        return nearest_in_sector(
+            self.RANGES, self.ANGLE_MIN, self.INCREMENT, 0.02, 12.0,
+            math.radians(sector_deg))
+
+    def test_ignores_the_close_wall_behind(self):
+        # Taking the minimum over the whole scan would answer 0.5 m, which is
+        # the wall the vehicle is flying away from.
+        self.assertAlmostEqual(self.nearest(60), 2.0)
+
+    def test_a_wide_sector_takes_in_the_sides(self):
+        self.assertAlmostEqual(self.nearest(200), 2.0)
+
+    def test_the_whole_circle_sees_everything(self):
+        self.assertAlmostEqual(self.nearest(360), 0.5)
+
+    def test_no_return_in_the_sector(self):
+        self.assertIsNone(
+            nearest_in_sector([math.inf] * 4, self.ANGLE_MIN, self.INCREMENT,
+                              0.02, 12.0, math.radians(60)))
+
+    def test_wraps_a_scan_that_starts_at_zero(self):
+        # Same four bearings, indexed from straight ahead instead of behind.
+        self.assertAlmostEqual(
+            nearest_in_sector([2.0, 3.0, 0.5, 3.0], 0.0, math.pi / 2,
+                              0.02, 12.0, math.radians(60)),
+            2.0)

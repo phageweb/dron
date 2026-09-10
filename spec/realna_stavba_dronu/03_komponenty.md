@@ -65,7 +65,7 @@ publikovaných údajů vidět, EMAX neuvádí spotřebu ani dosah.
 
 | Kandidát | Hmotnost | Dosah | FOV | Rozhraní | Dostupnost v ČR | Poznámka |
 | --- | ---: | --- | --- | --- | --- | --- |
-| LDRobot LD06 | **42 g** bez kabelu, potvrzeno datasheetem | 12 m | 360 stupňů | UART 230400; **4.5-5.5 V**, rozběh 300 mA, provoz 180 mA; konektor ZH1.5T-4P | **není** - TME ho stáhlo z nabídky, jinak dovoz | **vybráno**, viz [rozhodnutí](../../workflow/decisions.md); jediný lehký, co dá skutečný `LaserScan`, a ArduPilot ho umí jako proximity |
+| LDRobot LD06 | **42 g** bez kabelu, potvrzeno datasheetem | **0.02 - 12 m** při 70% odrazivosti | 360 stupňů, rozlišení 1°, 10 Hz (5-13), vzorkování 4500 Hz | UART 230400; **4.5-5.5 V**, rozběh 300 mA, provoz 180 mA; konektor ZH1.5T-4P | **není** - TME ho stáhlo z nabídky, jinak dovoz | **vybráno**, viz [rozhodnutí](../../workflow/decisions.md); jediný lehký, co dá skutečný `LaserScan`, a ArduPilot ho umí jako proximity |
 | Slamtec RPLidar C1 | **110 g**, 55.6x55.6x41.3 mm | 12 m | 360 stupňů | UART | rpishop.cz, 2279 Kč | 360 stupňů skladem v ČR, ale je to 40 % hmotnosti dronu |
 | DFRobot TF-Luna | ~5 g | 8 m | jeden bod | UART/I2C | rpishop.cz, 799 Kč | skladem a lehký, ale jeden paprsek místo skenu |
 | Benewake TFmini-S | ~5 g | 12 m | jeden bod | UART/I2C | rpishop.cz, 1245 Kč | totéž, delší dosah |
@@ -82,6 +82,16 @@ Tomu neodpovídá **žádný** z kandidátů přesně: LD06 má dosah i pokrytí
 VL53L5CX má úhel a váhu, ale poloviční dosah. Až bude senzor vybraný, musí se
 `front_lidar` v modelu upravit na jeho skutečné parametry, protože demo se
 rozhoduje 0.8 m + 0.6 m brzdné dráhy před překážkou, a to je uvnitř dosahu obou.
+
+### Jedna vlastnost LD06, která se bude počítat
+
+Datasheet uvádí **pitching angle 0 až 2 stupně, typicky 0.5** - rovina skenu není
+dokonale vodorovná. Přesně to v simulaci způsobilo, že zaparkovaný lidar měří
+podlahu (viz [troubleshooting](../../workflow/troubleshooting.md)), a na reálném
+kuse to bude platit taky: při 0.5 stupně a výšce 35 mm nad zemí odraz od podlahy
+vyjde na 4 m, při 2 stupních na 1 m. **Za letu je to jedno** - z metru výšky by
+podlaha vyšla přes 100 m, tedy daleko za dosahem - ale na stole to bude vidět a
+není to závada.
 
 ## Elektrické propojení: sedí to k sobě?
 
@@ -109,10 +119,10 @@ a 12 V/2 A, **7 UARTů** a 45A ESC.
 1. **LD06 má konektor ZH1.5T-4P**, rozteč 1.5 mm. UARTy na AIO deskách bývají
    JST-SH 1.0 mm. **Bude potřeba redukce**, nebo přepájet konektor. Objednat
    rovnou s lidarem.
-2. **LD06 je motorek na sdílené 5 V větvi.** Kartáčový motor, který se rozbíhá
-   na 300 mA, sedí na stejném BEC jako optical flow a přijímač. Proudově je to
-   v pohodě, ale rušení na 5 V větvi je reálné riziko pro senzory i pro gyro.
-   Stojí za to počítat s kondenzátorem u lidaru a s tím, že se to bude měřit.
+2. **LD06 má na sdílené 5 V větvi motor.** Podle datasheetu je **bezkartáčový**,
+   ne kartáčový, jak jsem psal dřív - rušení tím pádem menší, ale rozběhových
+   300 mA na stejném BEC jako optical flow a přijímač pořád stojí za kondenzátor
+   a za proměření.
 3. **Spotřebu videa nikdo neuvádí.** EMAX ji nepublikuje; RunCam u srovnatelného
    WiFiLinku 2 udává až 15 W. To je jediné číslo v celém rozpočtu, které chybí,
    a je to zároveň největší spotřebič mimo motory.

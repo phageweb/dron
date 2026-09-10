@@ -17,6 +17,38 @@ def nearest_valid_range(
     return min(valid)
 
 
+def nearest_in_sector(
+    ranges: Iterable[float],
+    angle_min: float,
+    angle_increment: float,
+    range_min: float,
+    range_max: float,
+    sector_rad: float,
+) -> Optional[float]:
+    """Nearest valid return within a cone around straight ahead.
+
+    The front sensor is an LD06, which sweeps the whole 360 degrees. Taking the
+    minimum over the entire scan would stop the vehicle for a wall behind it,
+    and that is not a simulation artefact: the real sensor reports those returns
+    too. Anything that decides on "the obstacle ahead" has to say how far ahead
+    it means.
+    """
+    half = abs(sector_rad) / 2.0
+    nearest = None
+    for index, value in enumerate(ranges):
+        if not math.isfinite(value) or not range_min <= value <= range_max:
+            continue
+        angle = angle_min + index * angle_increment
+        # Wrap into [-pi, pi] so a scan starting at -pi and one starting at 0
+        # both work out the same.
+        angle = (angle + math.pi) % (2 * math.pi) - math.pi
+        if abs(angle) > half:
+            continue
+        if nearest is None or value < nearest:
+            nearest = value
+    return nearest
+
+
 def range_reading(
     ranges: Iterable[float],
     range_min: float,

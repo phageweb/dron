@@ -203,6 +203,13 @@
 - Nothing in flight is affected, and that is worth stating rather than assuming: at the demo's 1 m altitude the floor would be struck near 38 m, past the sensor's 8 m maximum, so no return comes back. The forward flight check's stop at x = 3.37 m with 0.99 m of clearance still sums to the 4.44 m the world puts the wall face at.
 - One consequence is worth carrying forward. The demo stops below 1.40 m and the parked floor return sits at 1.412 m, which is twelve millimetres of margin. Raising the stop distance would make the floor read as an obstacle. On the backlog to give the lidar some ground clearance or a degree of up-tilt, so the number is bounded by the room rather than by an artefact.
 
+- Made the simulated front lidar an LD06 now that the part is chosen, rather than the 60 degree, 8 m fan that stood in for a sensor nobody had picked. To its datasheet: the full 360 degrees at 1 degree resolution, 10 Hz nominal, 0.02 to 12 m. It also moved onto a mast, 46 mm forward and 50 mm up, which is where the CAD model says it has to go to clear the propeller discs.
+- The 360 degrees is the part with teeth. Taking the minimum over the whole scan would stop the vehicle for a wall behind it, and that is not a simulation artefact - the real sensor reports those returns too, so the demo would have failed the same way on hardware. `nearest_in_sector` windows the scan and both nodes carry a `forward_sector_deg` parameter, default 60.
+- Proved it twice. Five unit tests cover the windowing including a scan indexed from straight ahead rather than from behind, and `check_sensor_dropout.sh` gained a behavioural case: a wall 0.3 m behind with clear air ahead must still command 0.5 m/s. Widening the sector to 360 makes that check fail with the reason spelled out, which is the negative test.
+- Two things fell out that were not the point of the change. The forward flight still passes, holding 1.37 m from the wall with 0.95 m of rotor clearance after 3.41 m of travel. And the parked floor-grazing artefact is gone: at 50 mm up instead of 2 mm, `h / phi` grew until the floor return fell past the sensor's range, so `check_front_lidar.sh` now reports 4.39 m - the wall at 4.44 m less the sensor's own 46 mm offset.
+- Kept the floor diagnosis in [troubleshooting](./troubleshooting.md) anyway, because it predicts the same thing on hardware. LDROBOT give the LD06 a pitching angle of 0 to 2 degrees, so a real unit 35 mm off the ground will see the floor somewhere between 1 and 4 m. Only altitude takes it out of range.
+- Corrected something I had written the day before: the LD06's motor is brushless, not brushed. The 300 mA startup on a shared 5 V rail still deserves a capacitor, but the noise argument was overstated.
+
 ## Log Entry Template
 
 ```text

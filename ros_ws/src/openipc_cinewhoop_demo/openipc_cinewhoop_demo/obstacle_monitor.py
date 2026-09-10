@@ -1,9 +1,11 @@
+import math
+
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan
 
-from openipc_cinewhoop_demo.scan_helpers import nearest_valid_range, scan_is_usable
+from openipc_cinewhoop_demo.scan_helpers import nearest_in_sector, scan_is_usable
 
 
 class ObstacleMonitor(Node):
@@ -13,6 +15,9 @@ class ObstacleMonitor(Node):
         self.declare_parameter("warn_distance_m", 0.8)
         self.declare_parameter("log_period_s", 0.5)
         self.declare_parameter("scan_timeout_s", 1.0)
+        # Same reason as the autonomy node: the sensor sweeps the whole circle,
+        # so the monitor has to be told which part of it counts as "ahead".
+        self.declare_parameter("forward_sector_deg", 60.0)
 
         self._last_log_time = self.get_clock().now()
         self._started_at = self.get_clock().now()
@@ -54,7 +59,11 @@ class ObstacleMonitor(Node):
             return
         self._last_log_time = now
 
-        nearest = nearest_valid_range(msg.ranges, msg.range_min, msg.range_max)
+        sector = math.radians(
+            float(self.get_parameter("forward_sector_deg").value))
+        nearest = nearest_in_sector(
+            msg.ranges, msg.angle_min, msg.angle_increment,
+            msg.range_min, msg.range_max, sector)
         if nearest is None:
             self.get_logger().warning("No valid front lidar range")
             return

@@ -329,8 +329,16 @@ Consequences:
   was written for, and it is not evidence about the room.
 - The margin is thinner than it looks. The demo stops below 1.40 m and the parked
   floor return sits at 1.412 m. Raising the stop distance, or hovering much below
-  0.3 m, would let the floor read as an obstacle. Worth remembering before either
-  number is changed.
+  0.3 m, would let the floor read as an obstacle.
+
+Resolved, and by something else entirely. Choosing the LD06 put the sensor on a
+mast above the propeller plane, 50 mm up instead of 2 mm, and `h / phi` grew with
+it until the floor return fell past the sensor's range. Parked, the front lidar
+now reports 4.39 m, which is the wall face at 4.44 m less the sensor's own 46 mm
+offset. The diagnosis is left here because it predicts the same thing on
+hardware: LDROBOT give the LD06 a pitching angle of 0 to 2 degrees, so a real
+unit sitting 35 mm off the ground will see the floor somewhere between 1 and 4 m,
+and only altitude takes it out of range.
 
 ## A Velocity Command Is Not a Brake
 
