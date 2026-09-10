@@ -28,7 +28,7 @@
 - [x] Create a simple TF tree
 - [x] Run `robot_state_publisher`
 - [ ] Run RViz2
-- [ ] Save an RViz configuration
+- [x] Save an RViz configuration (`cinewhoop.rviz`; visual check still needs a GUI)
 - [x] Verify `tf2_tools view_frames`
 
 ## Milestone 4: Gazebo Harmonic

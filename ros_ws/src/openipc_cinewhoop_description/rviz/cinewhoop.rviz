@@ -28,6 +28,30 @@ Visualization Manager:
       Topic:
         Value: /openipc_cinewhoop/scan/front
       Value: true
+    - Class: rviz_default_plugins/LaserScan
+      Enabled: true
+      Name: Down Range
+      Size (m): 0.03
+      Style: Spheres
+      Color: 255; 170; 60
+      Color Transformer: FlatColor
+      Topic:
+        Value: /openipc_cinewhoop/range/down
+      Value: true
+    - Class: rviz_default_plugins/Path
+      Enabled: true
+      Name: Trajectory
+      Color: 60; 200; 255
+      Line Width: 0.01
+      Topic:
+        Value: /openipc_cinewhoop/path
+      Value: true
+    - Class: rviz_default_plugins/Image
+      Enabled: true
+      Name: Front Camera
+      Topic:
+        Value: /openipc_cinewhoop/camera/image_raw
+      Value: true
   Enabled: true
   Global Options:
     Fixed Frame: base_link

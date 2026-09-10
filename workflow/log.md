@@ -94,6 +94,7 @@
 - The intermittent NaN that crashed SITL with a floating point exception is gone. It came from the force PID slamming torque into a rotor whose inertia could not absorb it, so removing that loop removed the NaN as well.
 - Corrected an earlier figure: `ArduPilotPlugin` clamps `raw_cmd` to [0, 1] (`ArduPilotPlugin.cc:1678`), so full throttle gives exactly the `<multiplier>` speed. Thrust-to-weight on the old model was therefore 1.0006, not the 1.13 recorded before, which is even less margin than reported.
 - The thrust stand check now stops at the commanded altitude instead of running to its 60 m stop, because thrust is modelled rather than emerging from blade aerodynamics. Baseline CI is unaffected and passes end to end.
+- Completed what phase 9 of the iteration plan can be checked without a GUI: `cinewhoop.rviz` was missing three of the displays the plan lists, so added the downward rangefinder, the trajectory from `trajectory_publisher` and the front camera. All seven displays load as valid YAML and every topic matches either the bridge config or the demo node that publishes it. The fixed frame stays `base_link` because nothing publishes `map -> base_link` in the standalone display launch; that belongs with phase 12. The visual criteria, that the model and lidar are not rotated, still need someone at a screen.
 
 ## Log Entry Template
 
