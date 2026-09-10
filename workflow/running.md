@@ -7,6 +7,26 @@ running it from elsewhere will not find the upstream builds.
 ## Everything at once
 
 ```bash
+scripts/demo.sh
+```
+
+Scene, simulator and flight from one command, and it stays up until Ctrl-C so
+the result can be looked at rather than raced past. It starts Gazebo with its
+window, SITL, both bridges, RViz and the DDS Agent, waits until ArduPilot's ROS 2
+services actually answer, then flies the demo in the foreground: arm, take off to
+1 m, creep forward at 0.5 m/s and hold short of the wall. `--no-gui` and
+`--altitude METRES` are the two arguments. It re-enters `nix develop` on its own.
+
+Everything it starts, it kills on exit, including the leftover kind: a demo node
+that outlives its wrapper keeps publishing `/ap/cmd_vel` and silently stops the
+*next* run from taking off.
+
+`scripts/menu.sh` lists this and everything else, and says which entries can run
+right now.
+
+## The scene on its own
+
+```bash
 nix develop
 source install/setup.bash
 ros2 launch openipc_cinewhoop_gazebo sitl_gazebo.launch.py gui:=true
@@ -68,6 +88,25 @@ ros2 launch openipc_cinewhoop_gazebo gazebo.launch.py gui:=true
 # URDF in RViz only, no simulator
 ros2 launch openipc_cinewhoop_description display.launch.py use_sim_time:=false
 ```
+
+## Watching the tuning flight
+
+`scripts/sweep_rate_gains.sh` normally runs headless, because it is a
+measurement. `GUI=1` opens the Gazebo window so the manoeuvre can be watched
+instead:
+
+```bash
+nix develop
+GUI=1 scripts/sweep_rate_gains.sh 0.05
+```
+
+The vehicle climbs to 3 m, holds altitude, and then takes a 10 degree roll
+command every two seconds. One gain per invocation is the useful way to watch;
+0.05 is past the oscillation onset and visibly hunts, while 0.027 tracks the
+steps cleanly.
+
+The window costs real time factor, so a run whose numbers matter should leave
+`GUI` unset. Results from a watched run are for looking at, not for the table.
 
 ## Checking it instead of watching it
 

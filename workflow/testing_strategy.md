@@ -70,12 +70,32 @@ Micro XRCE-DDS Agent, which Nixpkgs does not provide:
 | `scripts/check_iris_dds_control.sh` | the upstream Iris reference flies over DDS |
 | `scripts/check_forward_flight.sh` | the autonomy demo takes off, creeps and stops |
 | `scripts/check_unified_launch.sh` | one launch serves Gazebo, ArduPilot and TF |
+| `scripts/sweep_rate_gains.sh` | measures where the roll rate loop starts to oscillate |
+
+Two more baseline checks cover the shape of the data rather than the graph:
+
+| Check | What it proves |
+| --- | --- |
+| `scripts/check_model_consistency.py` | the URDF and the SDF describe the same drone |
+| `scripts/check_sensor_interface.sh` | message types, frames, the rangefinder cone and the IMU axes match the spec |
+| `scripts/check_sensor_dropout.sh` | a dead lidar stops the vehicle and is reported |
+
+All three are cheap enough for every run. The consistency check needs neither a
+simulator nor a ROS graph - it expands the Xacro and reads both files - and the
+dropout check needs no simulator either: it publishes a scan from the command line and then stops, which is what a
+disconnected sensor looks like from inside a node.
 
 `scripts/check_topic_remap.sh` runs in baseline CI and additionally exercises the
 service remapping when `external/dds_ws` is sourced, using
 `scripts/fake_ardupilot_services.py` to stand in for ArduPilot. That harness is
 worth reusing: it drives the whole autonomy state machine in seconds with no
 Gazebo and no SITL.
+
+The sweep is a measurement rather than a check: it has no pass or fail, it prints
+a table and writes traces under `logs/rate_sweep/`, and it takes about a minute
+per gain because each point boots the whole stack again to keep runs independent.
+`EXTRA_PARAMS` appends parameters to every run, which is how a surrounding
+setting gets taken out of the way for a control experiment.
 
 Whatever these start, they must also clean up. A `ros2 run` wrapper's child
 outlives the wrapper, and one leftover node publishing `/ap/cmd_vel` silently

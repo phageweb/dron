@@ -42,6 +42,11 @@
 
 ## Milestone 5: Cinewhoop Model
 
+- [x] Enforce that the URDF and the SDF describe the same drone
+      (`scripts/check_model_consistency.py`, in baseline CI). The airframe is
+      written down twice and nothing linked the two files; the `rangefinder_link`
+      rotation had already drifted between them
+
 - [x] Create ROS package `openipc_cinewhoop_description`
 - [x] Create ROS package `openipc_cinewhoop_gazebo`
 - [x] Create ROS package `openipc_cinewhoop_demo`
@@ -51,6 +56,12 @@
 - [ ] Verify scale and the TF tree
 
 ## Milestone 6: Sensors
+
+- [ ] Explain the static front-lidar reading. Parked at the origin it reports
+      1.41 m ahead where the world puts the wall 4.37 m away, and it reported the
+      same before the wall moved, so it is not the wall. The flying path measures
+      correctly, so this is about the parked case
+
 
 - [x] Add IMU
 - [x] Add downward rangefinder
@@ -76,7 +87,13 @@
       times a ten-inch quad's; stock gains saturated the rate loop
 - [ ] Confirm the calibration on a thrust stand with the exact ducted propeller,
       rather than from published motor figures and textbook coefficients
-- [ ] Tune the rate gains by a sweep rather than one authority-ratio calculation
+- [x] Tune the rate gains by a sweep rather than one authority-ratio calculation.
+      Eleven flights put the oscillation onset between 0.044 and 0.05, where
+      ringing goes from 5 sign changes per run to 141. `ATC_RAT_RLL_P` is 0.027,
+      a little over half the onset (`scripts/sweep_rate_gains.sh`)
+- [ ] Re-measure the onset on hardware. The simulation has no gyro noise, no
+      frame resonance and no ESC lag beyond the motor model, so 0.027 is a
+      ceiling to approach rather than a value to fly off the bench
 - [x] Verify guided arm/takeoff (`scripts/check_guided_takeoff.sh`)
 
 ## Milestone 8: ArduPilot DDS
@@ -116,11 +133,38 @@
 
 ## Milestone 10: Real Drone Build
 
-- [ ] Fill in the exact component table
-- [ ] Weigh individual components
-- [ ] Verify connectors and supply voltages
-- [ ] Plan mechanical sensor placement
-- [ ] Prepare a bench checklist without propellers
+- [x] Fill in the exact component table, and do it for three airframes rather than
+      one, so the choice is a comparison instead of an assumption
+      (`spec/realna_stavba_dronu/03_komponenty.md`)
+- [x] Settle the airframe: CineLog30 V3 with the MicoAir H743 V2 stands, after
+      comparing lighter alternatives. AP_DDS needs an H7 and no OpenIPC air unit
+      runs on 1S. The project has no lightweight fallback as a result
+- [x] Verify connectors and supply voltages from the datasheets; physically
+      measuring them is step 2 of the bench checklist
+- [x] Prepare a bench checklist without propellers
+      (`spec/realna_stavba_dronu/04_bench_checklist.md`)
+- [ ] Weigh individual components, which needs the parts on a scale
+- [ ] Plan mechanical sensor placement, which needs the frame dry-fitted
+- [ ] Choose the front obstacle sensor. Nothing else in the build is blocked on a
+      single decision this hard: LD06 is the only candidate that gives a real
+      `LaserScan` but weighs about as much as half the airframe, while a
+      VL53L5CX-class sensor keeps the mass but halves the range. The simulated
+      front lidar has to be re-specified to whichever wins
+- [ ] Revisit the 0.240 kg the simulation flies on. The published bill of
+      materials sums to 238 g, but that omits wiring, screws and TPU, and the
+      stock airframe's own dry weight puts the real figure nearer 264 g before
+      any front sensor. Thrust to weight would go from 5.9 to about 5.3
+- [x] Reconcile the wheelbase: 126 mm was an assumption, GEPRC publish 128 mm.
+      Motor coordinates moved from 0.04455 m to 0.04525 m in both model files.
+      The rate gains were deliberately not re-derived: the authority ratio moves
+      from 7.7 to 7.8, which is inside the accuracy of the method that set them
+- [ ] Choose between RunCam WiFiLink 2 and EMAX Wyvern Link Alpha 200 mW. The
+      EMAX unit is 11 to 16 g lighter, which is the difference between just over
+      250 g and clearly over, but it publishes neither power draw nor range, and
+      RunCam quote up to 15 W for theirs
+- [ ] Decide what to do about the 250 g class, which the chosen airframe will exceed
+- [ ] Close build phase 8, OpenIPC stream to `sensor_msgs/msg/Image`, with the
+      WiFiLink 2 on a desk rather than on an airframe
 - [x] Prepare mapping from simulation topics to real sensors; the mapping was
       already specified, so this verified it against the implementation
       (`scripts/check_topic_remap.sh`, in baseline CI)
@@ -128,3 +172,19 @@
       and the node had hardcoded
 - [x] Fix `trajectory_publisher`'s QoS: a RELIABLE subscription never matched
       AP_DDS's BEST_EFFORT pose publisher
+- [x] Close the rest of the sim-to-hardware transition checklist, which turned up
+      four defects that only real hardware would have shown
+- [x] Give the Gazebo sensors `gz_frame_id`: the lidar, rangefinder and camera
+      stamped scoped names that are not in the TF tree, so RViz could not draw
+      them and a real driver would publish something else
+- [x] Publish `/openipc_cinewhoop/range/down` as `sensor_msgs/msg/Range` through
+      `range_adapter`, and make the simulated sensor a 15 degree fan, since a
+      time-of-flight rangefinder returns the nearest surface in its cone
+- [x] Bridge an unrotated IMU: the ArduPilot-facing sensor is in aircraft
+      convention, so ROS was reading -9.81 on z where REP 103 and AP_DDS give
+      +9.81
+- [x] Make `use_sim_time` a launch argument; hardcoded true would have frozen
+      the demo nodes' clocks on hardware and silently disabled the stale-scan guard
+- [x] Verify the safe state on sensor dropout (`scripts/check_sensor_dropout.sh`)
+- [x] Add `scripts/check_sensor_interface.sh` to baseline CI, which checks the
+      shape of the sensor data rather than the names on the graph

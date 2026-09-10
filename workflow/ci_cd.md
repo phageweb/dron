@@ -21,6 +21,9 @@ Current jobs:
 - verify the ROS publisher/subscriber graph
 - verify the URDF/Xacro TF tree without a GUI
 - start Gazebo headlessly and verify bridged sensor topics
+- verify the URDF and the SDF still describe the same drone
+- verify the bridged sensors carry the specified types, frames and axes
+- verify a dead lidar puts the demo nodes into a safe state
 
 ## CI Script
 
@@ -43,10 +46,19 @@ colcon build
 colcon test
 colcon test-result --verbose
 python3 -m pytest ros_ws/src/openipc_cinewhoop_demo/test
+python3 scripts/check_model_consistency.py
 scripts/check_ros_graph.sh
+scripts/check_topic_remap.sh
+scripts/check_sensor_dropout.sh
+scripts/check_sensor_interface.sh
 scripts/check_tf_tree.sh
 scripts/check_gazebo_headless.sh
+scripts/check_front_lidar.sh
 ```
+
+The heavier SITL checks stay opt-in, because they need the ignored `external/`
+builds. [Testing strategy](./testing_strategy.md) lists them and says what each
+one proves.
 
 ## Test Levels Expected in CI
 

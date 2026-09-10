@@ -1,5 +1,9 @@
 # Reálná stavba dronu - plán stavby
 
+Tenhle soubor drží fáze a jejich cíle. Konkrétní kroky oživení od prvního
+připojení baterie po nasazení vrtulí, včetně stop podmínek, jsou v
+[bench checklistu](./04_bench_checklist.md).
+
 ## Fáze 1: Potvrzení komponent
 
 Cíl:
@@ -24,6 +28,10 @@ Checklist:
 Výstup:
 
 - tabulka komponent, hmotností, konektorů, napájecích napětí a datových rozhraní
+
+Hotovo jako [tabulka komponent](./03_komponenty.md), zatím z publikovaných hodnot. Vážení skutečných dílů a potvrzení verzí zůstává otevřené,
+stejně jako volba předního obstacle senzoru, na které závisí, jestli dál platí
+0.240 kg, ze kterých počítá simulace.
 
 ## Fáze 2: Mechanická montáž nasucho
 

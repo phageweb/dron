@@ -228,6 +228,94 @@ Both obstacles in `indoor_test.sdf` now stand taller than the cruise altitude.
 When adding geometry to that world, check it against the flight altitude rather
 than only against the vehicle's resting height.
 
+## A Healthy Sensor Topic That RViz Refuses to Draw
+
+Symptom:
+
+- `ros2 topic echo` on a bridged sensor shows real data at the expected rate
+- the matching RViz display stays empty, with no error on the topic itself
+
+Cause:
+
+A Gazebo sensor stamps its messages with its own scoped name unless the model
+sets `gz_frame_id`, so the front lidar published
+`openipc_cinewhoop/front_lidar_link/front_lidar`. That frame is not in the tree
+`robot_state_publisher` serves from the URDF, so every TF-using consumer has
+nothing to transform into the fixed frame and quietly shows nothing.
+
+The same mismatch is a simulation-only behaviour: a real driver publishes URDF
+link names, so a node tuned against the simulation would meet a different frame
+on hardware.
+
+Fix:
+
+Every sensor in `model.sdf` sets `gz_frame_id` to its URDF link, and
+`scripts/check_sensor_interface.sh` fails if a bridged frame cannot be
+transformed into `base_link`. Check the frame before the display settings:
+
+```bash
+ros2 topic echo --once --field header /openipc_cinewhoop/scan/front
+ros2 run tf2_tools view_frames
+```
+
+## A Rotated Sensor Frame Points the Measurement the Wrong Way
+
+Symptom:
+
+- a downward rangefinder's reading appears in front of the drone in RViz
+- the IMU reads -9.81 m/s^2 on z at rest instead of +9.81
+
+Cause:
+
+Two different conventions meet in this model. ArduPilotPlugin reads its IMU in
+aircraft convention, x forward, y right, z down, so the sensor carries a 180
+degree roll; ROS and AP_DDS use REP 103, x forward, y left, z up. Bridging the
+aircraft-convention sensor gave ROS an inverted y and z that only hardware would
+have revealed. Separately, both downward sensors measure along +X of their own
+frame, so a frame left level with `base_link` describes a beam pointing forward.
+
+Fix:
+
+The model carries a second, unrotated `imu_ros` sensor for the bridge, and
+`rangefinder_link` and `optical_flow_link` are pitched 90 degrees in the URDF to
+match the SDF. Gravity at rest is the cheap test, and the interface check makes
+it:
+
+```bash
+ros2 topic echo --once --field linear_acceleration /openipc_cinewhoop/imu
+```
+
+## Unexplained: a Static Scan That Does Not Match the World
+
+Symptom:
+
+- with the vehicle parked at the origin and no ArduPilot running, the front lidar
+  reports 1.41 m straight ahead
+- the world's only thing ahead is the front obstacle, whose face is 4.37 m from
+  the lidar
+- the same 1.41 m was reported before that obstacle was moved from x = 1.8 to
+  x = 4.5, when its face was 1.67 m away, so the reading does not track the wall
+
+What is known:
+
+- the shape of the scan is a flat surface perpendicular to +X: the minimum is
+  dead ahead and the returns grow as 1/cos, reaching 1.63 m at 30 degrees, which
+  is 1.41 / cos(30) to three digits
+- `gz model --list` shows all four models present, and the loaded world file is
+  the one on disk, reached through the install symlink
+- the flying path is unaffected and verified: `check_forward_flight.sh` measures
+  a stop at x = 3.37 m with 0.99 m of rotor clearance, which sums to the 4.44 m
+  the world puts the wall face at
+
+Not yet explained. Candidates worth eliminating in order: whether the vehicle is
+really at the origin in that scenario, whether a gpu_lidar at 12 mm above the
+floor grazes the floor box, and whether the first scans published while the
+render scene is still loading are being read.
+
+Until it is understood, `scripts/check_front_lidar.sh` only proves the bridge
+delivers a plausible finite range to the demo node, which is what it was written
+for. It is not evidence about the geometry.
+
 ## A Velocity Command Is Not a Brake
 
 Symptom:

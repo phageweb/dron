@@ -15,7 +15,8 @@ Tato větev popisuje fyzickou stavbu plánovaného 3" cinewhoopu. Je oddělená 
 - RC: ExpressLRS, SpeedyBee ELRS Nano RX
 - Video: RunCam WiFiLink 2 s OpenIPC
 - Indoor senzory: MicoAir MTF-02P optical flow + downward rangefinder/lidar
-- Volitelný obstacle sensor: přední lidar/depth/range sensor pro ROS 2
+- Volitelný obstacle sensor: přední lidar/depth/range sensor pro ROS 2, konkrétní
+  díl zatím **nevybraný**, viz [varianty](./03_komponenty.md)
 
 ## Cíl reálné větve
 
@@ -39,6 +40,13 @@ Tyto věci jsou ve větvi [ROS 2 na NixOSu](../ros2_nixos/README.md).
 ## Bezpečnostní zásada
 
 Všechny bench testy flight controlleru, ESC, motorů, ArduPilot konfigurace a ROS komunikace se dělají bez vrtulí. Vrtule se nasazují až po ověření směru motorů, failsafe, arm/disarm, RC linku a základního režimu letu.
+
+## Dokumenty této větve
+
+- [Plán stavby](./01_plan_stavby.md) - fáze od potvrzení komponent po první let
+- [Rozhraní simulace vs. reálný dron](./02_rozhrani_sim_real.md) - co se nesmí lišit
+- [Tabulka komponent](./03_komponenty.md) - hmotnosti, napětí, konektory, datová rozhraní
+- [Bench checklist bez vrtulí](./04_bench_checklist.md) - celé oživení až po první nasazení vrtulí
 
 ## Návaznost na simulaci
 

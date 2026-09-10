@@ -11,7 +11,7 @@ Držet tyto logické názvy:
 | Logický topic | Simulace | Reálný dron |
 | --- | --- | --- |
 | `/openipc_cinewhoop/imu` | Gazebo IMU nebo AP_DDS IMU | ArduPilot DDS/MAVLink IMU |
-| `/openipc_cinewhoop/range/down` | Gazebo range sensor | MicoAir MTF-02P rangefinder |
+| `/openipc_cinewhoop/range/down` | Gazebo range sensor přes `range_adapter` | MicoAir MTF-02P rangefinder |
 | `/openipc_cinewhoop/flow/down` | Gazebo/odvozený flow node | MicoAir MTF-02P optical flow |
 | `/openipc_cinewhoop/scan/front` | Gazebo lidar | přední lidar/depth/range adapter |
 | `/openipc_cinewhoop/camera/image_raw` | Gazebo camera | OpenIPC stream převedený do ROS Image |
@@ -100,13 +100,59 @@ hardware je skutečně jen otázka launche:
 Část se službami potřebuje `ardupilot_msgs` z opt-in DDS workspace; bez něj se
 přeskočí, aby baseline CI nezáviselo na `external/`.
 
+`scripts/check_sensor_interface.sh` (baseline CI) ověřuje tvar dat, ne jen jména:
+typy zpráv proti [ROS rozhraní](../04_ros_rozhrani.md), že se každý frame_id dá
+transformovat do `base_link`, že deklarovaný kužel rangefinderu odpovídá
+simulovanému vějíři a že IMU v klidu čte +9.81 na z.
+
+`scripts/check_sensor_dropout.sh` (baseline CI) ověřuje chování při mrtvém
+senzoru, viz poslední bod checklistu níž.
+
 ## Přechodový checklist
 
-- [ ] simulační topic má stejný typ zprávy jako reálný topic
-- [ ] frame_id odpovídá stejnému TF stromu
-- [ ] jednotky jsou stejné
-- [ ] znaménka os jsou ověřená
-- [ ] timestampy používají konzistentní čas
+- [x] simulační topic má stejný typ zprávy jako reálný topic
+
+  `/openipc_cinewhoop/range/down` posílal `sensor_msgs/msg/LaserScan`, protože
+  Gazebo umí rangefinder jen jako malý lidar. Reálný MTF-02P publikuje
+  `sensor_msgs/msg/Range` a [ROS rozhraní](../04_ros_rozhrani.md) to tak
+  specifikuje. Bridge teď končí na `/openipc_cinewhoop/range/down_raw` a
+  `range_adapter` vlastní logický název. Simulovaný senzor je zároveň úzký vějíř
+  místo jednoho paprsku, protože time-of-flight čidlo vrací nejbližší plochu v
+  kuželu; MicoAir udávají u MTF-02P vyzařovací úhel 2 stupně. Jeden paprsek
+  navíc nechával `angle_increment` NaN.
+
+- [x] frame_id odpovídá stejnému TF stromu
+
+  Bez `gz_frame_id` razítkuje Gazebo senzor zprávy vlastním scoped jménem, takže
+  přední lidar posílal `openipc_cinewhoop/front_lidar_link/front_lidar`. Takový
+  frame v TF stromu neexistuje, RViz scan zahodí bez chyby v topicu a reálný
+  driver by publikoval něco jiného. Lidar, rangefinder i kamera teď posílají
+  `front_lidar_link`, `rangefinder_link` a `camera_optical_frame`.
+
+- [x] jednotky jsou stejné
+
+  Jednotky jsou dané typem zprávy, takže tuhle položku držel předchozí bod: metry
+  u `Range` a `LaserScan`, rad/s a m/s^2 u `Imu`. `scripts/check_sensor_interface.sh`
+  kontroluje typy proti [ROS rozhraní](../04_ros_rozhrani.md).
+
+- [x] znaménka os jsou ověřená
+
+  IMU v modelu je otočené o 180 stupňů do letecké konvence, kterou čte
+  ArduPilotPlugin, takže bridgnutý `/openipc_cinewhoop/imu` měl z v klidu -9.81
+  místo +9.81. AP_DDS na reálném dronu publikuje REP 103, takže by se znaménko
+  otočilo až na hardwaru. Model má proto druhý, neotočený senzor `imu_ros` pro
+  ROS a check měří gravitaci.
+
+  Dolní senzory měří podél +X vlastního framu, takže `rangefinder_link` i
+  `optical_flow_link` jsou v URDF sklopené o 90 stupňů stejně jako v SDF.
+
+- [x] timestampy používají konzistentní čas
+
+  `demo.launch.py` měl `use_sim_time` natvrdo na `true`. Na hardwaru žádné
+  `/clock` není a node by četl pořád stejný okamžik, takže by každé stáří zprávy
+  vyšlo nula a ochrana proti mrtvému lidaru by tiše přestala platit. Je to
+  launch argument.
+
 - [x] QoS je vhodné pro sensor data
 
   AP_DDS publikuje `/ap/pose/filtered` jako BEST_EFFORT. RELIABLE subscriber se
@@ -116,4 +162,9 @@ přeskočí, aby baseline CI nezáviselo na `external/`.
   spároval. Opraveno na `qos_profile_sensor_data` a `check_ros_graph.sh`
   publikuje BEST_EFFORT, aby to příště spadlo.
 
-- [ ] při výpadku senzoru node přejde do bezpečného stavu
+- [x] při výpadku senzoru node přejde do bezpečného stavu
+
+  Ověřuje `scripts/check_sensor_dropout.sh` bez Gazeba i SITL: scan se publikuje
+  z příkazové řádky a pak se zastaví, což je přesně to, co node vidí při
+  odpojeném senzoru. `simple_indoor_autonomy` přejde z 0.5 m/s na 0.0 a
+  `obstacle_monitor` mlčení nahlásí, místo aby jen přestal psát.
