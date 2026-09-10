@@ -11,13 +11,23 @@
 
     <link name="base_link">
       <inertial>
-        <!-- Total assembled mass is 0.240 kg; fixed child-link masses below
-             are explicit so SDF does not substitute its 1 kg default. -->
-        <mass>0.200</mass>
+        <!-- Total assembled mass is 0.306 kg, from the bill of materials in
+             spec/realna_stavba_dronu/03_komponenty.md: the listed parts with a
+             RunCam WiFiLink 2, the LD06, and the wiring, screws and TPU that the
+             stock airframe's own dry weight implies. It was 0.240 kg, which was
+             the figure the requirement asked for rather than one anything was
+             weighed against.
+
+             The LD06's 42 g sits on front_lidar_link rather than here, because
+             where it hangs changes the inertia as much as the mass does. Fixed
+             child-link masses are explicit so SDF does not substitute its 1 kg
+             default. This link also carries the lidar mast, which is a part that
+             has to be designed and has no weight yet. -->
+        <mass>0.228</mass>
         <inertia>
-          <ixx>0.00022</ixx>
-          <iyy>0.00022</iyy>
-          <izz>0.00038</izz>
+          <ixx>0.00028</ixx>
+          <iyy>0.00028</iyy>
+          <izz>0.00048</izz>
           <ixy>0</ixy>
           <ixz>0</ixz>
           <iyz>0</iyz>
@@ -38,7 +48,12 @@
          that lands. The scan plane clears the rotors by about 25 mm. -->
     <link name="front_lidar_link">
       <pose relative_to="base_link">0.046 0 0.050 0 0 0</pose>
-      <inertial><mass>0.004</mass><inertia><ixx>0.0000005</ixx><iyy>0.0000005</iyy><izz>0.0000005</izz></inertia></inertial>
+      <!-- 42 g, the LD06's datasheet weight without its cable. Gazebo composes
+           the body inertia from where the links sit, so putting it here rather
+           than in base_link is what makes the mast's effect real: 42 g at
+           46 mm forward and 50 mm up adds about 1.9e-4 to pitch inertia, which
+           is as much again as the whole airframe had before. -->
+      <inertial><mass>0.042</mass><inertia><ixx>0.0000078</ixx><iyy>0.0000078</iyy><izz>0.0000078</izz></inertia></inertial>
       <visual name="visual">
         <geometry><box><size>0.0386 0.0386 0.0333</size></box></geometry>
         <material><diffuse>0.24 0.24 0.26 1</diffuse></material>

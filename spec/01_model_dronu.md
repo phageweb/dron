@@ -16,7 +16,7 @@
 
 | Parametr | Hodnota pro první model | Poznámka |
 | --- | ---: | --- |
-| Celková hmotnost | 0.240 kg | cílová hodnota z požadavku |
+| Celková hmotnost | 0.306 kg | z kusovníku, ne ze zadání; viz [tabulka komponent](./realna_stavba_dronu/03_komponenty.md) |
 | Wheelbase | 0.128 m | GEPRC uvádí pro CineLog30 V3; původní odhad byl 0.126 m |
 | Rameno od středu k motoru | 0.064 m | half wheelbase pro quad X diagonálu |
 | Souřadnice motoru vůči středu | +/-0.04525 m X/Y | `0.064 / sqrt(2)` |
@@ -34,7 +34,10 @@
 
 Tyto hodnoty budou jasně zapsané v modelu a README, protože bez reálného měření nejde o přesný digitální twin:
 
-- Hmotnost 240 g je jedna soustředěná hodnota pro celý dron včetně baterie, kamery a senzorů bez GoPro.
+- Hmotnost 306 g vychází z kusovníku: vypsané díly s RunCam WiFiLink 2, LD06, a
+  kabeláž se šrouby a TPU, kterou implikuje suchá hmotnost stock rámu. Zadání
+  původně říkalo 240 g, ale to bylo přání, ne měření. LD06 má svých 42 g na
+  `front_lidar_link`, protože kde visí, mění inercii stejně jako hmotnost.
 - Moment setrvačnosti bude odvozený z jednoduchého kvádru o přibližných rozměrech cinewhoopu, ne z CAD modelu rámu.
 - Ducty budou v první verzi modelované jako vizuální/kolizní prstence, bez detailního modelu proudění vzduchu.
 - Motory a vrtule budou mít laděné simulační koeficienty pro stabilní hover, ne měřenou thrust křivku.

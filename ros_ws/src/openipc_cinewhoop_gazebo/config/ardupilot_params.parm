@@ -20,20 +20,23 @@ MOT_PWM_MAX 1900
 MOT_THST_EXPO 1.0
 
 # Hover throttle follows from the calibrated rotors rather than being guessed.
-# Thrust to weight is 5.9, so hover needs a thrust fraction of 1/5.9 = 0.169,
-# and MOT_THST_EXPO 1.0 makes the actuator output sqrt(0.169) = 0.41. Written
-# down explicitly so the first flight of a test is deterministic instead of
-# waiting for MOT_HOVER_LEARN.
-MOT_THST_HOVER 0.41
+# At 0.306 kg the airframe needs 0.751 N per rotor against a 3.485 N maximum, a
+# thrust fraction of 0.215, and MOT_THST_EXPO 1.0 makes the actuator output
+# sqrt(0.215) = 0.46. Written down explicitly so the first flight of a test is
+# deterministic instead of waiting for MOT_HOVER_LEARN.
+#
+# It was 0.41 while the model flew on the 0.240 kg the requirement asked for.
+# The bill of materials with the LD06 says 0.306 kg, so thrust to weight is 4.6
+# rather than 5.9.
+MOT_THST_HOVER 0.46
 
 # Attitude rate gains scaled for this airframe's control authority, which is
 # what the stock gains get wrong. A full roll demand moves two rotors up and two
 # down by half of max thrust each, so the peak roll moment is
-# 2 * 3.485 N * 0.04525 m = 0.315 N m against a roll inertia of 0.00022 kg m^2:
-# 1433 rad/s^2, or 82100 deg/s^2. A 1.5 kg ten-inch quad at a thrust-to-weight
-# ratio of 2 manages about 10500 deg/s^2, so this airframe has 7.8 times the
-# angular acceleration per unit of controller output and the defaults are 7.8
-# times too high.
+# 2 * 3.485 N * 0.04525 m = 0.315 N m. Against the 0.00022 kg m^2 the airframe
+# had before the lidar that was 82100 deg/s^2, or 7.8 times a ten-inch quad's.
+# The LD06 on its mast takes roll inertia to roughly 0.00045, which halves that
+# ratio - which is why the gains below were measured again rather than kept.
 #
 # The arm was 0.04455 m when these gains were set, from a 126 mm wheelbase that
 # turned out to be an assumption; GEPRC publish 128 mm. The ratio moves from 7.7
@@ -48,25 +51,30 @@ MOT_THST_HOVER 0.41
 # authority, so the log showed ThO 0.000 and a commanded descent of -2.5 m/s
 # while the vehicle flung itself to 54 m. Defaults divided by 7.7; ArduPilot's
 # own tuning guide also says smaller propellers need lower rate gains.
-# Measured by scripts/sweep_rate_gains.sh rather than calculated. A roll square
-# wave flown at eleven gains puts the oscillation onset between 0.044 and 0.05,
-# where ringing jumps from 5 sign changes per run to 141 and overshoot from 8 to
-# 44 per cent. Below that everything improves monotonically with P.
+# Measured by scripts/sweep_rate_gains.sh rather than calculated, and measured
+# again after the airframe gained the LD06. Adding 42 g on a mast 46 mm forward
+# and 50 mm up roughly doubles the pitch inertia, so the gains that suited the
+# 0.240 kg model no longer suit this one: at 0.027 the guided takeoff's worst
+# tilt went from 6.5 to 24.0 degrees, against the check's 25 degree limit.
 #
-# 0.027 is a little over half the onset, which is the margin ArduPilot's tuning
-# guide asks for, and it beats the old 0.018 on every metric: overshoot 8.8
-# against 10.0 per cent, tracking error 1.59 against 1.82 degrees. 0.040 measured
-# best of all but sits at 0.85 of the onset, which is no margin at all.
+# The sweep at 0.306 kg puts the onset between 0.065 and 0.08. Ringing holds at
+# 3 sign changes per run through 0.065, reaches 11 at 0.07, and at 0.08 the loop
+# is gone: 146 sign changes and 62 per cent overshoot.
+#
+# 0.040 is a little under six tenths of that onset, the same margin the previous
+# tuning used, and it beats 0.027 on every metric: overshoot 6.2 against 7.6 per
+# cent, tracking error 1.08 against 1.25 degrees. 0.065 measured best of all and
+# sits at 0.93 of the onset, which is no margin at all.
 #
 # The onset is optimistic. This simulation has no gyro noise, no frame resonance
 # and no ESC lag beyond the motor model, and those are what force real gains
-# lower. Treat 0.027 as an upper bound to approach on hardware, not a value to
+# lower. Treat 0.040 as an upper bound to approach on hardware, not a value to
 # fly straight away.
-ATC_RAT_RLL_P 0.027
-ATC_RAT_RLL_I 0.027
+ATC_RAT_RLL_P 0.040
+ATC_RAT_RLL_I 0.040
 ATC_RAT_RLL_D 0.0005
-ATC_RAT_PIT_P 0.027
-ATC_RAT_PIT_I 0.027
+ATC_RAT_PIT_P 0.040
+ATC_RAT_PIT_I 0.040
 ATC_RAT_PIT_D 0.0005
 ATC_RAT_YAW_P 0.023
 ATC_RAT_YAW_I 0.0023

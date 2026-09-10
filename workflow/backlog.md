@@ -159,11 +159,16 @@
       1 degree resolution, 10 Hz, 0.02 to 12 m, on a mast above the propellers.
       The demo nodes take a forward sector instead of the whole scan, because
       the real sensor reports what is behind the vehicle too
-- [ ] Raise the model mass to match the chosen bill of materials, now that the
-      sensor is settled: about 306 g against the 240 g it flies on
+- [x] Raise the model mass to match the bill of materials: 0.306 kg, with the
+      LD06's 42 g on `front_lidar_link` where it actually hangs. Hover throttle
+      went to 0.46 and the rate gains had to be measured again, because the mast
+      roughly doubles the pitch inertia
+- [ ] Re-measure the gains once more if the video unit changes. The 0.306 kg
+      assumes a RunCam WiFiLink 2; the EMAX Wyvern Link Alpha would make it
+      about 294 g
 - [ ] Dry-fit the LD06. It has to see forward past the ducts without meeting a
       propeller on a 128 mm frame, and that can still kill the choice
-- [ ] Revisit the 0.240 kg the simulation flies on. The published bill of
+- [x] Revisit the 0.240 kg the simulation flies on. The published bill of
       materials sums to 238 g, but that omits wiring, screws and TPU, and the
       stock airframe's own dry weight puts the real figure nearer 264 g before
       any front sensor. Thrust to weight would go from 5.9 to about 5.3

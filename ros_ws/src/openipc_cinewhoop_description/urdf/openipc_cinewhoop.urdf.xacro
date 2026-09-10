@@ -21,8 +21,12 @@
       <geometry><box size="0.105 0.105 0.018"/></geometry>
     </collision>
     <inertial>
-      <mass value="0.240"/>
-      <inertia ixx="0.00022" ixy="0" ixz="0" iyy="0.00022" iyz="0" izz="0.00038"/>
+      <!-- The URDF lumps everything here because it only has to look right;
+           the SDF spreads the same 0.306 kg over the links physics acts on.
+           Only the totals are comparable, and check_model_consistency.py
+           compares them. -->
+      <mass value="0.306"/>
+      <inertia ixx="0.00047" ixy="0" ixz="0" iyy="0.00047" iyz="0" izz="0.00048"/>
     </inertial>
   </link>
 

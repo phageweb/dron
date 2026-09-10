@@ -1,5 +1,5 @@
 openipc_cinewhoop:
-  mass_kg: 0.240
+  mass_kg: 0.306
   wheelbase_m: 0.128
   arm_xy_m: 0.04525
   propeller_radius_m: 0.0381

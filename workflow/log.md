@@ -210,6 +210,13 @@
 - Kept the floor diagnosis in [troubleshooting](./troubleshooting.md) anyway, because it predicts the same thing on hardware. LDROBOT give the LD06 a pitching angle of 0 to 2 degrees, so a real unit 35 mm off the ground will see the floor somewhere between 1 and 4 m. Only altitude takes it out of range.
 - Corrected something I had written the day before: the LD06's motor is brushless, not brushed. The 300 mA startup on a shared 5 V rail still deserves a capacitor, but the noise argument was overstated.
 
+- Brought the model's mass up to what the bill of materials says: 0.306 kg instead of the 0.240 kg the requirement asked for. The LD06's 42 g went on `front_lidar_link` rather than into `base_link`, because Gazebo composes the body inertia from where the links sit and the whole point is that this mass hangs on a mast.
+- That is not a number change. 42 g at 46 mm forward and 50 mm up adds about 1.9e-4 to pitch inertia, as much again as the entire airframe had before, so roll inertia goes from roughly 0.00028 to 0.00045. Hover throttle moved from 0.41 to 0.46, thrust to weight from 5.9 to 4.6, and the tuning stopped being valid: at the old 0.027 the guided takeoff's worst tilt went from 6.5 to 24.0 degrees against the check's 25 degree limit.
+- So the sweep was run again, which is what it was built for. At 0.306 kg the onset sits between 0.065 and 0.08: ringing holds at 3 sign changes per run through 0.065, reaches 11 at 0.07, and at 0.08 the loop is gone with 146 sign changes and 62 per cent overshoot. `ATC_RAT_RLL_P` is 0.040, a little under six tenths of the onset, which is the same margin the previous tuning used. 0.065 measured best and sits at 0.93 of the onset, which is no margin.
+- Worst tilt came back to 15.6 degrees. Not the 6.5 it had when the airframe was lighter, and it should not be: the drone genuinely carries a lidar on a stick now.
+- Verified: baseline CI green with both models agreeing at 0.306 kg, thrust stand unchanged at 5.01 m for a 5.0 m target, guided takeoff settling at 2.02 m for 2.00, forward flight holding 1.39 m from the wall with 0.93 m of rotor clearance.
+- One thread left hanging deliberately. The 0.306 kg assumes a RunCam WiFiLink 2; the lighter EMAX Wyvern Link Alpha would make it about 294 g and the gains would want measuring a third time. That decision is still open on the video unit's unpublished power draw, so the mass follows the airframe as specified rather than as hoped.
+
 ## Log Entry Template
 
 ```text
