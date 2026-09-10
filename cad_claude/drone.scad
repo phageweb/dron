@@ -82,13 +82,20 @@ batt_h           = 27;
 // number to settle with the real parts on a balance, not from the drawing.
 batt_x           = -10;
 
-// PLACEHOLDER, and the one that matters most: an LD06 is roughly a 38 mm square
-// tower with the optical window partway up. Take the real figures off the
-// datasheet linked in 05_cad_dily.md before trusting any clearance below.
-ld06_l           = 38.6;
-ld06_w           = 38.6;
-ld06_h           = 34.8;
-ld06_window_z    = 20;                         // window centre above its base
+// VERIFIED, off the LDROBOT datasheet's mechanical drawing. This one matters
+// most, because every clearance on the nose is measured against it.
+ld06_l           = 38.59;
+ld06_w           = 38.59;
+ld06_h           = 33.30;   // overall
+ld06_head_d      = 35.29;   // the rotating head
+ld06_head_h      = 12.60;
+ld06_base_h      = ld06_h - ld06_head_h;
+ld06_mount       = 28.20;   // square pattern, 2.5 mm holes
+ld06_mount_d     = 2.5;
+// The window band is 6.0 mm tall and its top sits 7.6 mm below the top of the
+// unit, so its centre is 10.6 mm down from the top.
+ld06_window_h    = 6.0;
+ld06_window_z    = ld06_h - 10.6;
 ld06_x           = 46;                         // where we are proposing to put it
 // Not chosen freely: at any height where the body overlaps the propeller discs
 // it collides with them, so the base has to sit above the propeller plane. That
@@ -297,20 +304,40 @@ module battery() {
       cube([batt_l, batt_w, batt_h], center = true);
 }
 
+// LDRobot LD06, to the datasheet: a 38.59 mm square base carrying a 35.29 mm
+// rotating head, mounted on a 28.20 mm square of 2.5 mm holes.
 module ld06() {
-  // The mast the clearance above forces.
+  // The mast the propeller clearance forces. Still a placeholder - it is a part
+  // that has to be designed, not bought.
   part([0.25, 0.25, 0.28], false)
     translate([ld06_x, 0, (prop_z + ld06_z - ld06_h / 2) / 2])
-      cube([12, 12, ld06_z - ld06_h / 2 - prop_z], center = true);
-  part([0.85, 0.20, 0.20], false)
-    translate([ld06_x, 0, ld06_z]) {
-      cube([ld06_l, ld06_w, ld06_h], center = true);
-      // The optical window, drawn as a band so its height can be compared with
-      // the propeller plane.
-      part([0.15, 0.15, 0.15], false)
-        translate([0, 0, -ld06_h / 2 + ld06_window_z])
-          cylinder(h = 6, d = ld06_l + 1, center = true, $fn = 48);
-    }
+      cube([16, 16, ld06_z - ld06_h / 2 - prop_z], center = true);
+
+  translate([ld06_x, 0, ld06_z - ld06_h / 2]) {
+    // Base, with the mounting holes really cut so a mast can be drawn to them.
+    color([0.24, 0.24, 0.26])
+      difference() {
+        translate([0, 0, ld06_base_h / 2])
+          cube([ld06_l, ld06_w, ld06_base_h], center = true);
+        for (sx = [-1, 1], sy = [-1, 1])
+          translate([sx * ld06_mount / 2, sy * ld06_mount / 2, -1])
+            cylinder(h = ld06_base_h + 2, d = ld06_mount_d, $fn = 20);
+      }
+    // ZH1.5T-4P socket on the side.
+    color([0.85, 0.85, 0.88])
+      translate([-ld06_l / 2 + 1, 0, ld06_base_h / 2])
+        cube([2, 8, 4], center = true);
+
+    // Rotating head.
+    color([0.80, 0.80, 0.83])
+      translate([0, 0, ld06_base_h])
+        cylinder(h = ld06_head_h, d = ld06_head_d, $fn = 64);
+    // The optical window: the band the scan actually leaves through, and the
+    // one surface nothing may shadow.
+    color([0.10, 0.10, 0.12])
+      translate([0, 0, ld06_window_z - ld06_window_h / 2])
+        cylinder(h = ld06_window_h, d = ld06_head_d + 0.4, $fn = 64);
+  }
 }
 
 // ----------------------------------------------------------------- questions

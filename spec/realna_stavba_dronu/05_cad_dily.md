@@ -33,6 +33,9 @@ rozumné bloky.
 | Anténa RX | T-anténa 54 × 78 mm | IPEX1 | vendor |
 | MicoAir MTF-02P | 21.6 × 16 × 6.5 mm | neověřeno | prodejce |
 | Baterie Tattu 4S LiHV 750 | dvě provedení: 60 × 31 × 27 mm, nebo „long" 76 × 17 × 28 mm | pásek | prodejci |
+| **LDRobot LD06** | celkem 38.59 × 38.59 × 33.30 mm; rotující hlava ⌀35.29 × 12.60 mm | **28.20 × 28.20 mm, díry ⌀2.5**, z toho 2× ⌀4.8 hlubší | [datasheet](https://www.inno-maker.com/wp-content/uploads/2020/11/LDROBOT_LD06_Datasheet.pdf), montážní výkres |
+| LD06 - optické okno | pás vysoký 6.0 mm, horní hrana 7.6 mm pod vrškem, **střed 22.7 mm nad základnou** | nesmí být ničím zastíněné | tamtéž |
+| LD06 - konektor | ZH1.5T-4P, rozteč 1.5 mm, na boku základny | - | tamtéž |
 
 ## Rozměry, které chybí
 
@@ -41,14 +44,16 @@ datasheetu nebo změřit**, až díly dorazí:
 
 | Díl | Co chybí | Kde to vzít |
 | --- | --- | --- |
-| **LDRobot LD06** | půdorys, výška, rozteč a průměr montážních děr, výška optického okna nad základnou, konektor | [datasheet PDF](https://www.yahboom.net/xiazai/LiDar-LD06/LDROBOT_LD06_Datasheet.pdf) - obsahuje montážní výkres |
 | **EMAX Wyvern Link Alpha** | rozměr desky (uchycení 25.5 × 25.5 je známé), rozměr kamerového modulu, vyložení objektivu | manuál EMAX; objektiv je 19 mm |
 | Rám GEP-CL30 V3 | vnitřní a vnější průměr ductu, výška ductu, obrys spodní desky, rozmístění stojin, prostor pod kanopou | výkres GEPRC, nebo změřit |
 | Motor 1404 | rozteč montážních děr (obvykle 9 × 9 mm u 1404, neověřeno) | datasheet |
 | MTF-02P | poloha a průměr montážních děr | MicoAir |
 
 Bez rámu je model stejně jen sestava komponent ve vzduchu, takže **duct a spodní
-deska jsou to nejdůležitější, co dohledat**.
+deska jsou to nejdůležitější, co zbývá dohledat**. LD06 už dohledaný je: jeho
+rozměry, rozteče i výška okna jsou v tabulce výš, z montážního výkresu
+v datasheetu. Ten výkres je v PDF jako obrázek, takže z něj text nevytáhne -
+stránku je potřeba vyrenderovat a přečíst očima.
 
 ## Co model musí zodpovědět
 

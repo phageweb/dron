@@ -58,7 +58,12 @@ osazení a konektory, protože ty rozhodují o tom, co se kam vejde:
 
 ## Průhledné díly jsou odhady
 
-Co je průsvitné, není měřené: ducty, kanopa, deska Wyvernu a **celý LD06**.
+Co je průsvitné, není měřené: ducty, kanopa, deska Wyvernu a stožár lidaru.
+
+**LD06 už odhad není.** Je podle montážního výkresu z datasheetu: 38.59 × 38.59
+× 33.30 mm, rotující hlava ⌀35.29 × 12.60, rozteče 28.20 × 28.20 s dírami ⌀2.5,
+optické okno vysoké 6.0 mm se středem 22.7 mm nad základnou. Ten výkres je v PDF
+obrázek, takže se z něj text vytáhnout nedá - stránku je nutné vyrenderovat.
 Rozměry k dohledání jsou vypsané v
 [spec/realna_stavba_dronu/05_cad_dily.md](../spec/realna_stavba_dronu/05_cad_dily.md);
 nejdůležitější je montážní výkres LD06 a geometrie ductu od GEPRC, protože ty

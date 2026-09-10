@@ -65,7 +65,7 @@ publikovaných údajů vidět, EMAX neuvádí spotřebu ani dosah.
 
 | Kandidát | Hmotnost | Dosah | FOV | Rozhraní | Dostupnost v ČR | Poznámka |
 | --- | ---: | --- | --- | --- | --- | --- |
-| LDRobot LD06 | ~42 g, nepotvrzeno | 12 m | 360 stupňů | UART 230400, 5 V | **není** - TME ho stáhlo z nabídky, jinak dovoz | jediný lehký, co dá skutečný `LaserScan`; ArduPilot ho podporuje jako proximity |
+| LDRobot LD06 | **42 g** bez kabelu, potvrzeno datasheetem | 12 m | 360 stupňů | UART 230400; **4.5-5.5 V**, rozběh 300 mA, provoz 180 mA; konektor ZH1.5T-4P | **není** - TME ho stáhlo z nabídky, jinak dovoz | **vybráno**, viz [rozhodnutí](../../workflow/decisions.md); jediný lehký, co dá skutečný `LaserScan`, a ArduPilot ho umí jako proximity |
 | Slamtec RPLidar C1 | **110 g**, 55.6x55.6x41.3 mm | 12 m | 360 stupňů | UART | rpishop.cz, 2279 Kč | 360 stupňů skladem v ČR, ale je to 40 % hmotnosti dronu |
 | DFRobot TF-Luna | ~5 g | 8 m | jeden bod | UART/I2C | rpishop.cz, 799 Kč | skladem a lehký, ale jeden paprsek místo skenu |
 | Benewake TFmini-S | ~5 g | 12 m | jeden bod | UART/I2C | rpishop.cz, 1245 Kč | totéž, delší dosah |
