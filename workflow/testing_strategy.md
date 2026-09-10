@@ -71,6 +71,12 @@ Micro XRCE-DDS Agent, which Nixpkgs does not provide:
 | `scripts/check_forward_flight.sh` | the autonomy demo takes off, creeps and stops |
 | `scripts/check_unified_launch.sh` | one launch serves Gazebo, ArduPilot and TF |
 
+`scripts/check_topic_remap.sh` runs in baseline CI and additionally exercises the
+service remapping when `external/dds_ws` is sourced, using
+`scripts/fake_ardupilot_services.py` to stand in for ArduPilot. That harness is
+worth reusing: it drives the whole autonomy state machine in seconds with no
+Gazebo and no SITL.
+
 Whatever these start, they must also clean up. A `ros2 run` wrapper's child
 outlives the wrapper, and one leftover node publishing `/ap/cmd_vel` silently
 prevents the next run from ever taking off, so a new check that launches a node

@@ -121,4 +121,10 @@
 - [ ] Verify connectors and supply voltages
 - [ ] Plan mechanical sensor placement
 - [ ] Prepare a bench checklist without propellers
-- [ ] Prepare mapping from simulation topics to real sensors
+- [x] Prepare mapping from simulation topics to real sensors; the mapping was
+      already specified, so this verified it against the implementation
+      (`scripts/check_topic_remap.sh`, in baseline CI)
+- [x] Make the ArduPilot service names parameters, which the build spec requires
+      and the node had hardcoded
+- [x] Fix `trajectory_publisher`'s QoS: a RELIABLE subscription never matched
+      AP_DDS's BEST_EFFORT pose publisher

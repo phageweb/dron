@@ -2,6 +2,7 @@ import rclpy
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Path
 from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
 
 
 class TrajectoryPublisher(Node):
@@ -16,7 +17,11 @@ class TrajectoryPublisher(Node):
         pose_topic = self.get_parameter("pose_topic").value
         path_topic = self.get_parameter("path_topic").value
         self._pub = self.create_publisher(Path, path_topic, 10)
-        self.create_subscription(PoseStamped, pose_topic, self._on_pose, 10)
+        # AP_DDS publishes /ap/pose/filtered BEST_EFFORT, and a RELIABLE
+        # subscriber does not match a BEST_EFFORT publisher, so the default QoS
+        # here meant this node silently received nothing from real ArduPilot.
+        self.create_subscription(
+            PoseStamped, pose_topic, self._on_pose, qos_profile_sensor_data)
         self.get_logger().info(f"Building path from {pose_topic} to {path_topic}")
 
     def _on_pose(self, msg: PoseStamped):

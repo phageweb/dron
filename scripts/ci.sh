@@ -20,6 +20,9 @@ if [ -d ros_ws/src ] && find ros_ws/src -mindepth 2 -name package.xml -print -qu
   echo "==> ROS graph smoke check"
   scripts/check_ros_graph.sh
 
+  echo "==> Topic and service remapping check"
+  scripts/check_topic_remap.sh
+
   echo "==> TF tree smoke check"
   scripts/check_tf_tree.sh
 

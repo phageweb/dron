@@ -57,6 +57,13 @@ class SimpleIndoorAutonomy(Node):
         self.declare_parameter("scan_timeout_s", 0.5)
         self.declare_parameter("pose_topic", "/ap/pose/filtered")
         self.declare_parameter("status_topic", "/ap/status")
+        # Service names are parameters for the same reason the topic names are:
+        # spec/realna_stavba_dronu/02_rozhrani_sim_real.md requires that moving
+        # from SITL to hardware changes the launch, not the algorithm.
+        self.declare_parameter("prearm_service", "/ap/prearm_check")
+        self.declare_parameter("mode_service", "/ap/mode_switch")
+        self.declare_parameter("arm_service", "/ap/arm_motors")
+        self.declare_parameter("takeoff_service", "/ap/experimental/takeoff")
         # An accepted takeoff that does not lift the vehicle is re-requested
         # after this long; ArduPilot auto-disarms after ten seconds on the
         # ground, so the window has to be well inside that.
@@ -95,10 +102,14 @@ class SimpleIndoorAutonomy(Node):
             self.create_subscription(
                 Status, self.get_parameter("status_topic").value,
                 self._on_status, qos_profile_sensor_data)
-            self._prearm = self.create_client(Trigger, "/ap/prearm_check")
-            self._mode = self.create_client(ModeSwitch, "/ap/mode_switch")
-            self._arm = self.create_client(ArmMotors, "/ap/arm_motors")
-            self._takeoff = self.create_client(Takeoff, "/ap/experimental/takeoff")
+            self._prearm = self.create_client(
+                Trigger, self.get_parameter("prearm_service").value)
+            self._mode = self.create_client(
+                ModeSwitch, self.get_parameter("mode_service").value)
+            self._arm = self.create_client(
+                ArmMotors, self.get_parameter("arm_service").value)
+            self._takeoff = self.create_client(
+                Takeoff, self.get_parameter("takeoff_service").value)
 
         self._state = WAIT_SCAN
         self.create_timer(0.1, self._tick)

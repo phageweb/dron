@@ -83,6 +83,23 @@ Nedávat natvrdo do Python kódu:
 
 Tyto věci patří do launch souborů a YAML konfigurace.
 
+## Ověřeno automaticky
+
+`scripts/check_topic_remap.sh` (běží v baseline CI) ověřuje, že přechod na
+hardware je skutečně jen otázka launche:
+
+- všechny tři demo nody subscribují a publikují na přemapovaných názvech a
+  default názvy zmizí, takže node neposlouchá omylem na obou
+- `simple_indoor_autonomy` skutečně **zavolá** všechny čtyři ArduPilot služby
+  pod přemapovanými názvy. `ros2 node info` service clienty nevypisuje, takže se
+  to neověřuje introspekcí, ale postavením falešných služeb
+  (`scripts/fake_ardupilot_services.py`)
+- tím se zároveň projde celý stavový automat bez simulátoru: s 5 m volného
+  prostoru node rozjede 0.5 m/s, s překážkou v 1.0 m nepošle dopředu nic
+
+Část se službami potřebuje `ardupilot_msgs` z opt-in DDS workspace; bez něj se
+přeskočí, aby baseline CI nezáviselo na `external/`.
+
 ## Přechodový checklist
 
 - [ ] simulační topic má stejný typ zprávy jako reálný topic
@@ -90,5 +107,13 @@ Tyto věci patří do launch souborů a YAML konfigurace.
 - [ ] jednotky jsou stejné
 - [ ] znaménka os jsou ověřená
 - [ ] timestampy používají konzistentní čas
-- [ ] QoS je vhodné pro sensor data
+- [x] QoS je vhodné pro sensor data
+
+  AP_DDS publikuje `/ap/pose/filtered` jako BEST_EFFORT. RELIABLE subscriber se
+  s BEST_EFFORT publisherem **nespáruje**, takže `trajectory_publisher` s
+  defaultním QoS od reálného ArduPilotu nikdy nic nedostal. CI to neodhalilo,
+  protože `ros2 topic pub` posílá RELIABLE a testovací publisher se tedy
+  spároval. Opraveno na `qos_profile_sensor_data` a `check_ros_graph.sh`
+  publikuje BEST_EFFORT, aby to příště spadlo.
+
 - [ ] při výpadku senzoru node přejde do bezpečného stavu

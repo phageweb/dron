@@ -63,7 +63,12 @@ for _ in $(seq 1 40); do
 done
 grep -Eq '^Subscription count: [1-9][0-9]*$' <<<"$path_info"
 
+# Publish BEST_EFFORT because that is what AP_DDS does. With the default
+# RELIABLE the test matched a subscriber that real ArduPilot never would, and a
+# RELIABLE pose subscription in the node passed here while receiving nothing in
+# the field.
 ros2 topic pub --once --wait-matching-subscriptions 1 \
+  --qos-reliability best_effort \
   /ap/pose/filtered geometry_msgs/msg/PoseStamped \
   "{header: {frame_id: map}, pose: {position: {x: 1.0, y: 2.0, z: 3.0}}}"
 
