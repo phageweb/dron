@@ -64,9 +64,20 @@ class PoseTfBroadcaster(Node):
             self._announced = True
 
         transform = TransformStamped()
-        # The pose's own stamp, not the clock's. TF is looked up by time, and
-        # restamping a measurement with the moment it was handled would make
-        # every consumer's interpolation quietly wrong by the handling delay.
+        # The pose's own stamp, not this node's clock. TF is looked up by time,
+        # and restamping a measurement with the moment it was handled makes
+        # every consumer's interpolation wrong by the handling delay.
+        #
+        # That was nearly changed, and the measurement is worth keeping. This
+        # simulation runs two clocks: Gazebo's /clock, and every sensor message
+        # the bridge carries, count seconds from when the simulator started,
+        # while AP_DDS stamps this pose with ArduPilot's UTC - 22.3 s against
+        # 1789156172 in the same instant. So a consumer on sim time sees this
+        # transform 56 years in the future and can look it up at "latest" and at
+        # no particular time at all. A consumer on the wall clock is fine, and
+        # measurably so: 20 lookups out of 20 at a stamp half a second old. That
+        # is why sitl_gazebo.launch.py puts RViz on the wall clock rather than
+        # why this node restamps anything.
         transform.header.stamp = msg.header.stamp
         transform.header.frame_id = self._frame
         transform.child_frame_id = self._child

@@ -212,19 +212,17 @@
       compares `map` -> `base_link` against Gazebo: 0.012 m at the median,
       0.046 m at worst, yaw 0.01 degrees at the median. With the yaw sign
       flipped it fails at 179.5 degrees while the position half still passes
-- [ ] Give the simulation a clock, or stop asking for one. Gazebo publishes no
-      clock topic here at all - not `/clock`, not `/world/<name>/clock`, and
-      `gz topic -l` lists neither - so the bridge's `/clock` entry forwards
-      messages that never come and every node launched with `use_sim_time: true`
-      sits at t = 0 for ever. That is exactly the hazard `demo.launch.py`'s own
-      comment warns about, and `sitl_gazebo.launch.py` passes
-      `use_sim_time: "true"` into `display.launch.py`, so RViz and
-      `robot_state_publisher` are running on a frozen clock today. Measured, not
-      inferred: no `/clock` message arrived in 15 s with the bridge up and the
-      topic listed on the ROS side. Nothing has broken visibly because every age
-      the demo nodes compute is taken from their own clock and they are run
-      without the setting - but a node that did use it would have every
-      staleness guard silently disabled
+- [ ] Run the simulation on one clock. There are two: Gazebo's `/clock`, and
+      every sensor message the bridge carries, count seconds from when the
+      simulator started, while AP_DDS stamps `/ap/pose/filtered` with
+      ArduPilot's UTC. Measured in the same instant: `/clock` 22.3 s, the front
+      scan 22.3 s, the pose 1789156172. Nothing compares stamps across the two
+      today - every node takes its ages from its own clock at the moment a
+      message arrives - so nothing is broken, but anything that did would be
+      wrong by 56 years. `AP_DDS_CLOCK_SUB_ENABLED` is on for SITL and AP_DDS
+      subscribes to `/clock`, so this is meant to work and does not; the topic
+      name in `AP_DDS_Topic_Table.h` is `"/clock"` for the subscriber and
+      `"clock"` for the publisher, which is where to look first
 - [ ] Confirm on a screen that RViz draws the occupancy map. The config has the
       display and the transform now exists, but the Fixed Frame is `base_link`
       so the room moves with the vehicle rather than standing still; `map` is

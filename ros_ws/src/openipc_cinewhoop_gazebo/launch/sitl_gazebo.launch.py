@@ -155,9 +155,25 @@ def generate_launch_description():
 
         # robot_state_publisher and RViz2 read the URDF, which is the description
         # package's business rather than a second copy of it here.
+        #
+        # use_sim_time is false, and it used to be true. This simulation runs two
+        # clocks: Gazebo's /clock, and every sensor message the bridge carries,
+        # count seconds from when the simulator started, while AP_DDS stamps
+        # /ap/pose/filtered with ArduPilot's UTC - measured at 22.3 s against
+        # 1789156172 in the same instant. map -> base_link carries the second of
+        # those, so a consumer on sim time sees it 56 years in the future and can
+        # never look it up at a time; on the wall clock it works, measured at 20
+        # timed lookups out of 20 by check_map_frame.sh. The map's own publisher
+        # stamps from its clock and the scan and model need only static
+        # transforms, which carry no time.
+        #
+        # This is a workaround for the split, not a fix: AP_DDS subscribes to
+        # /clock and never receives it, which is on the backlog. That RViz then
+        # actually draws the map is the part nothing headless can confirm, and
+        # it is on the backlog too.
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(display_launch),
-            launch_arguments={"use_sim_time": "true", "rviz": rviz}.items(),
+            launch_arguments={"use_sim_time": "false", "rviz": rviz}.items(),
         ),
 
         # The only thing that roots the TF tree in the world. Without it

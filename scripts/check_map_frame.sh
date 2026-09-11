@@ -305,6 +305,32 @@ while time.time() - start < FLIGHT_S:
         samples.append((time.time() - start, before, after, reference))
     time.sleep(0.2)
 
+
+# Latest-transform lookups are not the whole story, and this is the half that
+# matters to anything drawing the map. RViz asks for a transform *at the stamp
+# of the thing it is drawing*, and that only works when the asker's clock and
+# the transform's stamp are on the same epoch. They are not automatically: the
+# simulation runs two clocks. Gazebo's /clock, and every sensor message the
+# bridge carries, count seconds from when the simulator started; AP_DDS stamps
+# /ap/pose/filtered - and so this transform - with UTC. A consumer on sim time
+# sees a transform 56 years in the future and refuses it.
+timed = 0
+timed_error = None
+for _ in range(20):
+    when = node.get_clock().now() - Duration(seconds=0.5)
+    try:
+        buffer.lookup_transform("map", "base_link", when,
+                                timeout=Duration(seconds=0.5))
+        timed += 1
+    except Exception as problem:  # noqa: BLE001 - the message is the evidence
+        timed_error = problem
+    time.sleep(0.05)
+print(f"  timed lookups at a stamp half a second old: {timed} of 20")
+if timed < 15:
+    sys.exit("The transform can be looked up at 'latest' but not at a time, so "
+             "nothing can place anything stamped in it - which is RViz's whole "
+             f"way of working. Last refusal: {timed_error}")
+
 executor.shutdown()
 node.destroy_node()
 rclpy.shutdown()
