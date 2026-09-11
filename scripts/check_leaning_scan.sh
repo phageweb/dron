@@ -81,30 +81,20 @@ done
 # The attitude the demo nodes use comes from the flight controller's estimate on
 # /ap/pose/filtered, and AP_DDS is not running here. Take it from Gazebo's own
 # report of where the model is rather than repeating the world file's numbers in
-# this script, so the two cannot drift apart.
-quat="$(timeout 20 gz topic -e -t /world/leaning_test/pose/info -n 1 2>/dev/null \
-  | python3 -c '
-import re, sys
-text = sys.stdin.read()
-for block in re.split(r"\npose \{", text):
-    if "\"openipc_cinewhoop\"" in block:
-        found = re.search(r"orientation \{(.*?)\n\}", block, re.S)
-        if found is None:
-            break
-        # Protobuf text format omits fields at their default, so x, y and z are
-        # absent when zero and only w is reliably printed.
-        q = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 0.0}
-        q.update({k: float(v) for k, v in
-                  re.findall(r"([xyzw]):\s*([-\d.e+]+)", found.group(1))})
-        print(q["x"], q["y"], q["z"], q["w"])
-        break
-')"
+# this script, so the two cannot drift apart. The same query returns where the
+# downward sensor really is above the floor, which is the truth the slant-range
+# correction is checked against.
+quat="$(timeout 40 python3 scripts/gazebo_link_truth.py \
+  ros_ws/src/openipc_cinewhoop_gazebo/worlds/leaning_test.sdf leaning_test \
+  openipc_cinewhoop rangefinder_link 2>"$test_tmpdir/truth.log")"
 if [ -z "$quat" ]; then
   echo "Could not read the vehicle's attitude out of Gazebo." >&2
+  cat "$test_tmpdir/truth.log" >&2 || true
   exit 1
 fi
-read -r qx qy qz qw <<<"$quat"
+read -r qx qy qz qw true_height <<<"$quat"
 echo "  vehicle attitude from Gazebo: x=$qx y=$qy z=$qz w=$qw"
+echo "  rangefinder_link is $true_height m above the floor surface"
 
 setsid ros2 topic pub -r 10 --qos-reliability best_effort /ap/pose/filtered \
   geometry_msgs/msg/PoseStamped \
@@ -114,7 +104,7 @@ setsid ros2 topic pub -r 10 --qos-reliability best_effort /ap/pose/filtered \
 pose_pid=$!
 
 echo "==> the scan is the floor, and the geometry rejects it"
-python3 scripts/check_leaning_scan.py
+python3 scripts/check_leaning_scan.py "$true_height"
 
 echo "==> the demo nodes over the same scan"
 # Blind variants point at a rangefinder topic nobody publishes, which is exactly

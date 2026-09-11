@@ -152,12 +152,19 @@
       stays healthy. Both nodes now switch the rejection off and say why
       (`compensation_height`, `compensation_timeout_s`, default 0.5 s against a
       30 Hz pose and a 20 Hz rangefinder)
-- [ ] Correct the downward rangefinder for lean. It reports slant range, so at
-      30 degrees it read 0.639 m where the vehicle was 0.551 m up - 16 per cent,
-      growing as 1/cos. The error over-states the height, which under-rejects
-      and is the safe direction, and 0.25 m of margin currently absorbs it.
-      Multiplying by cos(roll)cos(pitch) is two lines, but it makes the
-      rejection more aggressive, so it wants a flight check rather than a commit
+- [x] Correct the downward rangefinder for lean. It reports slant range, so at
+      30 degrees it read 0.639 m where the sensor was 0.551 m up - 16 per cent,
+      growing as 1/cos. `height_from_slant_range` undoes it, and
+      `check_leaning_scan.sh` checks the result against where Gazebo says the
+      link is rather than against the formula: 0.554 m against 0.551 m, inside
+      the sensor's own 0.01 m range resolution
+- [ ] Give the rejection the lidar's height rather than the rangefinder's. The
+      two sensors are 26 mm apart along x and 66 mm along z, so in
+      leaning_test.sdf the rangefinder is 0.551 m up and the lidar 0.595 m -
+      44 mm of systematic under-estimate, which over-rejects slightly. It is the
+      same third-row projection `ground_return_height` already does, but the
+      offset is model knowledge the demo nodes do not have today; TF already
+      carries it, and neither node listens to TF
 - [ ] The attitude check is still simulation agreeing with simulation: SITL's
       EKF is fed a noiseless IMU, so it proves the convention rather than the
       accuracy. A real flight controller on a real ramp is what would test the

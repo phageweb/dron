@@ -48,11 +48,16 @@ setsid ros2 launch openipc_cinewhoop_description display.launch.py \
   rviz:=false use_sim_time:=true >"$test_tmpdir/tf.log" 2>&1 &
 tf_pid=$!
 
-for _ in $(seq 1 160); do
-  if ros2 topic list 2>/dev/null | grep -Fxq /openipc_cinewhoop/range/down; then
-    break
-  fi
-  sleep 0.25
+# Wait for every topic this is about to type-check, not just one of them. The
+# bridge advertises them as their sensors first publish, and the 10 Hz lidar can
+# trail the 20 Hz rangefinder by enough that `ros2 topic type` found nothing and
+# the check failed with "expected sensor_msgs/msg/LaserScan, got 'nothing'".
+for topic in /openipc_cinewhoop/range/down /openipc_cinewhoop/scan/front \
+  /openipc_cinewhoop/imu /openipc_cinewhoop/camera/image_raw; do
+  for _ in $(seq 1 160); do
+    ros2 topic list 2>/dev/null | grep -Fxq "$topic" && break
+    sleep 0.25
+  done
 done
 
 echo "==> Message types"

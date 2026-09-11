@@ -4,6 +4,7 @@ import unittest
 from openipc_cinewhoop_demo.scan_helpers import (
     compensation_height,
     ground_return_height,
+    height_from_slant_range,
     hold_reason,
     is_ground_return,
     nearest_in_sector,
@@ -63,6 +64,43 @@ class ScanHelpersTest(unittest.TestCase):
         self.assertEqual(height, 0.9)
         self.assertEqual(reason, "")
 
+    def test_the_reading_is_corrected_for_the_lean_it_was_taken_at(self):
+        height, reason, _ = compensation_height(
+            0.1, 0.1, 0.5, 0.9, 0.0, math.radians(30))
+        self.assertEqual(reason, "")
+        self.assertAlmostEqual(height, 0.9 * math.cos(math.radians(30)), places=6)
+
+    def test_a_vehicle_past_90_degrees_has_no_height(self):
+        height, reason, _ = compensation_height(
+            0.1, 0.1, 0.5, 0.9, 0.0, math.radians(95))
+        self.assertIsNone(height)
+        self.assertEqual(reason, "the vehicle is leaning past 90 degrees")
+
+    def test_a_level_vehicle_is_not_corrected_at_all(self):
+        self.assertEqual(height_from_slant_range(1.23, 0.0, 0.0), 1.23)
+
+    def test_roll_and_pitch_both_lengthen_the_slant(self):
+        # Two axes, so a version that used only one would pass with pitch and
+        # fail here, and one that added instead of multiplying would be close
+        # enough at small angles to look right.
+        got = height_from_slant_range(1.0, math.radians(20), math.radians(30))
+        self.assertAlmostEqual(
+            got, math.cos(math.radians(20)) * math.cos(math.radians(30)),
+            places=6)
+
+    def test_the_correction_matches_the_leaning_world(self):
+        """Against the simulator, not against the formula that produced it.
+
+        leaning_test.sdf holds the vehicle at 30 degrees nose-down with
+        base_link 0.60 m up, which puts rangefinder_link 0.551 m above a floor
+        whose surface is at z = 0.025. The simulated sensor reports 0.639 m
+        there, and the range resolution is 0.01 m, so agreement to a centimetre
+        is all the simulator can offer.
+        """
+        self.assertAlmostEqual(
+            height_from_slant_range(0.639, 0.0, math.radians(30)), 0.551,
+            delta=0.01)
+
     def test_a_stale_attitude_switches_the_rejection_off(self):
         height, reason, detail = compensation_height(0.8, 0.1, 0.5, 0.9)
         self.assertIsNone(height)
@@ -118,8 +156,11 @@ class ScanHelpersTest(unittest.TestCase):
                               height_above_floor_m=0.90, **geometry),
             1.45)
         # With the attitude stale there is no height to reject with, so the
-        # wall comes back.
-        height, _, _ = compensation_height(0.8, 0.1, 0.5, 0.90)
+        # wall comes back. The rangefinder reading that produces a 0.90 m
+        # height at this lean is 0.90 / cos(30 deg).
+        height, _, _ = compensation_height(
+            0.8, 0.1, 0.5, 0.90 / math.cos(math.radians(30)), 0.0,
+            math.radians(30))
         self.assertAlmostEqual(
             nearest_in_sector(ranges, roll_rad=0.0, pitch_rad=math.radians(30),
                               height_above_floor_m=height, **geometry),

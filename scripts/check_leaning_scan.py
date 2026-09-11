@@ -30,6 +30,7 @@ from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan, Range
 
 from openipc_cinewhoop_demo.scan_helpers import (
+    height_from_slant_range,
     nearest_in_sector,
     roll_pitch_from_quaternion,
 )
@@ -47,13 +48,18 @@ GROUND_MARGIN_M = 0.25
 # Nothing useful can be said about a scan taken while the vehicle is level; the
 # whole point is the lean, so a pose that is not leaning is a setup failure.
 MIN_PITCH_DEG = 20.0
+# How far the corrected height may sit from where Gazebo says the sensor is.
+# The simulated rangefinder quantises to its 0.01 m range resolution and reads
+# the nearest point of a 2 degree cone rather than a single ray, so a centimetre
+# is the most the simulator can be held to.
+HEIGHT_TOLERANCE_M = 0.015
 
 
 class LeaningScanCheck(Node):
     def __init__(self):
         super().__init__("check_leaning_scan")
         self.scan = None
-        self.height = None
+        self.slant = None
         self.pose = None
         self.create_subscription(
             LaserScan, SCAN_TOPIC, self._keep_scan, qos_profile_sensor_data)
@@ -66,36 +72,47 @@ class LeaningScanCheck(Node):
         self.scan = msg
 
     def _keep_range(self, msg):
-        self.height = (msg.range
-                       if msg.min_range <= msg.range <= msg.max_range
-                       else None)
+        self.slant = (msg.range
+                      if msg.min_range <= msg.range <= msg.max_range
+                      else None)
 
     def _keep_pose(self, msg):
         q = msg.pose.orientation
         self.pose = roll_pitch_from_quaternion(q.x, q.y, q.z, q.w)
 
     def complete(self):
-        return self.scan is not None and self.height is not None and self.pose
+        return self.scan is not None and self.slant is not None and self.pose
 
 
 def main():
+    # Where the simulator says the downward sensor is, in metres above the floor
+    # surface, passed in by the shell that has Gazebo to ask. Optional so the
+    # check still runs, with that one assertion skipped, without it.
+    true_height = float(sys.argv[1]) if len(sys.argv) > 1 else None
+
     rclpy.init()
     node = LeaningScanCheck()
     deadline = node.get_clock().now().nanoseconds + 40e9
     while rclpy.ok() and not node.complete():
         if node.get_clock().now().nanoseconds > deadline:
             missing = [name for name, value in
-                       (("scan", node.scan), ("range", node.height),
+                       (("scan", node.scan), ("range", node.slant),
                         ("pose", node.pose)) if value is None]
             node.destroy_node()
             rclpy.shutdown()
             sys.exit(f"No {', '.join(missing)} within 40 s.")
         rclpy.spin_once(node, timeout_sec=0.5)
 
-    scan, height = node.scan, node.height
+    scan, slant = node.scan, node.slant
     roll, pitch = node.pose
     node.destroy_node()
     rclpy.shutdown()
+
+    # The sensor measures along its own axis, so leaning it reports the slant to
+    # the floor and not the height above it. Undo that before anything uses it
+    # as a height, and check the result against where the simulator says the
+    # sensor really is rather than against the formula that produced it.
+    height = height_from_slant_range(slant, roll, pitch)
 
     sector = math.radians(FORWARD_SECTOR_DEG)
     raw = nearest_in_sector(
@@ -108,10 +125,21 @@ def main():
 
     print(f"  attitude: roll {math.degrees(roll):.1f} deg, "
           f"pitch {math.degrees(pitch):.1f} deg (nose down is positive)")
-    print(f"  rangefinder height: {height:.3f} m")
+    print(f"  rangefinder: {slant:.3f} m of slant, {height:.3f} m of height"
+          + (f", truth {true_height:.3f} m" if true_height is not None else ""))
     print(f"  nearest in the forward {FORWARD_SECTOR_DEG:.0f} deg sector: "
           f"raw {raw if raw is None else f'{raw:.3f} m'}, "
           f"compensated {compensated if compensated is None else f'{compensated:.3f} m'}")
+
+    if true_height is not None and abs(height - true_height) > HEIGHT_TOLERANCE_M:
+        sys.exit(f"The corrected height is {height:.3f} m where the simulator "
+                 f"puts the sensor {true_height:.3f} m above the floor. The "
+                 f"raw reading was {slant:.3f} m; if that is the closer of the "
+                 "two, the lean is not being undone.")
+    if true_height is not None and abs(slant - true_height) <= HEIGHT_TOLERANCE_M:
+        sys.exit(f"The raw reading {slant:.3f} m already matches the true "
+                 f"{true_height:.3f} m, so this attitude does not exercise the "
+                 "slant correction and the check proves nothing about it.")
 
     if math.degrees(pitch) < MIN_PITCH_DEG:
         sys.exit(f"The vehicle is only pitched {math.degrees(pitch):.1f} deg; "

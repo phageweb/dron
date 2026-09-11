@@ -188,11 +188,39 @@ def reading_is_fresh(age_s: Optional[float], timeout_s: float) -> bool:
     return age_s <= timeout_s
 
 
+def height_from_slant_range(
+    slant_range_m: float,
+    roll_rad: float,
+    pitch_rad: float,
+) -> Optional[float]:
+    """How high the downward rangefinder is, from what it reports while leaning.
+
+    The sensor is bolted to the airframe and measures along its own axis, so a
+    leaning vehicle gets the slant to the floor rather than its height above it:
+    the reading is h / (cos(roll) cos(pitch)) and grows as the vehicle tips. At
+    30 degrees that is 16 per cent, and in leaning_test.sdf it is the difference
+    between the 0.639 m the sensor reports and the 0.551 m it is really at.
+
+    The error over-states the height, which under-rejects and is the harmless
+    direction, but it is exactly the attitude at which the rejection is doing
+    the work, so undoing it there is the point.
+
+    Past 90 degrees of lean the sensor is pointing at the sky and the reading
+    means nothing, which is None rather than a negative height.
+    """
+    scale = math.cos(roll_rad) * math.cos(pitch_rad)
+    if scale <= 0.0:
+        return None
+    return slant_range_m * scale
+
+
 def compensation_height(
     pose_age_s: Optional[float],
     range_age_s: Optional[float],
     timeout_s: float,
-    height_m: Optional[float],
+    slant_range_m: Optional[float],
+    roll_rad: float = 0.0,
+    pitch_rad: float = 0.0,
 ):
     """The height to reject floor returns with, or None and why there is none.
 
@@ -209,10 +237,14 @@ def compensation_height(
     it is 30 degrees nose-down at 0.90 m turns a wall 1.35 m ahead into a 1.45 m
     reading at the sector edge, and 1.45 m is past the distance the demo stops at.
 
-    Returning None switches the rejection off, which is exactly what an unknown
-    altitude already does: without a trustworthy lean and height nothing may be
-    discarded. The reason is split from the detail for the same reason
-    hold_reason splits them - the reason is what a caller latches, and an age
+    The height it hands back is the rangefinder's reading corrected for the lean
+    that same attitude describes, because the sensor reports slant range and
+    `is_ground_return` wants a height. Returning None instead switches the
+    rejection off, which is exactly what an unknown altitude already does:
+    without a trustworthy lean and height nothing may be discarded.
+
+    The reason is split from the detail for the same reason hold_reason splits
+    them - the reason is what a caller latches, and an age
     that ticks up every message must not re-log ten times a second.
     """
     if not reading_is_fresh(pose_age_s, timeout_s):
@@ -223,9 +255,12 @@ def compensation_height(
         if range_age_s is None:
             return None, "no rangefinder yet", ""
         return None, "the rangefinder is stale", f" ({range_age_s:.1f} s old)"
-    if height_m is None:
+    if slant_range_m is None:
         return None, "the rangefinder sees no surface", ""
-    return height_m, "", ""
+    height = height_from_slant_range(slant_range_m, roll_rad, pitch_rad)
+    if height is None:
+        return None, "the vehicle is leaning past 90 degrees", ""
+    return height, "", ""
 
 
 def takeoff_needs_retry(

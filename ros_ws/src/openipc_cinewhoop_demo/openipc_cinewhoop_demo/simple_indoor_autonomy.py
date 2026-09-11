@@ -96,7 +96,7 @@ class SimpleIndoorAutonomy(Node):
         self._last_scan_time = None
         self._roll = 0.0
         self._pitch = 0.0
-        self._height = None
+        self._slant_range = None
         self._pose_time = None
         self._range_time = None
         self._blind_reason = None
@@ -166,10 +166,12 @@ class SimpleIndoorAutonomy(Node):
 
     def _on_range(self, msg: Range):
         # Outside the sensor's window the reading means "no detection", and an
-        # unknown height must not start discarding real obstacles.
-        self._height = (msg.range
-                        if msg.min_range <= msg.range <= msg.max_range
-                        else None)
+        # unknown height must not start discarding real obstacles. What is kept
+        # is the slant range the sensor measured, not a height: turning one into
+        # the other needs the lean, which compensation_height applies.
+        self._slant_range = (msg.range
+                             if msg.min_range <= msg.range <= msg.max_range
+                             else None)
         self._range_time = self.get_clock().now()
 
     def _age_s(self, stamp):
@@ -187,7 +189,7 @@ class SimpleIndoorAutonomy(Node):
         height, reason, detail = compensation_height(
             self._age_s(self._pose_time), self._age_s(self._range_time),
             float(self.get_parameter("compensation_timeout_s").value),
-            self._height)
+            self._slant_range, self._roll, self._pitch)
         if reason != self._blind_reason:
             if reason:
                 self.get_logger().warning(
