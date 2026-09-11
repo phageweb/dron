@@ -1,11 +1,51 @@
 import os
+import re
+import tempfile
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, SetEnvironmentVariable, TimerAction
+from launch.actions import (
+    DeclareLaunchArgument,
+    ExecuteProcess,
+    OpaqueFunction,
+    SetEnvironmentVariable,
+    TimerAction,
+)
 from launch.conditions import IfCondition
 from launch.substitutions import EnvironmentVariable, LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
+
+
+def render_bridge_config(context, worlds_path, template):
+    """Write the bridge config for the world actually being launched.
+
+    The sensors do not name their own topics, so Gazebo scopes them under the
+    real world's name. The bridge has to be told that name, and taking it from
+    the world file rather than from the file name means a world whose name and
+    file disagree cannot quietly bridge nothing.
+    """
+    world_file = os.path.join(
+        worlds_path, context.perform_substitution(LaunchConfiguration("world")))
+    with open(world_file) as handle:
+        found = re.search(r'<world\s+name="([^"]+)"', handle.read())
+    if found is None:
+        raise RuntimeError(f"No <world name=...> in {world_file}")
+    with open(template) as handle:
+        rendered = handle.read().replace("@world@", found.group(1))
+    # Deterministic per user and world, so repeated launches reuse one file
+    # instead of littering a temporary directory per run.
+    path = os.path.join(
+        tempfile.gettempdir(),
+        f"openipc_gz_bridge_{os.getuid()}_{found.group(1)}.yaml")
+    with open(path, "w") as handle:
+        handle.write(rendered)
+    return [Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        arguments=["--ros-args", "-p", f"config_file:={path}"],
+        parameters=[{"use_sim_time": True}],
+        output="screen",
+    )]
 
 
 def generate_launch_description():
@@ -59,12 +99,9 @@ def generate_launch_description():
                 ),
             ],
         ),
-        Node(
-            package="ros_gz_bridge",
-            executable="parameter_bridge",
-            arguments=["--ros-args", "-p", f"config_file:={bridge_config}"],
-            parameters=[{"use_sim_time": True}],
-            output="screen",
+        OpaqueFunction(
+            function=render_bridge_config,
+            args=[worlds_path, bridge_config],
             condition=IfCondition(use_bridge),
         ),
         # Part of the bridge rather than of the demo: without it the logical

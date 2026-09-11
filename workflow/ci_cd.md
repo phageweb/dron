@@ -21,7 +21,8 @@ Current jobs:
 - verify the ROS publisher/subscriber graph
 - verify the URDF/Xacro TF tree without a GUI
 - start Gazebo headlessly and verify bridged sensor topics
-- verify the URDF and the SDF still describe the same drone
+- verify the URDF and the SDF still describe the same drone, and that no
+  sensor topic pins the model to one world
 - verify the bridged sensors carry the specified types, frames and axes
 - verify a dead lidar puts the demo nodes into a safe state
 - verify a leaning vehicle does not report the floor as an obstacle

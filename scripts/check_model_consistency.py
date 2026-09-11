@@ -123,6 +123,22 @@ def sdf_poses():
     return poses, mass
 
 
+def world_scoped_topics():
+    """Sensor topics in the SDF that name a world, which pins the model to it.
+
+    A sensor is free to declare its own <topic>, and the obvious thing to write
+    is the name Gazebo would have generated - which contains the world's name.
+    The model then only works in a world called that: Gazebo keeps publishing
+    under the written name, ArduPilotPlugin looks for the IMU under the real
+    world's name, finds nothing, and never sends SITL a JSON state. SITL resends
+    servos forever and says only "No JSON sensor message received", which points
+    at the network rather than at a name. Found the hard way by writing a second
+    world; the fix is to declare no topic at all and let Gazebo scope them.
+    """
+    return [line.strip() for line in SDF.read_text().splitlines()
+            if "<topic>" in line and "/world/" in line]
+
+
 def main():
     urdf, urdf_mass = urdf_poses()
     sdf, sdf_mass = sdf_poses()
@@ -155,12 +171,23 @@ def main():
         problems.append(
             f"total mass is {urdf_mass:.6f} kg in the URDF and {sdf_mass:.6f} kg in the SDF")
 
+    pinned = world_scoped_topics()
+    if pinned:
+        print("The SDF pins the model to one world through its sensor topics:",
+              file=sys.stderr)
+        for line in pinned:
+            print(f"  {line}", file=sys.stderr)
+        print("  Remove the <topic> and let Gazebo scope it to the real world.",
+              file=sys.stderr)
+        return 1
+
     if problems:
         print("The URDF and the SDF describe different drones:", file=sys.stderr)
         for problem in problems:
             print(f"  {problem}", file=sys.stderr)
         return 1
 
+    print("  no sensor topic names a world, so the model is not pinned to one")
     print(f"  {len(shared)} shared links agree on position, rotation and total mass")
     print(f"  total mass {sdf_mass:.3f} kg")
     for name, why in sorted({**URDF_ONLY, **SDF_ONLY}.items()):

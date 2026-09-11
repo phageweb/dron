@@ -405,6 +405,50 @@ Note that ArduPilot compensates proximity data with attitude in its own
 avoidance layer, so if the LD06 is also wired to the flight controller, that path
 and the ROS path handle this separately and can disagree.
 
+## SITL Says "No JSON Sensor Message Received" Forever
+
+Symptom:
+
+- Gazebo starts, loads the model and reports no errors
+- SITL starts and prints `No JSON sensor message received, resending servos`
+  without stopping
+- the Gazebo log fills with `ArduPilotPlugin: Duplicate input frame`
+- no `/ap/` topic ever appears, so it looks like the Agent or the network
+
+Cause:
+
+The world is not called `indoor_test`.
+
+A Gazebo sensor may declare its own `<topic>`, and the obvious thing to write
+there is the name Gazebo would have generated - which contains the world's name.
+The model's five sensors all did. Under any other world the sensors keep
+publishing under the written name, while `ArduPilotPlugin` looks up the IMU and
+subscribes to the topic the real world scopes it to. It finds nothing, so it
+never sends SITL a state frame; SITL resends the same servo frame, the plugin
+discards it as a duplicate, and the two sit there.
+
+Nothing about the message points at a name. It was found by writing a second
+world and then bisecting: the identical world file passed with
+`<world name="indoor_test">` and deadlocked with `<world name="ramp_test">`.
+
+Fix:
+
+Declare no `<topic>` on any sensor and let Gazebo scope it. The generated names
+are byte-identical to what was written, with the real world substituted, so
+nothing changed for `indoor_test`. `config/gz_bridge.yaml` became a template
+with `@world@` in it, rendered by `gazebo.launch.py` from the `<world name>` in
+the world file actually being launched - read from the file rather than guessed
+from its name, so a file and world that disagree fail loudly instead of bridging
+nothing.
+
+`scripts/check_model_consistency.py` now fails if any sensor topic in the SDF
+names a world, which is the cheap guard against writing it back.
+
+A related trap, in case a static model looks like a way to hold an attitude:
+`ArduPilotPlugin` cannot produce state for a static model either, and the
+symptom is exactly the same. `leaning_test.sdf` is static and deliberately runs
+without SITL; `ramp_test.sdf` parks a live vehicle on a slope instead.
+
 ## A Velocity Command Is Not a Brake
 
 Symptom:

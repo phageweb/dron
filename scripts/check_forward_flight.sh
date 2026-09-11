@@ -100,7 +100,7 @@ cleanup() {
   # the takeoff submode, so one survivor silently pins the next run's vehicle to
   # the floor at zero throttle while every service still reports success.
   pkill -9 -f "$project_root/install/openipc_cinewhoop_demo/lib/openipc_cinewhoop_demo/simple_indoor_autonomy" 2>/dev/null || true
-  pkill -9 -f "parameter_bridge --ros-args -p config_file:=$project_root" 2>/dev/null || true
+  pkill -9 -f "parameter_bridge --ros-args -p config_file:=$test_tmpdir" 2>/dev/null || true
   if [ -n "${KEEP_LOGS:-}" ]; then
     cp -r "$test_tmpdir" "$KEEP_LOGS" 2>/dev/null || true
     echo "logs kept in $KEEP_LOGS" >&2
@@ -117,8 +117,18 @@ sleep 6
 bridge_pid=$!
 
 # Without this the demo node never sees a LaserScan and stays on the ground.
+# The config is a template: the sensors let Gazebo scope their topics under the
+# world's own name, so the world goes in here rather than into the model.
+world_name="$(sed -n 's/.*<world[[:space:]]\+name="\([^"]*\)".*/\1/p' \
+  "$project_root/$world_path" | head -1)"
+if [ -z "$world_name" ]; then
+  echo "No <world name=...> in $world_path." >&2
+  exit 1
+fi
+sed "s/@world@/$world_name/g" "$project_root/$gz_bridge_config" \
+  >"$test_tmpdir/gz_bridge.yaml"
 ros2 run ros_gz_bridge parameter_bridge --ros-args \
-  -p "config_file:=$project_root/$gz_bridge_config" \
+  -p "config_file:=$test_tmpdir/gz_bridge.yaml" \
   >"$test_tmpdir/gz_bridge.log" 2>&1 &
 gz_bridge_pid=$!
 

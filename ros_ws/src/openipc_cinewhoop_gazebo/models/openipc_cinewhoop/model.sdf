@@ -71,7 +71,15 @@
              It was a 60 degree, 8 m forward fan before, which stood in for a
              sensor nobody had chosen yet. -->
         <update_rate>10</update_rate>
-        <topic>/world/indoor_test/model/openipc_cinewhoop/link/front_lidar_link/sensor/front_lidar/scan</topic>
+        <!-- No <topic> here, and none on any other sensor in this model. A
+             sensor that names its own topic names the world in it, and this
+             model then only works in a world called indoor_test: Gazebo keeps
+             publishing under the written name while ArduPilotPlugin looks for
+             the IMU under the real world's name, finds nothing, and never sends
+             SITL a JSON state. SITL then resends servos forever and the only
+             clue is "No JSON sensor message received". Gazebo's default topic
+             is this same name with the actual world in it, so letting it
+             generate them is both correct and identical in indoor_test. -->
         <ray>
           <scan>
             <horizontal>
@@ -107,7 +115,6 @@
         <gz_frame_id>rangefinder_link</gz_frame_id>
         <always_on>true</always_on>
         <update_rate>20</update_rate>
-        <topic>/world/indoor_test/model/openipc_cinewhoop/link/rangefinder_link/sensor/down_range/scan</topic>
         <ray>
           <scan>
             <!-- A time-of-flight rangefinder returns the closest surface inside
@@ -152,7 +159,6 @@
         <!-- Iris runs its IMU at 1000 Hz; raising ours is worth doing once the
              rotor velocity loop is stable enough to benefit from it. -->
         <update_rate>100</update_rate>
-        <topic>/world/indoor_test/model/openipc_cinewhoop/link/imu_link/sensor/imu/imu</topic>
       </sensor>
       <!-- The IMU above is rolled into ArduPilot's aircraft convention and so
            reports z down, while REP 103 and AP_DDS both give ROS z up. Bridging
@@ -163,7 +169,6 @@
         <gz_frame_id>imu_link</gz_frame_id>
         <always_on>true</always_on>
         <update_rate>100</update_rate>
-        <topic>/world/indoor_test/model/openipc_cinewhoop/link/imu_link/sensor/imu_ros/imu</topic>
       </sensor>
     </link>
     <joint name="imu_joint" type="fixed">
@@ -187,7 +192,6 @@
         <pose>0.014 0 0 0 0 0</pose>
         <always_on>true</always_on>
         <update_rate>15</update_rate>
-        <topic>/world/indoor_test/model/openipc_cinewhoop/link/camera_link/sensor/front_camera/image</topic>
         <camera>
           <horizontal_fov>1.3962634</horizontal_fov>
           <image>
