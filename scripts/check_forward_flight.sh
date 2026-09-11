@@ -247,6 +247,19 @@ if peak_alt < 0.6:
 if peak_x < 0.25:
     sys.exit(f"Never moved forward: furthest x {peak_x:.2f} m.")
 
+# The floor rejection is switched off whenever the attitude or the height is
+# missing or stale, which is the safe half of that guard. This is the other
+# half: in flight neither input may go stale, or the vehicle would fly a whole
+# mission without the compensation the leaning check proves it needs. AP_DDS
+# publishes the pose every 33 ms and the rangefinder bridges at 20 Hz against a
+# 0.5 s timeout, so anything here is a real interruption rather than a margin.
+cruising = log.find("cruising")
+if cruising >= 0:
+    blind = re.findall(r"Not rejecting floor returns: ([^\n]+)", log[cruising:])
+    if blind:
+        sys.exit("The floor rejection switched off during the flight: "
+                 + "; ".join(blind[:3]))
+
 # The demo must stop because it saw the wall, not because it ran out of run.
 held = re.search(r"Holding: obstacle at ([\d.]+) m", log)
 if held is None:

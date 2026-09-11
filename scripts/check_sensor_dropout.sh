@@ -22,11 +22,13 @@ set -u
 
 test_tmpdir="$(mktemp -d)"
 scan_pid=""
+pose_pid=""
+range_pid=""
 monitor_pid=""
 autonomy_pid=""
 
 cleanup() {
-  for pid in "$scan_pid" "$monitor_pid" "$autonomy_pid"; do
+  for pid in "$scan_pid" "$pose_pid" "$range_pid" "$monitor_pid" "$autonomy_pid"; do
     if [ -n "$pid" ]; then
       kill -TERM -- "-$pid" 2>/dev/null || true
       wait "$pid" 2>/dev/null || true
@@ -170,5 +172,86 @@ if [ "$behind" = "none" ] || [ "$behind" = "0.0" ]; then
   exit 1
 fi
 echo "  wall 0.3 m behind, clear ahead: twist.linear.x = $behind"
+
+echo "==> simple_indoor_autonomy stops trusting an attitude that stopped arriving"
+# The floor rejection needs two inputs that do not arrive with the scan: the
+# lean, over DDS from the flight controller, and the height, from a different
+# sensor. Either can stop while the lidar stays healthy, and a lean applied to a
+# scan taken at some other attitude does not merely over-reject. Returns are
+# dropped on `range * cos(bearing)`, so a nose-down attitude drops a wall
+# straight ahead before it drops a farther return at the edge of the sector.
+#
+# The numbers are that failure, arranged so both halves are visible. At 30
+# degrees nose-down and 0.90 m up, returns are floor beyond 1.30 m of horizontal
+# reach: the 1.35 m wall dead ahead is floor, the 1.45 m return at 29 degrees
+# reaches only 1.27 m and is not. So a vehicle that really is leaning may fly -
+# and the same scan, once the lean can no longer be trusted, must stop it,
+# because 1.35 m is inside the 1.40 m the demo stops at.
+publish_leaning_scan() {
+  setsid ros2 topic pub -r 10 -w 1 --qos-reliability best_effort \
+    /openipc_cinewhoop/scan/front sensor_msgs/msg/LaserScan \
+    "{header: {frame_id: front_lidar_link}, angle_min: -0.50615, angle_max: 0.50615,
+      angle_increment: 0.25307, range_min: 0.02, range_max: 12.0,
+      ranges: [4.0, 4.0, 1.35, 4.0, 1.45]}" \
+    >"$test_tmpdir/scan.log" 2>&1 &
+  scan_pid=$!
+}
+
+setsid ros2 topic pub -r 10 -w 1 --qos-reliability best_effort \
+  /openipc_cinewhoop/range/down sensor_msgs/msg/Range \
+  "{header: {frame_id: rangefinder_link}, radiation_type: 1, field_of_view: 0.1,
+    min_range: 0.05, max_range: 8.0, range: 0.90}" \
+  >"$test_tmpdir/range.log" 2>&1 &
+range_pid=$!
+
+# 30 degrees nose-down: REP 103 puts y to the left, so a positive rotation about
+# it drops the nose. w = cos(15 deg), y = sin(15 deg).
+setsid ros2 topic pub -r 10 -w 1 --qos-reliability best_effort \
+  /ap/pose/filtered geometry_msgs/msg/PoseStamped \
+  "{header: {frame_id: map}, pose: {position: {z: 0.9},
+    orientation: {x: 0.0, y: 0.258819, z: 0.0, w: 0.965926}}}" \
+  >"$test_tmpdir/pose.log" 2>&1 &
+pose_pid=$!
+
+publish_leaning_scan
+leaning="none"
+for _ in $(seq 1 40); do
+  leaning="$(forward_speed)"
+  [ "$leaning" != "none" ] && [ "$leaning" != "0.0" ] && break
+  sleep 0.25
+done
+if [ "$leaning" = "none" ] || [ "$leaning" = "0.0" ]; then
+  echo "The demo held with a live attitude saying the 1.35 m return is floor" >&2
+  echo "(got '$leaning'); the rest of this case would then pass over nothing." >&2
+  tail -n 20 "$test_tmpdir/autonomy.log" >&2
+  exit 1
+fi
+echo "  leaning 30 deg at 0.90 m, floor at 1.35 m: twist.linear.x = $leaning"
+
+# Only the attitude stops. The scan and the height keep arriving, so nothing
+# the node watches for staleness today has changed.
+kill -TERM -- "-$pose_pid" 2>/dev/null || true
+wait "$pose_pid" 2>/dev/null || true
+pose_pid=""
+sleep 1.5
+blind="$(forward_speed)"
+stop_scan
+if [ "$blind" != "0.0" ]; then
+  echo "The demo kept commanding $blind after the attitude stopped arriving." >&2
+  echo "It is still rejecting the 1.35 m wall as floor using a lean it can no" >&2
+  echo "longer see, and 1.35 m is inside the distance it stops at." >&2
+  tail -n 20 "$test_tmpdir/autonomy.log" >&2
+  exit 1
+fi
+if ! grep -q "Not rejecting floor returns: the attitude is stale" \
+    "$test_tmpdir/autonomy.log"; then
+  echo "The demo stopped, but never said the attitude had gone stale, so it" >&2
+  echo "may have stopped for some other reason." >&2
+  tail -n 20 "$test_tmpdir/autonomy.log" >&2
+  exit 1
+fi
+echo "  attitude stale: twist.linear.x = $blind"
+echo "  $(grep -m1 'the attitude is stale' "$test_tmpdir/autonomy.log" \
+  | sed 's/.*\] //')"
 
 echo "Sensor dropout check passed."

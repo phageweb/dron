@@ -176,15 +176,56 @@ def hold_reason(fresh: bool, nearest_range: Optional[float]):
     return "obstacle", f" at {nearest_range:.2f} m"
 
 
-def scan_is_usable(age_s: Optional[float], timeout_s: float) -> bool:
-    """Return whether a scan that last arrived age_s ago can still be trusted.
+def reading_is_fresh(age_s: Optional[float], timeout_s: float) -> bool:
+    """Return whether a reading that last arrived age_s ago can still be trusted.
 
-    A stale scan is more dangerous than no scan at all: the last reading may
-    show clear air while the vehicle has since flown up to an obstacle.
+    A stale reading is more dangerous than no reading at all: the last scan may
+    show clear air while the vehicle has since flown up to an obstacle, and the
+    last attitude may show a lean the vehicle stopped holding seconds ago.
     """
     if age_s is None:
         return False
     return age_s <= timeout_s
+
+
+def compensation_height(
+    pose_age_s: Optional[float],
+    range_age_s: Optional[float],
+    timeout_s: float,
+    height_m: Optional[float],
+):
+    """The height to reject floor returns with, or None and why there is none.
+
+    Dropping the floor out of a scan needs two inputs that do not arrive with
+    the scan: the lean, from the flight controller's attitude estimate, and how
+    high the sensor is, from the downward rangefinder. Either can stop arriving
+    while the lidar stays perfectly healthy, and then the projection is run with
+    an attitude the vehicle no longer holds or a height it is no longer at.
+
+    Usually that over-rejects and the vehicle holds for nothing while the log
+    blames the lidar. It can also hide a real obstacle, which is the reason this
+    exists: a return is dropped on `range * cos(bearing)`, so at the edge of the
+    sector a farther obstacle survives a lean that drops a nearer one. Thinking
+    it is 30 degrees nose-down at 0.90 m turns a wall 1.35 m ahead into a 1.45 m
+    reading at the sector edge, and 1.45 m is past the distance the demo stops at.
+
+    Returning None switches the rejection off, which is exactly what an unknown
+    altitude already does: without a trustworthy lean and height nothing may be
+    discarded. The reason is split from the detail for the same reason
+    hold_reason splits them - the reason is what a caller latches, and an age
+    that ticks up every message must not re-log ten times a second.
+    """
+    if not reading_is_fresh(pose_age_s, timeout_s):
+        if pose_age_s is None:
+            return None, "no attitude yet", ""
+        return None, "the attitude is stale", f" ({pose_age_s:.1f} s old)"
+    if not reading_is_fresh(range_age_s, timeout_s):
+        if range_age_s is None:
+            return None, "no rangefinder yet", ""
+        return None, "the rangefinder is stale", f" ({range_age_s:.1f} s old)"
+    if height_m is None:
+        return None, "the rangefinder sees no surface", ""
+    return height_m, "", ""
 
 
 def takeoff_needs_retry(

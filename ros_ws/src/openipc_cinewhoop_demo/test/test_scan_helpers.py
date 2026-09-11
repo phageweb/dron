@@ -2,14 +2,15 @@ import math
 import unittest
 
 from openipc_cinewhoop_demo.scan_helpers import (
+    compensation_height,
     ground_return_height,
     hold_reason,
     is_ground_return,
     nearest_in_sector,
     nearest_valid_range,
     range_reading,
+    reading_is_fresh,
     safe_forward_speed,
-    scan_is_usable,
     takeoff_needs_retry,
 )
 
@@ -45,17 +46,84 @@ class ScanHelpersTest(unittest.TestCase):
     def test_no_braking_distance_keeps_the_old_behaviour(self):
         self.assertEqual(safe_forward_speed(0.8, 0.8, 0.5, 0.0), 0.5)
 
-    def test_scan_is_unusable_before_any_scan_arrives(self):
-        self.assertFalse(scan_is_usable(None, 0.5))
+    def test_a_reading_is_unusable_before_any_arrives(self):
+        self.assertFalse(reading_is_fresh(None, 0.5))
 
-    def test_scan_is_usable_inside_the_timeout(self):
-        self.assertTrue(scan_is_usable(0.2, 0.5))
+    def test_a_reading_is_fresh_inside_the_timeout(self):
+        self.assertTrue(reading_is_fresh(0.2, 0.5))
 
-    def test_scan_is_usable_exactly_at_the_timeout(self):
-        self.assertTrue(scan_is_usable(0.5, 0.5))
+    def test_a_reading_is_fresh_exactly_at_the_timeout(self):
+        self.assertTrue(reading_is_fresh(0.5, 0.5))
 
-    def test_scan_is_unusable_past_the_timeout(self):
-        self.assertFalse(scan_is_usable(0.51, 0.5))
+    def test_a_reading_is_stale_past_the_timeout(self):
+        self.assertFalse(reading_is_fresh(0.51, 0.5))
+
+    def test_the_height_is_used_when_both_inputs_are_fresh(self):
+        height, reason, _ = compensation_height(0.1, 0.1, 0.5, 0.9)
+        self.assertEqual(height, 0.9)
+        self.assertEqual(reason, "")
+
+    def test_a_stale_attitude_switches_the_rejection_off(self):
+        height, reason, detail = compensation_height(0.8, 0.1, 0.5, 0.9)
+        self.assertIsNone(height)
+        self.assertEqual(reason, "the attitude is stale")
+        self.assertIn("0.8", detail)
+
+    def test_a_stale_rangefinder_switches_the_rejection_off(self):
+        height, reason, _ = compensation_height(0.1, 0.8, 0.5, 0.9)
+        self.assertIsNone(height)
+        self.assertEqual(reason, "the rangefinder is stale")
+
+    def test_an_attitude_that_never_arrived_is_named_as_such(self):
+        # A node that has only just started has no attitude, which is not the
+        # same event as an attitude that stopped coming, and the log has to
+        # distinguish them.
+        self.assertEqual(compensation_height(None, 0.1, 0.5, 0.9)[1],
+                         "no attitude yet")
+
+    def test_a_rangefinder_that_never_arrived_is_named_as_such(self):
+        self.assertEqual(compensation_height(0.1, None, 0.5, 0.9)[1],
+                         "no rangefinder yet")
+
+    def test_a_fresh_rangefinder_with_nothing_in_range_gives_no_height(self):
+        height, reason, _ = compensation_height(0.1, 0.1, 0.5, None)
+        self.assertIsNone(height)
+        self.assertEqual(reason, "the rangefinder sees no surface")
+
+    def test_the_detail_carries_the_age_and_the_reason_does_not(self):
+        # The caller latches the reason and logs on a change, so an age that
+        # ticks up every message must not be part of it.
+        first = compensation_height(0.8, 0.1, 0.5, 0.9)
+        later = compensation_height(2.4, 0.1, 0.5, 0.9)
+        self.assertEqual(first[1], later[1])
+        self.assertNotEqual(first[2], later[2])
+
+    def test_a_stale_lean_can_hide_a_wall_the_vehicle_is_flying_at(self):
+        """Why the freshness guard exists, stated as the failure it prevents.
+
+        Returns are dropped on `range * cos(bearing)`, so a lean drops a wall
+        straight ahead before it drops a farther return at the edge of the
+        sector. Believing a 30 degree nose-down attitude it no longer holds, the
+        node reads 1.45 m for a wall that is 1.35 m away - and 1.40 m is where
+        the demo decides to stop.
+        """
+        increment = math.radians(15)
+        ranges = [4.0, 4.0, 1.35, 4.0, 1.45]
+        geometry = dict(angle_min=-2 * increment, angle_increment=increment,
+                        range_min=0.02, range_max=12.0,
+                        sector_rad=math.radians(60))
+        self.assertAlmostEqual(nearest_in_sector(ranges, **geometry), 1.35)
+        self.assertAlmostEqual(
+            nearest_in_sector(ranges, roll_rad=0.0, pitch_rad=math.radians(30),
+                              height_above_floor_m=0.90, **geometry),
+            1.45)
+        # With the attitude stale there is no height to reject with, so the
+        # wall comes back.
+        height, _, _ = compensation_height(0.8, 0.1, 0.5, 0.90)
+        self.assertAlmostEqual(
+            nearest_in_sector(ranges, roll_rad=0.0, pitch_rad=math.radians(30),
+                              height_above_floor_m=height, **geometry),
+            1.35)
 
     def test_takeoff_is_given_time_before_it_is_judged(self):
         self.assertFalse(takeoff_needs_retry(0.03, 0.03, 2.9, 3.0, 0.15))

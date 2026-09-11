@@ -16,11 +16,12 @@ from sensor_msgs.msg import LaserScan, Range
 from std_srvs.srv import Trigger
 
 from openipc_cinewhoop_demo.scan_helpers import (
+    compensation_height,
     hold_reason,
     nearest_in_sector,
+    reading_is_fresh,
     roll_pitch_from_quaternion,
     safe_forward_speed,
-    scan_is_usable,
     takeoff_needs_retry,
 )
 
@@ -68,6 +69,11 @@ class SimpleIndoorAutonomy(Node):
         # dropped, which needs the height the downward rangefinder measures.
         self.declare_parameter("range_topic", "/openipc_cinewhoop/range/down")
         self.declare_parameter("ground_margin_m", 0.25)
+        # The scan has a freshness guard and these two did not, although neither
+        # arrives with the scan: the pose comes from the flight controller over
+        # DDS and the height from a different sensor. A lean that stopped
+        # arriving keeps being applied to every scan after it.
+        self.declare_parameter("compensation_timeout_s", 0.5)
         self.declare_parameter("pose_topic", "/ap/pose/filtered")
         self.declare_parameter("status_topic", "/ap/status")
         # Service names are parameters for the same reason the topic names are:
@@ -91,6 +97,9 @@ class SimpleIndoorAutonomy(Node):
         self._roll = 0.0
         self._pitch = 0.0
         self._height = None
+        self._pose_time = None
+        self._range_time = None
+        self._blind_reason = None
         self._pending = None
         self._hold_reason = None
         self._altitude = None
@@ -142,7 +151,7 @@ class SimpleIndoorAutonomy(Node):
         self._nearest = nearest_in_sector(
             msg.ranges, msg.angle_min, msg.angle_increment,
             msg.range_min, msg.range_max, sector,
-            self._roll, self._pitch, self._height,
+            self._roll, self._pitch, self._rejection_height(),
             float(self.get_parameter("ground_margin_m").value))
         self._last_scan_time = self.get_clock().now()
 
@@ -153,6 +162,7 @@ class SimpleIndoorAutonomy(Node):
         self._altitude = msg.pose.position.z
         q = msg.pose.orientation
         self._roll, self._pitch = roll_pitch_from_quaternion(q.x, q.y, q.z, q.w)
+        self._pose_time = self.get_clock().now()
 
     def _on_range(self, msg: Range):
         # Outside the sensor's window the reading means "no detection", and an
@@ -160,6 +170,32 @@ class SimpleIndoorAutonomy(Node):
         self._height = (msg.range
                         if msg.min_range <= msg.range <= msg.max_range
                         else None)
+        self._range_time = self.get_clock().now()
+
+    def _age_s(self, stamp):
+        if stamp is None:
+            return None
+        return (self.get_clock().now() - stamp).nanoseconds / 1e9
+
+    def _rejection_height(self):
+        """The height to drop floor returns with, saying so when there is none.
+
+        Switching the rejection off makes the vehicle stop for the floor again,
+        which is the safe half of the trade: the unsafe half is a stale lean
+        that drops a wall the vehicle is flying at.
+        """
+        height, reason, detail = compensation_height(
+            self._age_s(self._pose_time), self._age_s(self._range_time),
+            float(self.get_parameter("compensation_timeout_s").value),
+            self._height)
+        if reason != self._blind_reason:
+            if reason:
+                self.get_logger().warning(
+                    f"Not rejecting floor returns: {reason}{detail}")
+            else:
+                self.get_logger().info("Rejecting floor returns again")
+            self._blind_reason = reason
+        return height
 
     def _since_takeoff_s(self):
         if self._takeoff_time is None:
@@ -189,7 +225,7 @@ class SimpleIndoorAutonomy(Node):
 
     def _tick(self):
         # A stale scan is treated exactly like no scan: the vehicle stops.
-        fresh = scan_is_usable(
+        fresh = reading_is_fresh(
             self._scan_age_s(), float(self.get_parameter("scan_timeout_s").value))
 
         if self._state == WAIT_SCAN:

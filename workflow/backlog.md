@@ -145,6 +145,19 @@
       received". Sensors now declare no topic, `gz_bridge.yaml` is a template
       rendered from the launched world's own name, and
       `check_model_consistency.py` fails if a world name reappears in one
+- [x] Guard the floor rejection's own two inputs for freshness. The scan had a
+      staleness guard and the attitude and height did not, although neither
+      arrives with the scan: the pose comes from the flight controller over DDS
+      and the height from a different sensor, so either can stop while the lidar
+      stays healthy. Both nodes now switch the rejection off and say why
+      (`compensation_height`, `compensation_timeout_s`, default 0.5 s against a
+      30 Hz pose and a 20 Hz rangefinder)
+- [ ] Correct the downward rangefinder for lean. It reports slant range, so at
+      30 degrees it read 0.639 m where the vehicle was 0.551 m up - 16 per cent,
+      growing as 1/cos. The error over-states the height, which under-rejects
+      and is the safe direction, and 0.25 m of margin currently absorbs it.
+      Multiplying by cos(roll)cos(pitch) is two lines, but it makes the
+      rejection more aggressive, so it wants a flight check rather than a commit
 - [ ] The attitude check is still simulation agreeing with simulation: SITL's
       EKF is fed a noiseless IMU, so it proves the convention rather than the
       accuracy. A real flight controller on a real ramp is what would test the

@@ -7,9 +7,10 @@ from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan, Range
 
 from openipc_cinewhoop_demo.scan_helpers import (
+    compensation_height,
     nearest_in_sector,
+    reading_is_fresh,
     roll_pitch_from_quaternion,
-    scan_is_usable,
 )
 
 
@@ -31,6 +32,10 @@ class ObstacleMonitor(Node):
         self.declare_parameter("range_topic", "/openipc_cinewhoop/range/down")
         self.declare_parameter("pose_topic", "/ap/pose/filtered")
         self.declare_parameter("ground_margin_m", 0.25)
+        # Neither the attitude nor the height arrives with the scan, so both can
+        # go stale while the lidar stays healthy. Rejecting the floor with an
+        # attitude the vehicle no longer holds is worse than not rejecting it.
+        self.declare_parameter("compensation_timeout_s", 0.5)
 
         self._last_log_time = self.get_clock().now()
         self._started_at = self.get_clock().now()
@@ -39,6 +44,9 @@ class ObstacleMonitor(Node):
         self._roll = 0.0
         self._pitch = 0.0
         self._height = None
+        self._pose_time = None
+        self._range_time = None
+        self._blind_reason = None
         topic = self.get_parameter("scan_topic").value
         self.create_subscription(
             LaserScan,
@@ -65,16 +73,22 @@ class ObstacleMonitor(Node):
     def _check_alive(self):
         timeout = float(self.get_parameter("scan_timeout_s").value)
         silent_for = self._silent_for_s()
-        if scan_is_usable(silent_for, timeout) or self._silent_logged:
+        if reading_is_fresh(silent_for, timeout) or self._silent_logged:
             return
         what = "yet" if self._last_scan_time is None else "any more"
         self.get_logger().warning(
             f"No front lidar scan {what} after {silent_for:.1f} s")
         self._silent_logged = True
 
+    def _age_s(self, stamp):
+        if stamp is None:
+            return None
+        return (self.get_clock().now() - stamp).nanoseconds / 1e9
+
     def _on_pose(self, msg: PoseStamped):
         q = msg.pose.orientation
         self._roll, self._pitch = roll_pitch_from_quaternion(q.x, q.y, q.z, q.w)
+        self._pose_time = self.get_clock().now()
 
     def _on_range(self, msg: Range):
         # Outside the sensor's window the reading means "no detection", and an
@@ -82,6 +96,22 @@ class ObstacleMonitor(Node):
         self._height = (msg.range
                         if msg.min_range <= msg.range <= msg.max_range
                         else None)
+        self._range_time = self.get_clock().now()
+
+    def _rejection_height(self):
+        """The height to drop floor returns with, saying so when there is none."""
+        height, reason, detail = compensation_height(
+            self._age_s(self._pose_time), self._age_s(self._range_time),
+            float(self.get_parameter("compensation_timeout_s").value),
+            self._height)
+        if reason != self._blind_reason:
+            if reason:
+                self.get_logger().warning(
+                    f"Not rejecting floor returns: {reason}{detail}")
+            else:
+                self.get_logger().info("Rejecting floor returns again")
+            self._blind_reason = reason
+        return height
 
     def _on_scan(self, msg: LaserScan):
         now = self.get_clock().now()
@@ -97,7 +127,7 @@ class ObstacleMonitor(Node):
         nearest = nearest_in_sector(
             msg.ranges, msg.angle_min, msg.angle_increment,
             msg.range_min, msg.range_max, sector,
-            self._roll, self._pitch, self._height,
+            self._roll, self._pitch, self._rejection_height(),
             float(self.get_parameter("ground_margin_m").value))
         if nearest is None:
             self.get_logger().warning("No valid front lidar range")
