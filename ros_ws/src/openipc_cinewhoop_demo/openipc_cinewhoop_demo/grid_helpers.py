@@ -196,32 +196,49 @@ def nearest_wall_distance(
     return min(abs(abs(x_m) - half_x_m), abs(abs(y_m) - half_y_m))
 
 
+def in_rectangle(x_m: float, y_m: float, rectangle) -> bool:
+    """Whether a point is inside an axis-aligned (x_min, x_max, y_min, y_max)."""
+    x_min, x_max, y_min, y_max = rectangle
+    return x_min <= x_m <= x_max and y_min <= y_m <= y_max
+
+
 def coverage_fraction(
     values: Iterable[int],
     cols: int,
     resolution_m: float,
     origin_x_m: float,
     origin_y_m: float,
-    half_x_m: float,
-    half_y_m: float,
+    region,
+    exclude=(),
     free_below: int = 50,
 ) -> Optional[float]:
-    """What fraction of a room's floor area the map has decided is free.
+    """What fraction of a region's floor area the map has decided is free.
 
     This is the number the circuit was flown to produce. Turning towards the
     roomier side is enough to fly a room and not enough to cover one, and the
     difference between the two is exactly this: how much of the place the
     vehicle actually got a look at.
 
-    Only cells inside the room count. Cells outside it are the far side of a
-    wall and the vehicle has no business having an opinion about them.
+    `region` bounds what counts, as (x_min, x_max, y_min, y_max). Cells outside
+    it are the far side of a wall, or another room, and the vehicle has no
+    business having an opinion about them. Asking about a part of the room
+    rather than all of it is how an alcove behind a partition gets its own
+    number, which is the only way a whole-room figure of 85 per cent can be told
+    apart from one of 85 per cent with a different shape missing.
+
+    `exclude` drops rectangles from both halves of the fraction - the footprints
+    of things standing in the room. A cell inside a pillar is not floor the
+    vehicle failed to see, and counting it as unseen makes a map look worse the
+    more furniture it correctly found.
     """
     inside = 0
     free = 0
     for index, value in enumerate(values):
         col, row = index % cols, index // cols
         x, y = cell_centre(col, row, resolution_m, origin_x_m, origin_y_m)
-        if abs(x) > half_x_m or abs(y) > half_y_m:
+        if not in_rectangle(x, y, region):
+            continue
+        if any(in_rectangle(x, y, box) for box in exclude):
             continue
         inside += 1
         if value != UNKNOWN and value < free_below:

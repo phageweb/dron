@@ -11,6 +11,7 @@ from openipc_cinewhoop_demo.grid_helpers import (
     cells_on_ray,
     coverage_fraction,
     grid_shape,
+    in_rectangle,
     in_bounds,
     map_extent,
     nearest_wall_distance,
@@ -203,6 +204,10 @@ class ScanReturnOffsetTest(unittest.TestCase):
         self.assertAlmostEqual(wing[2], 3.0 * math.sin(math.radians(25)))
 
 
+# The middle 2 by 2 of a 4 by 4 map of 1 m cells with its origin at (-2, -2).
+ROOM = (-1.0, 1.0, -1.0, 1.0)
+
+
 class MapMeasurementTest(unittest.TestCase):
     def test_map_extent_is_none_without_occupied_cells(self):
         self.assertIsNone(map_extent([], 0.1, -10.0, -10.0))
@@ -225,30 +230,64 @@ class MapMeasurementTest(unittest.TestCase):
         # A 4 by 4 map of 1 m cells with the room being the middle 2 by 2. The
         # free cells outside it are the far side of a wall and must not count,
         # in either half of the fraction.
-        cols = 4
         values = [UNKNOWN] * 16
         for index in (5, 6):  # two of the four cells inside the room
             values[index] = 0
         for index in (0, 1, 2, 3):  # a whole row outside it
             values[index] = 0
         self.assertAlmostEqual(
-            coverage_fraction(values, cols, 1.0, -2.0, -2.0, 1.0, 1.0), 0.5)
+            coverage_fraction(values, 4, 1.0, -2.0, -2.0, ROOM), 0.5)
 
     def test_an_unmapped_room_has_no_coverage(self):
         self.assertEqual(
-            coverage_fraction([UNKNOWN] * 16, 4, 1.0, -2.0, -2.0, 1.0, 1.0),
-            0.0)
+            coverage_fraction([UNKNOWN] * 16, 4, 1.0, -2.0, -2.0, ROOM), 0.0)
 
     def test_an_occupied_cell_is_not_coverage(self):
         values = [UNKNOWN] * 16
         values[5] = 100
         values[6] = 0
         self.assertAlmostEqual(
-            coverage_fraction(values, 4, 1.0, -2.0, -2.0, 1.0, 1.0), 0.25)
+            coverage_fraction(values, 4, 1.0, -2.0, -2.0, ROOM), 0.25)
 
-    def test_coverage_is_none_when_the_room_is_off_the_map(self):
+    def test_coverage_is_none_when_the_region_holds_no_cells(self):
         self.assertIsNone(
-            coverage_fraction([UNKNOWN] * 16, 4, 1.0, 100.0, 100.0, 1.0, 1.0))
+            coverage_fraction([UNKNOWN] * 16, 4, 1.0, -2.0, -2.0,
+                              (100.0, 101.0, 100.0, 101.0)))
+
+    def test_a_region_can_be_part_of_the_room(self):
+        # The room is half covered, and the halves are not alike: one is whole
+        # and the other is untouched. A single figure cannot tell that apart
+        # from both being half done, which is the entire reason an alcove gets
+        # a number of its own.
+        values = [UNKNOWN] * 16
+        values[5] = 0
+        values[6] = 0
+        near = (-1.0, 1.0, -1.0, 0.0)
+        far = (-1.0, 1.0, 0.0, 1.0)
+        self.assertAlmostEqual(
+            coverage_fraction(values, 4, 1.0, -2.0, -2.0, ROOM), 0.5)
+        self.assertAlmostEqual(
+            coverage_fraction(values, 4, 1.0, -2.0, -2.0, near), 1.0)
+        self.assertAlmostEqual(
+            coverage_fraction(values, 4, 1.0, -2.0, -2.0, far), 0.0)
+
+    def test_an_excluded_footprint_leaves_both_halves_of_the_fraction(self):
+        # A cell inside a pillar is not floor the vehicle failed to see. Without
+        # the exclusion a map looks worse the more furniture it correctly found.
+        values = [UNKNOWN] * 16
+        values[5] = 0     # free
+        values[6] = 100   # the pillar itself
+        pillar = (0.0, 1.0, -1.0, 0.0)
+        self.assertAlmostEqual(
+            coverage_fraction(values, 4, 1.0, -2.0, -2.0, ROOM), 0.25)
+        self.assertAlmostEqual(
+            coverage_fraction(values, 4, 1.0, -2.0, -2.0, ROOM, [pillar]),
+            1.0 / 3.0)
+
+    def test_in_rectangle_includes_its_edges(self):
+        self.assertTrue(in_rectangle(0.0, 0.0, (0.0, 1.0, 0.0, 1.0)))
+        self.assertTrue(in_rectangle(1.0, 1.0, (0.0, 1.0, 0.0, 1.0)))
+        self.assertFalse(in_rectangle(1.01, 0.5, (0.0, 1.0, 0.0, 1.0)))
 
 
 if __name__ == "__main__":

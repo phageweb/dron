@@ -228,13 +228,33 @@
       so the room moves with the vehicle rather than standing still; `map` is
       the frame to watch it in, and changing the default would break
       `display.launch.py` on its own, where no `map` frame exists
-- [ ] Ask the coverage question somewhere it is a question. An empty convex room
+- [x] Ask the coverage question somewhere it is a question. An empty convex room
       is the easy case: the LD06 sweeps the whole circle and reaches 12 m, so
-      the vehicle maps 97 per cent of an 8 by 6 m room almost as soon as it is
-      airborne, whatever path it flies. Coverage only separates a good path from
-      a bad one where something blocks the view, so the next step is a world
-      with furniture or a partition in it - and then a rule for where to fly
-      that is better than "turn towards the roomier side"
+      the vehicle maps 96 per cent of an 8 by 6 m room almost as soon as it is
+      airborne, whatever path it flies. `cluttered_room.sdf` puts two things in
+      the way - a pillar whose shadow sweeps across the room and fills itself in,
+      and a dogleg enclosure whose pocket no ray through its door can reach - and
+      `scripts/check_room_coverage.sh` flies the circuit and measures the
+      enclosure's inside separately from the room. The current rule reads 90 per
+      cent of the room and 77 to 80 of the enclosure, having never once gone
+      inside it: closest approach 0.60 m in every run
+- [x] Make that world actually occlude, which took three shapes and two
+      measurements to get right. An alcove 4.5 m wide and 1.45 m deep read 94
+      against the room's 96; a plain 2.8 m enclosure behind a 1.6 m door read 97
+      against 94, *better* than the room it stands in, on a flight that never
+      approached it. A doorway is an aperture rather than a pinhole: each point
+      outside admits a different wedge, and their union over a circuit is very
+      nearly everything. `inner_baffle` turns the inside into a dogleg and the
+      figure falls to 77. The check asserts that too now - an enclosure over
+      88 per cent on a flight that stayed outside fails, because the vehicle
+      cannot have got better and the geometry can only have stopped hiding
+- [ ] A rule for where to fly that is better than "turn towards the roomier
+      side". There is now a number that separates one rule from another and a
+      world where it moves: the enclosure's 77 per cent is what a policy that
+      goes in would raise, and the check deliberately puts no ceiling on it while
+      the vehicle is inside. Both apertures - the door and the gap past the
+      baffle - are the 1.6 m the demo needs ahead of it, so entering is flyable
+      under the clearance it already keeps
 - [ ] Place each return with the pose the scan was taken at. The mapper uses the
       latest pose when the message arrives, and the two are tens of milliseconds
       apart; turning at 0.4 rad/s that is a couple of degrees, which at 4 m is

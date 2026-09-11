@@ -396,7 +396,7 @@ if fraction > STRAY_FRACTION:
              "wrong yaw and a drifting position all look like this.")
 
 coverage = coverage_fraction(grid.data, cols, resolution, origin_x, origin_y,
-                             half_x, half_y)
+                             (-half_x, half_x, -half_y, half_y))
 print(f"  the map calls {100 * coverage:.0f} per cent of the room's floor free")
 if coverage < 0.90:
     sys.exit(f"Only {100 * coverage:.0f} per cent of the room was mapped as "

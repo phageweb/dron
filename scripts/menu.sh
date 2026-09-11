@@ -73,6 +73,7 @@ entries=(
   "circuitcheck|flight|The demo turns at a wall and flies on, rather than stopping|scripts/check_room_circuit.sh|Two minutes of flight in a closed room, headless and silent until it finishes."
   "mapcheck|flight|The map the vehicle builds is the room it flew round|scripts/check_room_mapping.sh|The same circuit with occupancy_mapper running, then the map is measured against the walls in the world file."
   "mapframe|flight|map -> base_link is where the vehicle really is|scripts/check_map_frame.sh|The circuit with pose_tf_broadcaster running, comparing the transform against Gazebo's ground truth in position and in yaw."
+  "coveragecheck|flight|How much of a room with things in it the demo gets a look at|scripts/check_room_coverage.sh|The same circuit in a room with a pillar and a dogleg enclosure, measuring what reached the map and what stayed hidden. Over two minutes of flight, headless and silent until it finishes."
 
   "HEAD||Build"
   "colcon|always|Build the ROS workspace|colcon build"

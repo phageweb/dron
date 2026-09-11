@@ -1,0 +1,217 @@
+<?xml version="1.0"?>
+<!-- The same room as room_test.sdf, with something in it that really blocks the
+     view.
+
+     room_test.sdf is empty and convex, and that makes the coverage question
+     meaningless there: the LD06 sweeps the whole circle and reaches 12 m, so a
+     vehicle that is airborne at all has already seen 97 per cent of an 8 by 6 m
+     room, whatever path it flew.
+
+     The first attempt at fixing that was an alcove along the +y wall, 4.5 m wide
+     and 1.45 m deep, and it did not work either - measured at 94 per cent
+     against the room's 96. With a sensor that sees all round it to 12 m, a
+     shallow recess with a wide mouth is visible from most of the room without
+     ever going near it. Occlusion needs depth behind a narrow opening, not a
+     dent in a wall.
+
+     The second attempt was an enclosure, 2.8 m square, with one 1.6 m door in
+     its -y side offset to one corner, on the theory that the corners furthest
+     from the door are behind a wall from every point outside. Measured, they are
+     not: the map called 97 per cent of the inside free on a flight that never
+     went in, closest approach 0.60 m. A doorway is an aperture, not a pinhole -
+     each point outside admits a different wedge, and the union of the wedges
+     over a whole circuit is very nearly the whole room. A 1.6 m opening in a
+     2.8 m wall leaves almost nothing that every outside viewpoint misses.
+
+     So the third and current shape: the same enclosure with `inner_baffle`
+     across it, a 1.2 m stub off the same side the door is flush with, leaving a
+     1.6 m gap at the other end. That makes the inside a dogleg. Rays entering
+     the door travel +y and the baffle stops the ones that would reach behind it,
+     from every point of the opening rather than from one - so the pocket beyond
+     it is dark from outside however the vehicle circles. It is not dark from
+     *inside*: past the gap the lidar sees over the baffle's far side, so the
+     pocket is covered by flying the dogleg rather than by squeezing into it.
+
+     Both apertures - the door and the gap past the baffle - are 1.6 m, which is
+     what the demo needs ahead of it to keep flying, so what is unseen is unseen
+     because of where the vehicle chose to go. That is the whole distinction
+     coverage is supposed to draw.
+
+     `pillar` is the other kind of obstacle and is kept for contrast: a
+     freestanding box whose shadow sweeps across the room as the vehicle moves,
+     and which fills in on its own without any decision being made. A policy that
+     handles the pillar and not the enclosure is exactly what this world is for.
+     It sits in the +x half, clear of the door's approach. -->
+<sdf version="1.10">
+  <world name="cluttered_room">
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+
+    <gravity>0 0 -9.80665</gravity>
+    <magnetic_field>6e-06 2.3e-05 -4.2e-05</magnetic_field>
+    <atmosphere type="adiabatic"/>
+
+    <light name="ceiling_light" type="directional">
+      <pose>0 0 4 0 0 0</pose>
+      <cast_shadows>true</cast_shadows>
+      <direction>-0.3 0.4 -1</direction>
+      <diffuse>0.9 0.86 0.75 1</diffuse>
+    </light>
+
+    <!-- Same floor as every other world here: top surface at z = 0.025. -->
+    <model name="floor">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>10 8 0.05</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>10 8 0.05</size></box></geometry>
+          <material><diffuse>0.45 0.48 0.48 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Four walls, 0.1 m thick, their inner faces at x = +-4 and y = +-3. -->
+    <model name="wall_x_plus">
+      <static>true</static>
+      <pose>4.05 0 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.1 6.2 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.1 6.2 2.0</size></box></geometry>
+          <material><diffuse>0.62 0.60 0.56 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_x_minus">
+      <static>true</static>
+      <pose>-4.05 0 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.1 6.2 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.1 6.2 2.0</size></box></geometry>
+          <material><diffuse>0.62 0.60 0.56 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_y_plus">
+      <static>true</static>
+      <pose>0 3.05 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>8.2 0.1 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>8.2 0.1 2.0</size></box></geometry>
+          <material><diffuse>0.62 0.60 0.56 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_y_minus">
+      <static>true</static>
+      <pose>0 -3.05 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>8.2 0.1 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>8.2 0.1 2.0</size></box></geometry>
+          <material><diffuse>0.62 0.60 0.56 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- The enclosure. Same 0.1 m thickness and 2 m height as the outer walls,
+         so nothing about the lidar's view of it is special. Its interior is
+         x -3.4 to -0.6 and y -0.4 to 2.4; the door is the gap left in the -y
+         side, from x = -2.2 to -0.6.
+
+         The check derives the region it reports on from these walls rather than
+         from a number written down twice: the bounding box of everything named
+         inner_*, pulled in by the thickness. Moving one of them moves what gets
+         measured, and `inner_baffle` lies inside that box, so it adds a wall
+         without moving the region. -->
+    <model name="inner_x_minus">
+      <static>true</static>
+      <pose>-3.45 1.0 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.1 2.9 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.1 2.9 2.0</size></box></geometry>
+          <material><diffuse>0.55 0.52 0.48 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="inner_y_plus">
+      <static>true</static>
+      <pose>-2.0 2.45 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>2.9 0.1 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>2.9 0.1 2.0</size></box></geometry>
+          <material><diffuse>0.55 0.52 0.48 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="inner_x_plus">
+      <static>true</static>
+      <pose>-0.55 1.0 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.1 2.9 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.1 2.9 2.0</size></box></geometry>
+          <material><diffuse>0.55 0.52 0.48 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="inner_y_minus_stub">
+      <static>true</static>
+      <pose>-2.85 -0.45 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1.3 0.1 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>1.3 0.1 2.0</size></box></geometry>
+          <material><diffuse>0.55 0.52 0.48 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- What makes the enclosure an enclosure rather than a recess. It reaches
+         from the x+ inner wall, the side the door is flush with, to x = -1.8,
+         leaving a 1.6 m gap against the x- wall. The pocket behind it - roughly
+         x -1.75 to -0.6, y 1.05 to 2.4, about a sixth of the inside - is the
+         part no ray through the door can reach, and the part a flight that goes
+         in gets for nothing. -->
+    <model name="inner_baffle">
+      <static>true</static>
+      <pose>-1.2 1.0 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1.2 0.1 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>1.2 0.1 2.0</size></box></geometry>
+          <material><diffuse>0.55 0.52 0.48 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- A shadow that moves, for contrast with one that does not. -->
+    <model name="pillar">
+      <static>true</static>
+      <pose>2.0 -1.5 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.4 0.4 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.4 0.4 2.0</size></box></geometry>
+          <material><diffuse>0.5 0.45 0.42 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <include>
+      <uri>model://openipc_cinewhoop</uri>
+      <pose>0 0 0.035 0 0 0</pose>
+    </include>
+  </world>
+</sdf>
