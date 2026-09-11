@@ -34,6 +34,46 @@ def roll_pitch_from_quaternion(x: float, y: float, z: float, w: float):
     return roll, pitch
 
 
+def yaw_from_quaternion(x: float, y: float, z: float, w: float) -> float:
+    """Which way the vehicle is facing, in the REP 103 convention.
+
+    Separate from roll and pitch because almost nothing here needs it: the floor
+    rejection is about heights, and a height does not care about heading. The
+    mapper does, because it has to put a return somewhere in a fixed frame.
+    """
+    return math.atan2(2.0 * (w * z + x * y),
+                      1.0 - 2.0 * (y * y + z * z))
+
+
+def body_point_offset(
+    x: float,
+    y: float,
+    z: float,
+    roll_rad: float,
+    pitch_rad: float,
+    yaw_rad: float = 0.0,
+):
+    """Where a point fixed to the airframe sits, relative to the vehicle, in the world.
+
+    Rz(yaw) Ry(pitch) Rx(roll) applied to a body-frame point, which is the one
+    rotation this project needs and so is written exactly once. The signs in it
+    are the whole difficulty - a flipped roll term discards the ceiling and
+    keeps the floor - and a second copy would be a second chance to get them
+    wrong. body_point_height is its third row; the mapper needs all three.
+
+    Angles follow REP 103 as the pose message gives them: x forward, y left,
+    z up, right-handed, yaw positive counter-clockwise seen from above.
+    """
+    sr, cr = math.sin(roll_rad), math.cos(roll_rad)
+    sp, cp = math.sin(pitch_rad), math.cos(pitch_rad)
+    sy, cy = math.sin(yaw_rad), math.cos(yaw_rad)
+    return (
+        cy * cp * x + (cy * sp * sr - sy * cr) * y + (cy * sp * cr + sy * sr) * z,
+        sy * cp * x + (sy * sp * sr + cy * cr) * y + (sy * sp * cr - cy * sr) * z,
+        -sp * x + cp * sr * y + cp * cr * z,
+    )
+
+
 def body_point_height(
     x: float,
     y: float,
@@ -43,18 +83,11 @@ def body_point_height(
 ) -> float:
     """How high a point fixed to the airframe sits, once the lean is undone.
 
-    Third row of Rz(yaw) Ry(pitch) Rx(roll). Yaw drops out: rotating about the
-    vertical cannot change a height. Written once and used twice - for a return
-    in the scan plane, and for the offset between the two sensors - because the
-    signs in it are the whole difficulty and two copies would be two chances to
-    get them wrong.
-
-    Angles follow REP 103 as the pose message gives them: x forward, y left,
-    z up, right-handed.
+    Third row of body_point_offset. Yaw drops out of it: rotating about the
+    vertical cannot change a height, which is why this takes no yaw and why the
+    floor rejection works without ever knowing which way the vehicle is facing.
     """
-    return (-math.sin(pitch_rad) * x
-            + math.cos(pitch_rad) * math.sin(roll_rad) * y
-            + math.cos(pitch_rad) * math.cos(roll_rad) * z)
+    return body_point_offset(x, y, z, roll_rad, pitch_rad)[2]
 
 
 def ground_return_height(

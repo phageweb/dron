@@ -81,15 +81,16 @@ gz_bridge_pid=""
 agent_pid=""
 sitl_pid=""
 demo_pid=""
+range_adapter_pid=""
 
 cleanup() {
-  for pid in "$demo_pid" "$sitl_pid" "$agent_pid" "$gz_bridge_pid" "$bridge_pid" "$gazebo_pid"; do
+  for pid in "$range_adapter_pid" "$demo_pid" "$sitl_pid" "$agent_pid" "$gz_bridge_pid" "$bridge_pid" "$gazebo_pid"; do
     if [ -n "$pid" ]; then
       kill -INT "$pid" 2>/dev/null || true
     fi
   done
   sleep 1
-  for pid in "$demo_pid" "$sitl_pid" "$agent_pid" "$gz_bridge_pid" "$bridge_pid" "$gazebo_pid"; do
+  for pid in "$range_adapter_pid" "$demo_pid" "$sitl_pid" "$agent_pid" "$gz_bridge_pid" "$bridge_pid" "$gazebo_pid"; do
     if [ -n "$pid" ]; then
       kill -9 "$pid" 2>/dev/null || true
     fi
@@ -100,6 +101,7 @@ cleanup() {
   # the takeoff submode, so one survivor silently pins the next run's vehicle to
   # the floor at zero throttle while every service still reports success.
   pkill -9 -f "$project_root/install/openipc_cinewhoop_demo/lib/openipc_cinewhoop_demo/simple_indoor_autonomy" 2>/dev/null || true
+  pkill -9 -f "$project_root/install/openipc_cinewhoop_demo/lib/openipc_cinewhoop_demo/range_adapter" 2>/dev/null || true
   pkill -9 -f "parameter_bridge --ros-args -p config_file:=$test_tmpdir" 2>/dev/null || true
   if [ -n "${KEEP_LOGS:-}" ]; then
     cp -r "$test_tmpdir" "$KEEP_LOGS" 2>/dev/null || true
@@ -156,6 +158,16 @@ if ! ros2 service list 2>/dev/null | grep -Fxq /ap/experimental/takeoff; then
   tail -40 "$test_tmpdir/agent.log" >&2 || true
   exit 1
 fi
+
+# The rangefinder's logical topic, which the bridge does not publish: Gazebo can
+# only produce a LaserScan and range_adapter turns it into the sensor_msgs/Range
+# the hardware driver would publish. Without it the demo node has no height, so
+# the floor rejection never switches on and the whole flight runs without the
+# compensation the leaning worlds prove it needs - silently, because a rejection
+# that was never on cannot be seen switching off.
+ros2 run openipc_cinewhoop_demo range_adapter \
+  >"$test_tmpdir/range_adapter.log" 2>&1 &
+range_adapter_pid=$!
 
 ros2 run openipc_cinewhoop_demo simple_indoor_autonomy \
   --ros-args -p takeoff_altitude_m:=1.0 >"$test_tmpdir/demo.log" 2>&1 &
@@ -253,6 +265,16 @@ if peak_x < 0.25:
 # mission without the compensation the leaning check proves it needs. AP_DDS
 # publishes the pose every 33 ms and the rangefinder bridges at 20 Hz against a
 # 0.5 s timeout, so anything here is a real interruption rather than a margin.
+# Assert first that it was ever on. This check used to test only the second
+# half, and passed for a year of runs in which the rejection was never switched
+# on at all: nothing started range_adapter, so the node had no height, said "no
+# rangefinder yet" once before it ever reached cruising, and then had nothing
+# left to switch off. A guard against a thing being turned off has to establish
+# that it was on, or it passes most loudly in the case it exists to catch.
+if "Rejecting floor returns again" not in log:
+    blind = re.findall(r"Not rejecting floor returns: ([^\n]+)", log)
+    sys.exit("The floor rejection never switched on, so the whole flight ran "
+             "without it: " + ("; ".join(blind[:3]) if blind else "no reason given"))
 cruising = log.find("cruising")
 if cruising >= 0:
     blind = re.findall(r"Not rejecting floor returns: ([^\n]+)", log[cruising:])

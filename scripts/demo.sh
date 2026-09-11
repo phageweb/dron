@@ -17,6 +17,7 @@ gui="true"
 altitude="1.0"
 world="indoor_test.sdf"
 turning="false"
+mapping="false"
 passthrough=()
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -27,14 +28,20 @@ while [ $# -gt 0 ]; do
       turning="true"
       world="room_test.sdf"
       passthrough+=("--circuit") ;;
+    # Builds the map live rather than only inside the check. Not yet watchable
+    # in RViz: the grid is stamped in a "map" frame and nothing broadcasts
+    # map -> base_link, so RViz has nowhere to put it. `ros2 topic echo` and
+    # the mapper's own log are what there is until that transform exists.
+    --map) mapping="true"; passthrough+=("--map") ;;
     --altitude)
       altitude="${2:?--altitude needs a value}"
       passthrough+=("--altitude" "$2")
       shift ;;
     -h|--help)
-      echo "usage: scripts/demo.sh [--no-gui] [--circuit] [--altitude METRES]"
+      echo "usage: scripts/demo.sh [--no-gui] [--circuit] [--map] [--altitude METRES]"
       echo "  --circuit  fly a closed room and turn at the walls instead of"
       echo "             stopping at one obstacle in indoor_test.sdf"
+      echo "  --map      build an occupancy grid on /openipc_cinewhoop/map"
       exit 0 ;;
     *) echo "Unknown argument: $1" >&2; exit 2 ;;
   esac
@@ -78,6 +85,7 @@ set -u
 
 launch_pid=""
 demo_pid=""
+mapper_pid=""
 
 cleanup() {
   # The trap catches INT, TERM and EXIT, and Ctrl-C fires two of them; without
@@ -85,7 +93,7 @@ cleanup() {
   trap - EXIT INT TERM
   echo
   echo "==> Shutting the demo down."
-  for pid in "$demo_pid" "$launch_pid"; do
+  for pid in "$mapper_pid" "$demo_pid" "$launch_pid"; do
     [ -n "$pid" ] && kill -TERM -- "-$pid" 2>/dev/null || true
   done
   sleep 2
@@ -94,7 +102,7 @@ cleanup() {
   pkill -9 -f "$project_root/install/openipc_cinewhoop_demo/lib" 2>/dev/null || true
   pkill -9 -f "$project_root/$sitl_bin" 2>/dev/null || true
   pkill -9 -f "$project_root/build/ap_actuator_bridge" 2>/dev/null || true
-  for pid in "$demo_pid" "$launch_pid"; do
+  for pid in "$mapper_pid" "$demo_pid" "$launch_pid"; do
     [ -n "$pid" ] && kill -9 -- "-$pid" 2>/dev/null || true
   done
   echo "==> Done."
@@ -120,6 +128,12 @@ if [ "$ready" != true ]; then
   echo "ArduPilot services never appeared. Last of the launch log:" >&2
   tail -n 25 "$project_root/logs/demo-launch.log" >&2
   exit 1
+fi
+
+if [ "$mapping" = true ]; then
+  echo "==> Mapping into /openipc_cinewhoop/map."
+  setsid ros2 run openipc_cinewhoop_demo occupancy_mapper &
+  mapper_pid=$!
 fi
 
 echo "==> Flying: arm, take off to ${altitude} m, creep forward, stop for the wall."

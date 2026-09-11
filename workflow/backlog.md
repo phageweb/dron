@@ -173,10 +173,44 @@
       ask for. `room_test.sdf` is a closed 8 by 6 m room and
       `scripts/check_room_circuit.sh` flies it: 630 degrees of turning, closest
       approach to a wall 0.75 m
-- [ ] Decide what the circuit is for. Turning towards the roomier side is enough
-      to fly a room and not enough to cover one: the vehicle repeats a loop
-      rather than visiting anywhere in particular, and nothing maps what it has
-      seen. Coverage or a map is the next question, and it is a bigger one
+- [x] Give the circuit something to produce. It flew a room and kept nothing;
+      `occupancy_mapper` turns the scans into a 2D occupancy grid in the flight
+      controller's local frame, published as `nav_msgs/msg/OccupancyGrid` on
+      `/openipc_cinewhoop/map`. Log-odds rather than a flag, so repeated
+      evidence accumulates and a single spurious return is not permanent, and
+      unknown is kept distinct from fifty-fifty - which is the only thing that
+      says where the vehicle has actually been. It skips a scan outright when
+      the pose is stale or the floor rejection is off: the other two nodes can
+      fall back on holding, and a wall drawn in the wrong place stays there
+- [x] Check the map against the room rather than against itself.
+      `scripts/check_room_mapping.sh` flies the same circuit with the mapper
+      running and measures the result against the walls read out of the world
+      file: all four walls mapped along 100 per cent of their length, wall cells
+      0.050 m off the wall at the median and the 90th percentile - exactly the
+      half-cell that quantisation costs - and no occupied cell anywhere in the
+      middle of an empty room. That one comparison covers the scan's angular
+      convention, the yaw the returns are turned by, the ray casting and the
+      EKF's own position, which nothing had checked before: every earlier check
+      asked about attitude or about a distance the vehicle did not need to know
+      where it was to get right
+- [ ] Broadcast `map` -> `base_link` so the map can be looked at. The grid is
+      stamped in a `map` frame that is not in the TF tree, so RViz has nowhere
+      to put it and `scripts/demo.sh --map` can only be echoed. The pose the
+      mapper already uses is that transform; what is missing is something
+      publishing it
+- [ ] Ask the coverage question somewhere it is a question. An empty convex room
+      is the easy case: the LD06 sweeps the whole circle and reaches 12 m, so
+      the vehicle maps 97 per cent of an 8 by 6 m room almost as soon as it is
+      airborne, whatever path it flies. Coverage only separates a good path from
+      a bad one where something blocks the view, so the next step is a world
+      with furniture or a partition in it - and then a rule for where to fly
+      that is better than "turn towards the roomier side"
+- [ ] Place each return with the pose the scan was taken at. The mapper uses the
+      latest pose when the message arrives, and the two are tens of milliseconds
+      apart; turning at 0.4 rad/s that is a couple of degrees, which at 4 m is
+      the 0.15 m by which the worst wall cells overshoot while the median stays
+      at the half-cell. Harmless in an empty room and the thing that smears a
+      map built while turning faster
 - [x] Give the rejection the lidar's height rather than the rangefinder's. The
       two are 26 mm apart along x and 66 mm along z, which level was 66 mm of
       height thrown away and leaning is less, because the offset rotates with
@@ -187,6 +221,13 @@
       model moves either sensor - the same guard that keeps the URDF and the SDF
       together. Both worlds now assert the height against `front_lidar_link`
       rather than `rangefinder_link`, which is the property itself
+- [x] Start `range_adapter` in the flight checks. Neither
+      `check_forward_flight.sh` nor `check_room_circuit.sh` ever did, so
+      `/openipc_cinewhoop/range/down` had no publisher, the demo node had no
+      height, and every one of those flights ran with the floor rejection off.
+      The forward flight check asserted the rejection never switched off during
+      the flight and passed, because a rejection that was never on cannot be
+      seen switching off; it now asserts it switched on first
 - [ ] The attitude check is still simulation agreeing with simulation: SITL's
       EKF is fed a noiseless IMU, so it proves the convention rather than the
       accuracy. A real flight controller on a real ramp is what would test the

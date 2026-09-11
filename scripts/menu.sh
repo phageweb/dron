@@ -71,6 +71,7 @@ entries=(
   "unified|flight|One launch serves Gazebo, ArduPilot and TF|scripts/check_unified_launch.sh|Headless. Headless and silent: it prints nothing until it finishes, a few minutes from now."
   "attitude|flight|ArduPilot reports the attitude the vehicle really has|scripts/check_attitude_estimate.sh|Parks the vehicle on a ramp and compares three numbers. Nothing arms and nothing flies; under a minute."
   "circuitcheck|flight|The demo turns at a wall and flies on, rather than stopping|scripts/check_room_circuit.sh|Two minutes of flight in a closed room, headless and silent until it finishes."
+  "mapcheck|flight|The map the vehicle builds is the room it flew round|scripts/check_room_mapping.sh|The same circuit with occupancy_mapper running, then the map is measured against the walls in the world file."
 
   "HEAD||Build"
   "colcon|always|Build the ROS workspace|colcon build"

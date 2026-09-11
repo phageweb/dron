@@ -84,15 +84,16 @@ gz_bridge_pid=""
 agent_pid=""
 sitl_pid=""
 demo_pid=""
+range_adapter_pid=""
 
 cleanup() {
-  for pid in "$demo_pid" "$sitl_pid" "$agent_pid" "$gz_bridge_pid" "$bridge_pid" "$gazebo_pid"; do
+  for pid in "$range_adapter_pid" "$demo_pid" "$sitl_pid" "$agent_pid" "$gz_bridge_pid" "$bridge_pid" "$gazebo_pid"; do
     if [ -n "$pid" ]; then
       kill -INT "$pid" 2>/dev/null || true
     fi
   done
   sleep 1
-  for pid in "$demo_pid" "$sitl_pid" "$agent_pid" "$gz_bridge_pid" "$bridge_pid" "$gazebo_pid"; do
+  for pid in "$range_adapter_pid" "$demo_pid" "$sitl_pid" "$agent_pid" "$gz_bridge_pid" "$bridge_pid" "$gazebo_pid"; do
     if [ -n "$pid" ]; then
       kill -9 "$pid" 2>/dev/null || true
     fi
@@ -103,6 +104,7 @@ cleanup() {
   # the takeoff submode, so one survivor silently pins the next run's vehicle to
   # the floor at zero throttle while every service still reports success.
   pkill -9 -f "$project_root/install/openipc_cinewhoop_demo/lib/openipc_cinewhoop_demo/simple_indoor_autonomy" 2>/dev/null || true
+  pkill -9 -f "$project_root/install/openipc_cinewhoop_demo/lib/openipc_cinewhoop_demo/range_adapter" 2>/dev/null || true
   pkill -9 -f "parameter_bridge --ros-args -p config_file:=$test_tmpdir" 2>/dev/null || true
   if [ -n "${KEEP_LOGS:-}" ]; then
     cp -r "$test_tmpdir" "$KEEP_LOGS" 2>/dev/null || true
@@ -159,6 +161,16 @@ if ! ros2 service list 2>/dev/null | grep -Fxq /ap/experimental/takeoff; then
   tail -40 "$test_tmpdir/agent.log" >&2 || true
   exit 1
 fi
+
+# The rangefinder's logical topic, which the bridge does not publish: Gazebo can
+# only produce a LaserScan and range_adapter turns it into the sensor_msgs/Range
+# the hardware driver would publish. Without it the demo node has no height, so
+# the floor rejection never switches on and the whole flight runs without the
+# compensation the leaning worlds prove it needs - silently, because a rejection
+# that was never on cannot be seen switching off.
+ros2 run openipc_cinewhoop_demo range_adapter \
+  >"$test_tmpdir/range_adapter.log" 2>&1 &
+range_adapter_pid=$!
 
 ros2 run openipc_cinewhoop_demo simple_indoor_autonomy \
   --ros-args -p takeoff_altitude_m:=1.0 -p enable_turning:=true \

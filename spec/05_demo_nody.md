@@ -58,6 +58,54 @@ ros2 run openipc_cinewhoop_demo obstacle_monitor --ros-args \
   -p warn_distance_m:=0.8
 ```
 
+## `occupancy_mapper.py`
+
+Účel:
+
+- z naletěných scanů udělat 2D occupancy grid, aby po okruhu něco zůstalo
+- ukázka `nav_msgs/msg/OccupancyGrid` a ray castingu
+
+Vstupy:
+
+```text
+/openipc_cinewhoop/scan/front
+/ap/pose/filtered
+/openipc_cinewhoop/range/down
+```
+
+Výstup:
+
+```text
+/openipc_cinewhoop/map
+```
+
+Není to SLAM. Pozice je z EKF a nic ji tady nekoriguje, takže mapa je přesně tak
+dobrá jako ta pozice: v SITL velmi dobrá, na hardwaru uvnitř budovy je to právě
+ta otevřená otázka, protože ArduPilot bez GPS drží polohu jen tím, co udrží
+optical flow s rangefinderem.
+
+Mapa je vodorovný řez. Buňka říká "něco se sem vrátilo, zhruba ve výšce, ve
+které byl lidar", ne že je sloupec zablokovaný od podlahy ke stropu.
+
+Na rozdíl od zbylých dvou nodů se při výpadku vstupů nechová měkčeji, ale
+tvrději: když je póza stará nebo je vypnuté odmítání podlahy, scan se zahodí
+celý. Ostatním dvěma hrozí zbytečné zastavení, téhle stěna nakreslená tam, kde
+dron nikdy nebyl - a ta v mapě zůstane i po tom, co se vstup vzpamatuje.
+
+Parametry:
+
+| Parametr | Default | Účel |
+| --- | ---: | --- |
+| `resolution_m` | `0.10` | velikost buňky, zhruba přesnost LD06 |
+| `map_width_m` / `map_height_m` | `20.0` | pevná velikost mřížky, nezvětšuje se |
+| `ground_margin_m` | `0.25` | stejné odmítání podlahy jako u zbylých nodů |
+| `compensation_timeout_s` | `0.5` | stáří pózy a výšky, za kterým se přestává mapovat |
+| `lidar_ahead_of_base_m` | `0.046` | odkud se paprsky vrhají; hlídá `check_model_consistency.py` |
+| `lidar_above_base_m` | `0.050` | totéž ve svislé ose |
+
+Ověření: `scripts/check_room_mapping.sh` proletí okruh s mapperem a změří
+výsledek proti stěnám přečteným ze souboru světa.
+
 ## `simple_indoor_autonomy.py`
 
 Účel:

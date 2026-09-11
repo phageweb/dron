@@ -61,6 +61,12 @@ Pracovní názvy:
 | `/openipc_cinewhoop/camera/camera_info` | `sensor_msgs/msg/CameraInfo` | Gazebo camera | `camera_optical_frame` |
 | `/openipc_cinewhoop/odom` | `nav_msgs/msg/Odometry` | Gazebo/bridge/helper | `odom` -> `base_link` |
 | `/openipc_cinewhoop/path` | `nav_msgs/msg/Path` | demo node | `odom` nebo `map` |
+| `/openipc_cinewhoop/map` | `nav_msgs/msg/OccupancyGrid` | `occupancy_mapper` | `map` |
+
+`/openipc_cinewhoop/map` je latchovaný (transient local): mapa publikovaná jen
+při změně je mapa, kterou ten, kdo se ptá poslední, nikdy neuvidí. Rámec `map`
+zatím v TF stromu není, takže RViz nemá kam mřížku umístit - chybí vysílač
+`map` -> `base_link`, viz backlog.
 
 `/openipc_cinewhoop/range/down_raw` je jediný topic, který na reálném dronu
 neexistuje. Gazebo umí rangefinder jen jako malý lidar, takže bridge končí tady

@@ -141,24 +141,36 @@ def world_scoped_topics():
             if "<topic>" in line and "/world/" in line]
 
 
-def demo_sensor_offsets():
-    """The offsets the demo nodes carry, read out of their own source.
+# Where the demo nodes believe the sensors are, and which distance in the model
+# each of those parameters is a copy of. The nodes carry these as parameter
+# defaults because that is model knowledge living outside the model: TF has the
+# same numbers and none of the nodes listens to TF. Checking them here is what
+# makes that safe - a model that moves a sensor has to fail rather than leave a
+# node projecting from a place the sensor no longer is.
+SENSOR_OFFSETS = {
+    # The rangefinder measures a height for a sensor that is not it.
+    "lidar_ahead_of_rangefinder_m": ("front_lidar_link", "rangefinder_link", 0),
+    "lidar_above_rangefinder_m": ("front_lidar_link", "rangefinder_link", 2),
+    # The mapper needs the other end of it too: the returns are measured from
+    # the lidar and the pose is base_link's, so a map built without this casts
+    # every ray from a place no sensor is.
+    "lidar_ahead_of_base_m": ("front_lidar_link", BASE, 0),
+    "lidar_left_of_base_m": ("front_lidar_link", BASE, 1),
+    "lidar_above_base_m": ("front_lidar_link", BASE, 2),
+}
+AXES = ("x", "y", "z")
 
-    Both nodes need to know where the front lidar sits relative to the
-    rangefinder, because the rangefinder measures a height for a sensor that is
-    not it. That is model knowledge living outside the model, so it is checked
-    against the model rather than trusted: TF carries the same numbers and
-    neither node listens to TF.
-    """
+
+def demo_sensor_offsets():
+    """The offsets the demo nodes carry, read out of their own source."""
     found = {}
     for path in sorted(DEMO.glob("*.py")):
         text = path.read_text()
-        for axis, name in (("x", "lidar_ahead_of_rangefinder_m"),
-                           ("z", "lidar_above_rangefinder_m")):
+        for name in SENSOR_OFFSETS:
             match = re.search(
                 rf'declare_parameter\(\s*"{name}"\s*,\s*([-\d.eE+]+)\s*\)', text)
             if match is not None:
-                found.setdefault((path.name, axis), float(match.group(1)))
+                found.setdefault((path.name, name), float(match.group(1)))
     return found
 
 
@@ -194,23 +206,27 @@ def main():
         problems.append(
             f"total mass is {urdf_mass:.6f} kg in the URDF and {sdf_mass:.6f} kg in the SDF")
 
-    # The demo nodes carry the lidar's offset from the rangefinder as parameter
-    # defaults. Where the two sensors sit is the model's business, so a model
-    # that moves one of them has to fail here rather than leave a node quietly
-    # projecting from the wrong place.
-    (lidar_xyz, _), (range_xyz, _) = sdf["front_lidar_link"], sdf["rangefinder_link"]
-    offset = {"x": lidar_xyz[0] - range_xyz[0], "z": lidar_xyz[2] - range_xyz[2]}
+    # See SENSOR_OFFSETS: each of these is a distance the model owns and a node
+    # keeps a copy of, so the copy is checked rather than trusted.
+    expected = {}
+    for name, (link, reference, axis) in SENSOR_OFFSETS.items():
+        expected[name] = sdf[link][0][axis] - sdf[reference][0][axis]
     offsets = demo_sensor_offsets()
     if not offsets:
         problems.append(
-            "no demo node declares the lidar's offset from the rangefinder; "
-            "either the parameters were renamed or this check is looking in "
-            "the wrong place")
-    for (node, axis), value in sorted(offsets.items()):
-        if abs(value - offset[axis]) > TOLERANCE_M:
+            "no demo node declares where the sensors sit; either the "
+            "parameters were renamed or this check is looking in the wrong place")
+    declared = {name for _, name in offsets}
+    for name in sorted(set(SENSOR_OFFSETS) - declared):
+        problems.append(
+            f"no demo node declares {name}; the model still says what it should "
+            "be, so either it was renamed or the node stopped needing it")
+    for (node, name), value in sorted(offsets.items()):
+        link, reference, axis = SENSOR_OFFSETS[name]
+        if abs(value - expected[name]) > TOLERANCE_M:
             problems.append(
-                f"{node} places the lidar {value:+.4f} m from the rangefinder "
-                f"along {axis} and the model places it {offset[axis]:+.4f} m")
+                f"{node} places {link} {value:+.4f} m from {reference} along "
+                f"{AXES[axis]} and the model places it {expected[name]:+.4f} m")
 
     pinned = world_scoped_topics()
     if pinned:
@@ -234,8 +250,9 @@ def main():
     print("  no sensor topic names a world, so the model is not pinned to one")
     print(f"  {len(shared)} shared links agree on position, rotation and total mass")
     print(f"  total mass {sdf_mass:.3f} kg")
-    print(f"  the demo nodes place the lidar {offset['x']:+.3f} m ahead of the "
-          f"rangefinder and {offset['z']:+.3f} m above it, as the model does")
+    for name, (link, reference, axis) in SENSOR_OFFSETS.items():
+        print(f"  the demo nodes put {link} {expected[name]:+.3f} m from "
+              f"{reference} along {AXES[axis]}, as the model does")
     for name, why in sorted({**URDF_ONLY, **SDF_ONLY}.items()):
         print(f"  {name}: in one file only, {why}")
     print("Model consistency check passed.")

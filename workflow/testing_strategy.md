@@ -70,6 +70,8 @@ Micro XRCE-DDS Agent, which Nixpkgs does not provide:
 | `scripts/check_sitl_dds_control.sh` | the DDS service request path is accepted |
 | `scripts/check_iris_dds_control.sh` | the upstream Iris reference flies over DDS |
 | `scripts/check_forward_flight.sh` | the autonomy demo takes off, creeps and stops |
+| `scripts/check_room_circuit.sh` | the demo turns at a wall and flies on instead of stopping |
+| `scripts/check_room_mapping.sh` | the map built over that circuit is the room the world file describes |
 | `scripts/check_unified_launch.sh` | one launch serves Gazebo, ArduPilot and TF |
 | `scripts/check_attitude_estimate.sh` | AP_DDS reports the attitude the vehicle really has |
 | `scripts/sweep_rate_gains.sh` | measures where the roll rate loop starts to oscillate |
