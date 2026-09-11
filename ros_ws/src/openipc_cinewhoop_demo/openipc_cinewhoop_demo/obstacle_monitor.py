@@ -1,11 +1,16 @@
 import math
 
 import rclpy
+from geometry_msgs.msg import PoseStamped
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
-from sensor_msgs.msg import LaserScan
+from sensor_msgs.msg import LaserScan, Range
 
-from openipc_cinewhoop_demo.scan_helpers import nearest_in_sector, scan_is_usable
+from openipc_cinewhoop_demo.scan_helpers import (
+    nearest_in_sector,
+    roll_pitch_from_quaternion,
+    scan_is_usable,
+)
 
 
 class ObstacleMonitor(Node):
@@ -18,11 +23,22 @@ class ObstacleMonitor(Node):
         # Same reason as the autonomy node: the sensor sweeps the whole circle,
         # so the monitor has to be told which part of it counts as "ahead".
         self.declare_parameter("forward_sector_deg", 60.0)
+        # And for the same reason again, the same compensation: the lidar leans
+        # with the airframe, so its forward beams find the floor as soon as the
+        # nose drops. A monitor without this reports the floor as the nearest
+        # obstacle while the autonomy node correctly ignores it, which is worse
+        # than either behaviour on its own - the two would disagree in flight.
+        self.declare_parameter("range_topic", "/openipc_cinewhoop/range/down")
+        self.declare_parameter("pose_topic", "/ap/pose/filtered")
+        self.declare_parameter("ground_margin_m", 0.25)
 
         self._last_log_time = self.get_clock().now()
         self._started_at = self.get_clock().now()
         self._last_scan_time = None
         self._silent_logged = False
+        self._roll = 0.0
+        self._pitch = 0.0
+        self._height = None
         topic = self.get_parameter("scan_topic").value
         self.create_subscription(
             LaserScan,
@@ -30,6 +46,12 @@ class ObstacleMonitor(Node):
             self._on_scan,
             qos_profile_sensor_data,
         )
+        self.create_subscription(
+            PoseStamped, self.get_parameter("pose_topic").value,
+            self._on_pose, qos_profile_sensor_data)
+        self.create_subscription(
+            Range, self.get_parameter("range_topic").value,
+            self._on_range, qos_profile_sensor_data)
         # A monitor that simply goes quiet when its sensor dies is worse than
         # no monitor, so silence is reported rather than left to be noticed.
         self.create_timer(0.2, self._check_alive)
@@ -50,6 +72,17 @@ class ObstacleMonitor(Node):
             f"No front lidar scan {what} after {silent_for:.1f} s")
         self._silent_logged = True
 
+    def _on_pose(self, msg: PoseStamped):
+        q = msg.pose.orientation
+        self._roll, self._pitch = roll_pitch_from_quaternion(q.x, q.y, q.z, q.w)
+
+    def _on_range(self, msg: Range):
+        # Outside the sensor's window the reading means "no detection", and an
+        # unknown height must not start discarding real obstacles.
+        self._height = (msg.range
+                        if msg.min_range <= msg.range <= msg.max_range
+                        else None)
+
     def _on_scan(self, msg: LaserScan):
         now = self.get_clock().now()
         self._last_scan_time = now
@@ -63,7 +96,9 @@ class ObstacleMonitor(Node):
             float(self.get_parameter("forward_sector_deg").value))
         nearest = nearest_in_sector(
             msg.ranges, msg.angle_min, msg.angle_increment,
-            msg.range_min, msg.range_max, sector)
+            msg.range_min, msg.range_max, sector,
+            self._roll, self._pitch, self._height,
+            float(self.get_parameter("ground_margin_m").value))
         if nearest is None:
             self.get_logger().warning("No valid front lidar range")
             return

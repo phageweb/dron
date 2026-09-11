@@ -8,20 +8,34 @@
 - práce se zprávou `sensor_msgs/msg/LaserScan`
 - čitelný výpis vzdálenosti nejbližší překážky před dronem
 
-Vstup:
+Vstupy:
 
 ```text
-/openipc_cinewhoop/scan/front
-sensor_msgs/msg/LaserScan
+/openipc_cinewhoop/scan/front   sensor_msgs/msg/LaserScan
+/openipc_cinewhoop/range/down   sensor_msgs/msg/Range
+/ap/pose/filtered               geometry_msgs/msg/PoseStamped
 ```
 
 Chování:
 
 - subscribuje na přední lidar
 - z `ranges` odstraní `nan`, `inf` a hodnoty mimo `range_min`/`range_max`
-- spočítá minimum
+- bere jen výseč kolem směru vpřed; LD06 snímá celých 360 stupňů, takže bez ní
+  by se hlásila i stěna za dronem
+- odečte náklon. LD06 je pevně na rámu, takže se sklopeným nosem míří přední
+  paprsky do podlahy a podlaha vrátí vzdálenost jako každá jiná stěna. Návraty
+  se promítnou do gravitačně srovnaného rámu podle `roll`/`pitch` z pózy a ty,
+  které vyjdou jako zem, se zahodí
+- výšku nad podlahou bere z dolního dálkoměru. Bez známé výšky se nezahazuje
+  nic: neznámá výška nesmí začít mazat skutečné překážky
+- spočítá minimum ze zbytku
 - pravidelně loguje nejbližší překážku v metrech
 - pokud není platné měření, loguje varování s omezenou frekvencí
+- ticho lidaru hlásí sám, místo aby jen přestal psát
+
+Stejný odečet země má i `simple_indoor_autonomy.py`. Musí ho mít oba: monitor
+bez něj hlásí podlahu jako nejbližší překážku ve chvíli, kdy ji autonomie
+správně ignoruje, a ty dva si pak za letu odporují.
 
 Parametry:
 
@@ -30,8 +44,13 @@ Parametry:
 | `scan_topic` | `/openipc_cinewhoop/scan/front` | topic předního lidaru |
 | `warn_distance_m` | `0.8` | hranice blízké překážky |
 | `log_period_s` | `0.5` | omezení log spamu |
+| `scan_timeout_s` | `1.0` | po jaké době ticha se lidar hlásí jako mrtvý |
+| `forward_sector_deg` | `60.0` | šířka výseče, která se počítá jako „vpřed“ |
+| `range_topic` | `/openipc_cinewhoop/range/down` | výška nad podlahou pro odečet země |
+| `pose_topic` | `/ap/pose/filtered` | náklon dronu pro odečet země |
+| `ground_margin_m` | `0.25` | pod touto výškou je návrat zem, ne překážka |
 
-Příklad budoucího spuštění:
+Příklad spuštění:
 
 ```bash
 ros2 run openipc_cinewhoop_demo obstacle_monitor --ros-args \

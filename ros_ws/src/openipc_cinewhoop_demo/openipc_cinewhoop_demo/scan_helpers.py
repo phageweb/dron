@@ -159,6 +159,23 @@ def safe_forward_speed(
     return forward_speed
 
 
+def hold_reason(fresh: bool, nearest_range: Optional[float]):
+    """Why the vehicle is not moving: a reason, and the detail that goes with it.
+
+    The reason is what gets latched in the log, and the detail is what does not.
+    Splitting them is the point: an obstacle drifting from 1.17 m to 1.16 m is
+    the same reason and must not re-log ten times a second, while a stale scan
+    that recovers into an obstacle is a different reason and has to be said. The
+    node used to latch the fact of holding instead, so whichever reason came
+    first was the only one ever reported.
+    """
+    if not fresh:
+        return "no recent scan", ""
+    if nearest_range is None:
+        return "no valid range in the scan", ""
+    return "obstacle", f" at {nearest_range:.2f} m"
+
+
 def scan_is_usable(age_s: Optional[float], timeout_s: float) -> bool:
     """Return whether a scan that last arrived age_s ago can still be trusted.
 

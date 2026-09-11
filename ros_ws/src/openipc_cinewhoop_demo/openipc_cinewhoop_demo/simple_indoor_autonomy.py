@@ -16,6 +16,7 @@ from sensor_msgs.msg import LaserScan, Range
 from std_srvs.srv import Trigger
 
 from openipc_cinewhoop_demo.scan_helpers import (
+    hold_reason,
     nearest_in_sector,
     roll_pitch_from_quaternion,
     safe_forward_speed,
@@ -91,7 +92,7 @@ class SimpleIndoorAutonomy(Node):
         self._pitch = 0.0
         self._height = None
         self._pending = None
-        self._stopped_logged = False
+        self._hold_reason = None
         self._altitude = None
         self._armed = False
         self._takeoff_time = None
@@ -272,18 +273,19 @@ class SimpleIndoorAutonomy(Node):
                 float(self.get_parameter("forward_speed_mps").value),
                 float(self.get_parameter("braking_distance_m").value))
 
-        if speed == 0.0 and not self._stopped_logged:
+        if speed == 0.0:
             # A fresh scan can still be all inf or nan, so nearest may be None.
-            if not fresh:
-                reason = "no recent scan"
-            elif self._nearest is None:
-                reason = "no valid range in the scan"
-            else:
-                reason = f"obstacle at {self._nearest:.2f} m"
-            self.get_logger().info(f"Holding: {reason}")
-            self._stopped_logged = True
-        elif speed > 0.0:
-            self._stopped_logged = False
+            reason, detail = hold_reason(fresh, self._nearest)
+            # Latch the reason rather than the fact of holding. A vehicle that
+            # stops because the scan went stale and then stays stopped because a
+            # wall appeared used to log only the first of those, so the log said
+            # the lidar was dead long after it had recovered. The reason is what
+            # is latched, so the distance does not re-log every 0.1 s.
+            if reason != self._hold_reason:
+                self.get_logger().info(f"Holding: {reason}{detail}")
+                self._hold_reason = reason
+        else:
+            self._hold_reason = None
 
         cmd = TwistStamped()
         cmd.header.stamp = self.get_clock().now().to_msg()

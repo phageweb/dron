@@ -3,6 +3,7 @@ import unittest
 
 from openipc_cinewhoop_demo.scan_helpers import (
     ground_return_height,
+    hold_reason,
     is_ground_return,
     nearest_in_sector,
     nearest_valid_range,
@@ -180,3 +181,33 @@ class GroundReturnTest(unittest.TestCase):
     def test_an_unknown_height_discards_nothing(self):
         self.assertFalse(
             is_ground_return(self.AHEAD, 1.4, 0.0, self.NOSE_DOWN, None))
+
+
+class HoldReasonTest(unittest.TestCase):
+    """What the demo says when it is not moving, and when it says it again.
+
+    The node logs the reason once and then stays quiet until the reason changes,
+    so these are about which changes count. Latching the wrong thing is not a
+    cosmetic bug: the log is the only account of why a vehicle stopped.
+    """
+
+    def test_a_stale_scan_outranks_whatever_the_last_one_showed(self):
+        self.assertEqual(hold_reason(False, 5.0)[0], "no recent scan")
+
+    def test_a_fresh_but_empty_scan_says_so(self):
+        self.assertEqual(
+            hold_reason(True, None)[0], "no valid range in the scan")
+
+    def test_an_obstacle_carries_its_distance_in_the_detail(self):
+        self.assertEqual(hold_reason(True, 1.17), ("obstacle", " at 1.17 m"))
+
+    def test_an_obstacle_that_moves_a_little_is_the_same_reason(self):
+        # Otherwise the node would re-log ten times a second while holding.
+        self.assertEqual(hold_reason(True, 1.17)[0], hold_reason(True, 1.16)[0])
+
+    def test_a_recovered_lidar_showing_a_wall_is_a_new_reason(self):
+        # The case that was silently wrong: the vehicle stopped for a dead
+        # lidar, the lidar came back with a wall in front of it, and the log
+        # still said the lidar was dead.
+        self.assertNotEqual(
+            hold_reason(False, None)[0], hold_reason(True, 0.9)[0])
