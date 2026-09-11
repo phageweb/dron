@@ -131,11 +131,24 @@
       vehicle that stopped for a stale scan and then stayed stopped for a wall
       logged only the first reason, so the log said the lidar was dead long
       after it had recovered
-- [ ] The lean is asserted against an attitude fed in from outside, because
-      AP_DDS is not running in that check. It comes from Gazebo's own report of
-      the model rather than from a constant, but nothing there tests the EKF's
-      estimate against the truth; `check_forward_flight.sh` flies the real pose
-      and still never leans far enough to matter
+- [x] Check that AP_DDS reports the attitude the vehicle really has, which the
+      floor rejection trusts and nothing tested. `ramp_test.sdf` parks the
+      vehicle on a slope tilted in both axes, and
+      `scripts/check_attitude_estimate.sh` compares the world file, Gazebo's
+      ground truth and `/ap/pose/filtered`: all three agree to 0.01 degrees.
+      Parked rather than flying, because a steady attitude is two numbers
+      instead of two streams to align during a transient
+- [x] Stop the model pinning itself to one world. Its five sensors declared
+      topics containing `/world/indoor_test/`, so in any other world
+      `ArduPilotPlugin` could not find the IMU, never sent SITL a state frame,
+      and SITL resent servos forever saying only "No JSON sensor message
+      received". Sensors now declare no topic, `gz_bridge.yaml` is a template
+      rendered from the launched world's own name, and
+      `check_model_consistency.py` fails if a world name reappears in one
+- [ ] The attitude check is still simulation agreeing with simulation: SITL's
+      EKF is fed a noiseless IMU, so it proves the convention rather than the
+      accuracy. A real flight controller on a real ramp is what would test the
+      estimate itself
 
 
 - [x] Implement `obstacle_monitor.py`

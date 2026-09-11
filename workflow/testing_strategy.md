@@ -71,6 +71,7 @@ Micro XRCE-DDS Agent, which Nixpkgs does not provide:
 | `scripts/check_iris_dds_control.sh` | the upstream Iris reference flies over DDS |
 | `scripts/check_forward_flight.sh` | the autonomy demo takes off, creeps and stops |
 | `scripts/check_unified_launch.sh` | one launch serves Gazebo, ArduPilot and TF |
+| `scripts/check_attitude_estimate.sh` | AP_DDS reports the attitude the vehicle really has |
 | `scripts/sweep_rate_gains.sh` | measures where the roll rate loop starts to oscillate |
 
 A few more baseline checks cover the shape of the data rather than the graph:
@@ -86,6 +87,15 @@ All of them are cheap enough for every run. The consistency check needs neither 
 simulator nor a ROS graph - it expands the Xacro and reads both files - and the
 dropout check needs no simulator either: it publishes a scan from the command line and then stops, which is what a
 disconnected sensor looks like from inside a node.
+
+`check_attitude_estimate.sh` is the other half of the leaning check. That one
+proves the demo rejects the floor *given* an attitude; this one proves the
+attitude it is given is real. It parks the vehicle on `ramp_test.sdf`, a slope
+tilted in both axes - 20 degrees of pitch and 10 of roll, so a roll/pitch swap
+cannot hide behind matching numbers - and compares three things that must agree:
+the world file, Gazebo's ground truth, and `/ap/pose/filtered`. Nothing arms and
+nothing flies, which is the point: an attitude read from a parked vehicle is two
+steady numbers rather than two streams to align during a transient.
 
 The leaning check does need Gazebo, but not SITL and not ArduPilot. It runs over
 `leaning_test.sdf`, a world whose only job is to hold the model static at 30

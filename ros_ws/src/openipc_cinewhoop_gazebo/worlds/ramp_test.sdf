@@ -1,0 +1,79 @@
+<?xml version="1.0"?>
+<!-- A vehicle parked on a compound slope, so its attitude is known and steady.
+     
+     The demo's floor rejection projects every lidar return using roll and pitch
+     from /ap/pose/filtered. Nothing checked that ArduPilot's estimate is the
+     attitude the vehicle actually has, in the convention the projection assumes,
+     and a sign or an axis swap there would discard the ceiling while keeping the
+     floor. Checking it in flight means aligning two streams during a transient;
+     checking it parked on a slope means reading two steady numbers.
+
+     The ramp is tilted in both axes on purpose - 20 degrees of pitch and 10 of
+     roll - so that swapping the two, or flipping either sign, is unmistakable.
+     A single-axis ramp would let a roll/pitch swap pass whenever the angles
+     happened to match. The total tilt is 22.2 degrees, whose tangent is 0.41,
+     comfortably inside the friction cone, so the vehicle sits still rather than
+     sliding down.
+
+     The drone's pose repeats the ramp's rotation and sits on the ramp's top
+     face: the face centre is the ramp centre plus half its thickness along the
+     ramp's own z axis, (sin p cos r, -sin r, cos p cos r), and the body's own
+     9 mm half-height goes on top of that. It is left about 9 mm clear so it
+     settles onto the surface instead of starting inside it. -->
+<sdf version="1.10">
+  <world name="ramp_test">
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+
+    <gravity>0 0 -9.80665</gravity>
+    <magnetic_field>6e-06 2.3e-05 -4.2e-05</magnetic_field>
+    <atmosphere type="adiabatic"/>
+
+    <light name="ceiling_light" type="directional">
+      <pose>0 0 4 0 0 0</pose>
+      <cast_shadows>true</cast_shadows>
+      <direction>-0.3 0.4 -1</direction>
+      <diffuse>0.9 0.86 0.75 1</diffuse>
+    </light>
+
+    <model name="floor">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>10 6 0.05</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>10 6 0.05</size></box></geometry>
+          <material><diffuse>0.45 0.48 0.48 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="ramp">
+      <static>true</static>
+      <pose>0 0 0.5 0.174532925 0.349065850 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>2 1 0.2</size></box></geometry>
+          <!-- Well above the 0.41 the slope asks for, so the check measures an
+               attitude rather than a slide. -->
+          <surface><friction><ode><mu>5</mu><mu2>5</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>2 1 0.2</size></box></geometry>
+          <material><diffuse>0.60 0.50 0.30 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <include>
+      <uri>model://openipc_cinewhoop</uri>
+      <pose>0.0367 -0.0189 0.610 0.174532925 0.349065850 0</pose>
+    </include>
+  </world>
+</sdf>
