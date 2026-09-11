@@ -12,11 +12,12 @@ import rclpy
 from geometry_msgs.msg import PoseStamped, TwistStamped
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
-from sensor_msgs.msg import LaserScan
+from sensor_msgs.msg import LaserScan, Range
 from std_srvs.srv import Trigger
 
 from openipc_cinewhoop_demo.scan_helpers import (
     nearest_in_sector,
+    roll_pitch_from_quaternion,
     safe_forward_speed,
     scan_is_usable,
     takeoff_needs_retry,
@@ -61,6 +62,11 @@ class SimpleIndoorAutonomy(Node):
         # how far ahead it means. Without this the vehicle stops for the wall
         # behind it, on hardware exactly as in simulation.
         self.declare_parameter("forward_sector_deg", 60.0)
+        # The lidar leans with the airframe, so its forward beams find the floor
+        # as soon as the nose drops. Returns that work out to be the ground are
+        # dropped, which needs the height the downward rangefinder measures.
+        self.declare_parameter("range_topic", "/openipc_cinewhoop/range/down")
+        self.declare_parameter("ground_margin_m", 0.25)
         self.declare_parameter("pose_topic", "/ap/pose/filtered")
         self.declare_parameter("status_topic", "/ap/status")
         # Service names are parameters for the same reason the topic names are:
@@ -81,6 +87,9 @@ class SimpleIndoorAutonomy(Node):
 
         self._nearest = None
         self._last_scan_time = None
+        self._roll = 0.0
+        self._pitch = 0.0
+        self._height = None
         self._pending = None
         self._stopped_logged = False
         self._altitude = None
@@ -96,6 +105,9 @@ class SimpleIndoorAutonomy(Node):
         self.create_subscription(
             PoseStamped, self.get_parameter("pose_topic").value,
             self._on_pose, qos_profile_sensor_data)
+        self.create_subscription(
+            Range, self.get_parameter("range_topic").value,
+            self._on_range, qos_profile_sensor_data)
 
         self._auto = bool(self.get_parameter("auto_takeoff").value)
         if self._auto and not ARDUPILOT_SRVS:
@@ -128,7 +140,9 @@ class SimpleIndoorAutonomy(Node):
             float(self.get_parameter("forward_sector_deg").value))
         self._nearest = nearest_in_sector(
             msg.ranges, msg.angle_min, msg.angle_increment,
-            msg.range_min, msg.range_max, sector)
+            msg.range_min, msg.range_max, sector,
+            self._roll, self._pitch, self._height,
+            float(self.get_parameter("ground_margin_m").value))
         self._last_scan_time = self.get_clock().now()
 
     def _on_status(self, msg):
@@ -136,6 +150,15 @@ class SimpleIndoorAutonomy(Node):
 
     def _on_pose(self, msg: PoseStamped):
         self._altitude = msg.pose.position.z
+        q = msg.pose.orientation
+        self._roll, self._pitch = roll_pitch_from_quaternion(q.x, q.y, q.z, q.w)
+
+    def _on_range(self, msg: Range):
+        # Outside the sensor's window the reading means "no detection", and an
+        # unknown height must not start discarding real obstacles.
+        self._height = (msg.range
+                        if msg.min_range <= msg.range <= msg.max_range
+                        else None)
 
     def _since_takeoff_s(self):
         if self._takeoff_time is None:

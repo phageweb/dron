@@ -110,21 +110,20 @@
 
 ## Milestone 9: Demo Nodes
 
-- [ ] Compensate the front scan for vehicle attitude. The lidar is bolted to the
-      airframe, so leaning points its forward beams at the floor, which then
-      returns a range like a wall. At 1 m and the demo's gentle lean there is
-      margin; at 0.5 m, 20 degrees is enough to stop the vehicle for the ground.
-      The fix is to transform returns into a gravity-aligned frame through TF and
-      drop anything below a height threshold - the TF tree is already correct and
-      `/ap/pose/filtered` already carries the orientation
+- [x] Compensate the front scan for vehicle attitude in `simple_indoor_autonomy`.
+      Returns are projected into a gravity-aligned frame using the pose's roll
+      and pitch, and dropped when they work out to be the floor. The height comes
+      from the downward rangefinder, and an unknown height discards nothing
 - [ ] Decide how lidar data reaches the ground. ELRS telemetry carries hundreds
       of bytes per second and the scan needs 108 kbit/s raw, so it has to ride
       the OpenIPC WiFi link beside the video - about 3.6 per cent of an 8 Mbit/s
       stream. wfb-ng has a data channel; nobody has configured or measured it
-- [ ] Write the test first: pitch the vehicle in simulation and assert the
-      forward scan does not report the floor. The Gazebo sensor is rigidly
-      attached exactly as the real one is, so this is reproducible before it is
-      ever flown
+- [ ] Still owed: a simulator test that actually leans the vehicle. The unit
+      tests pin the geometry and the sign, but the forward-flight check cruises
+      at 1 m with a gentle attitude, so it never exercises the rejection. Fly it
+      low, or command a real lean, and assert the floor is not reported
+- [ ] Give `obstacle_monitor` the same compensation, or it will report the floor
+      as the nearest obstacle while the autonomy node correctly ignores it
 
 
 - [x] Implement `obstacle_monitor.py`

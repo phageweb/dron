@@ -2,6 +2,8 @@ import math
 import unittest
 
 from openipc_cinewhoop_demo.scan_helpers import (
+    ground_return_height,
+    is_ground_return,
     nearest_in_sector,
     nearest_valid_range,
     range_reading,
@@ -118,3 +120,63 @@ class NearestInSectorTest(unittest.TestCase):
             nearest_in_sector([2.0, 3.0, 0.5, 3.0], 0.0, math.pi / 2,
                               0.02, 12.0, math.radians(60)),
             2.0)
+
+
+class GroundReturnTest(unittest.TestCase):
+    """The sign here is the whole problem, so the tests state the physics.
+
+    REP 103 has y pointing left, so a positive rotation about it tips the nose
+    down. Every case below is written from what the vehicle is doing, not from
+    the formula, so a flipped sign fails rather than passes quietly.
+    """
+
+    AHEAD = 0.0
+    LEFT = math.pi / 2
+    NOSE_DOWN = math.radians(20)
+
+    def test_level_flight_finds_nothing_below(self):
+        self.assertAlmostEqual(
+            ground_return_height(self.AHEAD, 3.0, 0.0, 0.0), 0.0)
+
+    def test_nose_down_puts_a_forward_return_below_the_sensor(self):
+        drop = ground_return_height(self.AHEAD, 3.0, 0.0, self.NOSE_DOWN)
+        self.assertLess(drop, 0.0)
+        # 3 m out at 20 degrees of lean is 3*sin(20) = 1.03 m down.
+        self.assertAlmostEqual(drop, -3.0 * math.sin(self.NOSE_DOWN), places=6)
+
+    def test_nose_up_puts_it_above(self):
+        self.assertGreater(
+            ground_return_height(self.AHEAD, 3.0, 0.0, -self.NOSE_DOWN), 0.0)
+
+    def test_rolling_right_lowers_what_is_off_the_left_wing(self):
+        # Roll right is negative about the forward axis, which drops the left.
+        self.assertLess(
+            ground_return_height(self.LEFT, 3.0, math.radians(-20), 0.0), 0.0)
+
+    def test_the_floor_is_recognised(self):
+        # At 1 m up and 20 degrees of lean the beam meets the floor at
+        # 1.0 / sin(20) = 2.92 m of slant range.
+        self.assertTrue(
+            is_ground_return(self.AHEAD, 2.92, 0.0, self.NOSE_DOWN, 1.0))
+
+    def test_a_wall_at_the_same_attitude_is_not(self):
+        # Same lean and height, but a return 1.4 m out sits 0.52 m above the
+        # floor, which is a wall and not the ground.
+        self.assertFalse(
+            is_ground_return(self.AHEAD, 1.4, 0.0, self.NOSE_DOWN, 1.0))
+
+    def test_low_and_leaning_the_two_stop_being_distinguishable(self):
+        # This is a property of the geometry, not a shortcoming of the code. At
+        # 0.5 m up and 20 degrees down, a return 1.0 m out is aimed at a point
+        # 0.16 m above the floor. A wall's base and the floor itself are the
+        # same measurement there, and the honest answer is to treat it as
+        # ground: flying that low and that hard is what needs fixing.
+        self.assertTrue(
+            is_ground_return(self.AHEAD, 1.0, 0.0, self.NOSE_DOWN, 0.5))
+
+    def test_a_wall_in_level_flight_is_never_ground(self):
+        self.assertFalse(is_ground_return(self.AHEAD, 1.4, 0.0, 0.0, 1.0))
+
+    def test_an_unknown_height_discards_nothing(self):
+        self.assertFalse(
+            is_ground_return(self.AHEAD, 1.4, 0.0, self.NOSE_DOWN, None))

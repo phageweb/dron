@@ -17,6 +17,67 @@ def nearest_valid_range(
     return min(valid)
 
 
+def roll_pitch_from_quaternion(x: float, y: float, z: float, w: float):
+    """Roll and pitch out of a pose quaternion, in the REP 103 convention.
+
+    Written here rather than pulled from tf_transformations so the demo package
+    keeps depending only on what the Nix shell already provides, and so the
+    convention is pinned by this project's own tests.
+    """
+    sin_roll = 2.0 * (w * x + y * z)
+    cos_roll = 1.0 - 2.0 * (x * x + y * y)
+    roll = math.atan2(sin_roll, cos_roll)
+    sin_pitch = 2.0 * (w * y - z * x)
+    # Clamp so a quaternion that has drifted slightly off unit length cannot
+    # hand asin a value outside its domain.
+    pitch = math.asin(max(-1.0, min(1.0, sin_pitch)))
+    return roll, pitch
+
+
+def ground_return_height(
+    bearing_rad: float,
+    range_m: float,
+    roll_rad: float,
+    pitch_rad: float,
+) -> float:
+    """How far below the sensor a return lies, once the vehicle's lean is undone.
+
+    The lidar is bolted to the airframe, so leaning tips its scan plane and the
+    forward beams start finding the floor. A return is only an obstacle if it is
+    roughly level with the sensor; this says how far under it the return really
+    sits, so the caller can compare that against the height it is flying at.
+
+    Angles follow REP 103 as the pose message gives them: x forward, y left,
+    z up, right-handed. The returned value is negative below the sensor.
+    """
+    x = range_m * math.cos(bearing_rad)
+    y = range_m * math.sin(bearing_rad)
+    # Third row of Rz(yaw) Ry(pitch) Rx(roll) applied to a point in the scan
+    # plane. Yaw drops out: rotating about the vertical cannot change a height.
+    return (-math.sin(pitch_rad) * x
+            + math.cos(pitch_rad) * math.sin(roll_rad) * y)
+
+
+def is_ground_return(
+    bearing_rad: float,
+    range_m: float,
+    roll_rad: float,
+    pitch_rad: float,
+    height_above_floor_m: Optional[float],
+    margin_m: float = 0.25,
+) -> bool:
+    """Whether a return is the floor rather than something worth stopping for.
+
+    Needs to know how high the sensor is, which the downward rangefinder already
+    measures. Without that height nothing can be ruled out, so nothing is: an
+    unknown altitude must not start discarding real obstacles.
+    """
+    if height_above_floor_m is None:
+        return False
+    drop = ground_return_height(bearing_rad, range_m, roll_rad, pitch_rad)
+    return height_above_floor_m + drop <= margin_m
+
+
 def nearest_in_sector(
     ranges: Iterable[float],
     angle_min: float,
@@ -24,6 +85,10 @@ def nearest_in_sector(
     range_min: float,
     range_max: float,
     sector_rad: float,
+    roll_rad: float = 0.0,
+    pitch_rad: float = 0.0,
+    height_above_floor_m: Optional[float] = None,
+    ground_margin_m: float = 0.25,
 ) -> Optional[float]:
     """Nearest valid return within a cone around straight ahead.
 
@@ -32,6 +97,11 @@ def nearest_in_sector(
     and that is not a simulation artefact: the real sensor reports those returns
     too. Anything that decides on "the obstacle ahead" has to say how far ahead
     it means.
+
+    Given the vehicle's lean and how high it is flying, returns that are really
+    the floor are dropped as well. Leave those arguments out and nothing is
+    dropped, which is what the unit tests of the sector logic rely on and what
+    should happen whenever the altitude is unknown.
     """
     half = abs(sector_rad) / 2.0
     nearest = None
@@ -43,6 +113,9 @@ def nearest_in_sector(
         # both work out the same.
         angle = (angle + math.pi) % (2 * math.pi) - math.pi
         if abs(angle) > half:
+            continue
+        if is_ground_return(angle, value, roll_rad, pitch_rad,
+                            height_above_floor_m, ground_margin_m):
             continue
         if nearest is None or value < nearest:
             nearest = value

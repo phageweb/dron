@@ -347,21 +347,22 @@ more dangerous one. The LD06 is bolted to the airframe, so its scan plane leans
 with the vehicle. Nose down by an angle, and the forward beams point at the
 floor; the floor then returns a range like any wall would.
 
-Where that lands, for a horizontal scan plane pitched by theta at height h, is
-just `h / tan(theta)`:
+Where that lands, for a scan plane pitched by theta at height h, is the slant
+range `h / sin(theta)` - the sensor reports distance along its own beam, which
+is what the demo's threshold is compared against:
 
 | Lean | at 1.0 m | at 0.5 m | at 0.3 m |
 | ---: | ---: | ---: | ---: |
-| 5° | 11.4 m | 5.7 m | 3.4 m |
-| 10° | 5.7 m | 2.8 m | 1.7 m |
-| 20° | 2.7 m | **1.4 m** | 0.8 m |
-| 30° | 1.7 m | 0.9 m | 0.5 m |
-| 35° | **1.4 m** | 0.7 m | 0.4 m |
+| 5° | 11.5 m | 5.7 m | 3.4 m |
+| 10° | 5.8 m | 2.9 m | 1.7 m |
+| 20° | 2.9 m | **1.5 m** | 0.9 m |
+| 30° | 2.0 m | 1.0 m | 0.6 m |
+| 35° | 1.7 m | 0.9 m | 0.5 m |
 
-The demo stops below 1.40 m, so the bold cells are where the vehicle stops for
-the ground. At its 1 m cruise and the gentle lean 0.5 m/s needs, there is a wide
-margin. **Halve the altitude and 20 degrees is enough**, and 20 degrees is not an
-aggressive manoeuvre.
+The demo stops below 1.40 m, so the bold cell is where the vehicle stops for the
+ground. At its 1 m cruise it takes about 45 degrees of lean to get there, which
+is far more than 0.5 m/s asks for. **Halve the altitude and 22 degrees is
+enough**, and 22 degrees is not an aggressive manoeuvre.
 
 Nothing in the code handles this today, and the simulation reproduces it
 faithfully, because the Gazebo sensor is rigidly attached in exactly the same
