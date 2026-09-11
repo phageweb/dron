@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+<!-- A vehicle held banked over the floor, so the roll term of the floor
+     rejection is exercised by a scan Gazebo produced.
+
+     leaning_test.sdf pitches the vehicle and holds roll at zero, and that is a
+     blind spot rather than a simplification. The drop a lean gives a return is
+     `-sin(pitch) x + cos(pitch) sin(roll) y`: the pitch term is even in the
+     bearing, so it is the same on both sides of the sector and a scan indexed
+     the other way round the circle would produce identical numbers. The roll
+     term is odd in the bearing. Only a banked vehicle can tell the two apart,
+     which makes this world the one that checks the scan's angular handedness
+     against the vehicle's roll - a unit test cannot, because it writes both
+     conventions itself.
+
+     Geometry, at 25 degrees of roll and 20 degrees of pitch with base_link
+     0.60 m up. Positive roll is right-handed about the forward axis, which in
+     REP 103's x-forward, y-left, z-up body frame raises the left wing and drops
+     the right: the vehicle is banking right.
+       front_lidar_link lands 0.602 m above the floor surface
+       rangefinder_link lands 0.555 m up and reads 0.651 m of slant
+       the floor is reached at 1.22 m off the right wing, 1.76 m straight ahead
+         and 6.17 m off the left, where it has run past the edge of the room
+     The nearest of those is inside the demo's 1.40 m stop threshold, so an
+     uncompensated node stops for the floor here as well - but it arrives on one
+     side only, which is the part a pitched-only world cannot produce. -->
+<sdf version="1.10">
+  <world name="banked_test">
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+
+    <gravity>0 0 -9.80665</gravity>
+    <magnetic_field>6e-06 2.3e-05 -4.2e-05</magnetic_field>
+    <atmosphere type="adiabatic"/>
+
+    <light name="ceiling_light" type="directional">
+      <pose>0 0 4 0 0 0</pose>
+      <cast_shadows>true</cast_shadows>
+      <direction>-0.3 0.4 -1</direction>
+      <diffuse>0.9 0.86 0.75 1</diffuse>
+    </light>
+
+    <!-- Same floor as indoor_test.sdf: top surface at z = 0.025. -->
+    <model name="floor">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>10 6 0.05</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>10 6 0.05</size></box></geometry>
+          <material><diffuse>0.45 0.48 0.48 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <include>
+      <uri>model://openipc_cinewhoop</uri>
+      <!-- Static for the same reason leaning_test.sdf is: set_pose does not
+           reset velocity, so a held model accelerates between teleports and the
+           scan differs every run. Frozen, the same bank gives the same scan.
+           Both axes are non-zero and they are deliberately different sizes, so
+           a roll and pitch swapped for each other cannot hide behind matching
+           numbers. -->
+      <static>true</static>
+      <pose>0 0 0.60 0.4363323130 0.3490658504 0</pose>
+    </include>
+  </world>
+</sdf>

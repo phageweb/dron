@@ -17,7 +17,15 @@
 # being empty.
 #
 # Headless, no SITL, no ArduPilot: this belongs in baseline CI.
+#
+# The world is an argument, because the same property has to hold at more than
+# one attitude: leaning_test.sdf pitches the vehicle, banked_test.sdf rolls it
+# as well. A minimum roll can be demanded so the banked run fails rather than
+# quietly becoming a second pitched one.
 set -eo pipefail
+
+world="${1:-leaning_test}"
+min_roll_deg="${2:-0}"
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
@@ -60,9 +68,9 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "==> Gazebo over the leaning world"
+echo "==> Gazebo over $world"
 setsid ros2 launch openipc_cinewhoop_gazebo gazebo.launch.py \
-  gui:=false use_bridge:=true world:=leaning_test.sdf \
+  gui:=false use_bridge:=true world:="$world.sdf" \
   >"$test_tmpdir/gazebo.log" 2>&1 &
 launch_pid=$!
 
@@ -85,7 +93,7 @@ done
 # downward sensor really is above the floor, which is the truth the slant-range
 # correction is checked against.
 quat="$(timeout 40 python3 scripts/gazebo_link_truth.py \
-  ros_ws/src/openipc_cinewhoop_gazebo/worlds/leaning_test.sdf leaning_test \
+  "ros_ws/src/openipc_cinewhoop_gazebo/worlds/$world.sdf" "$world" \
   openipc_cinewhoop rangefinder_link 2>"$test_tmpdir/truth.log")"
 if [ -z "$quat" ]; then
   echo "Could not read the vehicle's attitude out of Gazebo." >&2
@@ -104,7 +112,7 @@ setsid ros2 topic pub -r 10 --qos-reliability best_effort /ap/pose/filtered \
 pose_pid=$!
 
 echo "==> the scan is the floor, and the geometry rejects it"
-python3 scripts/check_leaning_scan.py "$true_height"
+python3 scripts/check_leaning_scan.py "$true_height" "$min_roll_deg"
 
 echo "==> the demo nodes over the same scan"
 # Blind variants point at a rangefinder topic nobody publishes, which is exactly
@@ -176,4 +184,4 @@ absent_after() {
 absent_after obstacle_monitor "No valid front lidar range"
 absent_after simple_indoor_autonomy "Holding: no valid range in the scan"
 
-echo "Leaning scan check passed: the floor stops an uncompensated node and not a compensated one."
+echo "Leaning scan check passed over $world: the floor stops an uncompensated node and not a compensated one."

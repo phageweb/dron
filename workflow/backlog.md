@@ -158,6 +158,19 @@
       `check_leaning_scan.sh` checks the result against where Gazebo says the
       link is rather than against the formula: 0.554 m against 0.551 m, inside
       the sensor's own 0.01 m range resolution
+- [x] Exercise the roll term of the projection on a scan Gazebo produced.
+      `banked_test.sdf` holds the vehicle at 25 degrees of roll and 20 of pitch,
+      0.60 m up, where the floor arrives in the forward sector at 1.21 m off the
+      right wing and 6.2 m off the left. `leaning_test.sdf` could not do this:
+      the pitch term is even in the bearing, so a scan indexed the other way
+      round the circle gives identical numbers there, while the roll term is odd
+      and does not. With the roll sign flipped, `leaning_test` still passes and
+      `banked_test` fails
+- [ ] Fly a circuit of the room. `simple_indoor_autonomy` publishes only
+      `twist.linear.x` - it has no yaw and no lateral command, so it cannot turn
+      at all. That is a demo behaviour rather than a test: a banked turn in
+      flight tests the same geometry as `banked_test.sdf` but with two streams
+      to align during a transient instead of two steady numbers
 - [ ] Give the rejection the lidar's height rather than the rangefinder's. The
       two sensors are 26 mm apart along x and 66 mm along z, so in
       leaning_test.sdf the rangefinder is 0.551 m up and the lidar 0.595 m -

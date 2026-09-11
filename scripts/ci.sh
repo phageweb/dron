@@ -42,7 +42,13 @@ if [ -d ros_ws/src ] && find ros_ws/src -mindepth 2 -name package.xml -print -qu
   scripts/check_front_lidar.sh
 
   echo "==> Leaning-scan attitude compensation check"
-  scripts/check_leaning_scan.sh
+  scripts/check_leaning_scan.sh leaning_test
+
+  # Again with the vehicle banked. The pitch term of the projection is even in
+  # the bearing, so a pitched-only world cannot tell a scan indexed one way
+  # round the circle from one indexed the other; the roll term is odd and does.
+  echo "==> Banked-scan attitude compensation check"
+  scripts/check_leaning_scan.sh banked_test 20
 else
   echo "==> ROS workspace build skipped: no ROS packages found under ros_ws/src yet."
 fi

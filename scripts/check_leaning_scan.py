@@ -47,7 +47,9 @@ FORWARD_SECTOR_DEG = 60.0
 GROUND_MARGIN_M = 0.25
 # Nothing useful can be said about a scan taken while the vehicle is level; the
 # whole point is the lean, so a pose that is not leaning is a setup failure.
-MIN_PITCH_DEG = 20.0
+# Measured as the total tilt off vertical rather than per axis, because a world
+# may put the lean in roll, in pitch, or in both.
+MIN_LEAN_DEG = 20.0
 # How far the corrected height may sit from where Gazebo says the sensor is.
 # The simulated rangefinder quantises to its 0.01 m range resolution and reads
 # the nearest point of a 2 degree cone rather than a single ray, so a centimetre
@@ -84,11 +86,34 @@ class LeaningScanCheck(Node):
         return self.scan is not None and self.slant is not None and self.pose
 
 
+def nearest_bearing(scan, sector_rad):
+    """Where in the sector the nearest return is, which roll makes asymmetric.
+
+    Printed rather than asserted: the world file says which side its floor
+    arrives on, and a reader comparing the two is better served by the number
+    than by this script repeating the world's own arithmetic.
+    """
+    best = None
+    for index, value in enumerate(scan.ranges):
+        if not math.isfinite(value) or not scan.range_min <= value <= scan.range_max:
+            continue
+        angle = scan.angle_min + index * scan.angle_increment
+        angle = (angle + math.pi) % (2 * math.pi) - math.pi
+        if abs(angle) > sector_rad / 2.0:
+            continue
+        if best is None or value < best[0]:
+            best = (value, angle)
+    return None if best is None else best[1]
+
+
 def main():
     # Where the simulator says the downward sensor is, in metres above the floor
     # surface, passed in by the shell that has Gazebo to ask. Optional so the
     # check still runs, with that one assertion skipped, without it.
     true_height = float(sys.argv[1]) if len(sys.argv) > 1 else None
+    # A world that means to test the roll term says so, so that zeroing its roll
+    # fails here rather than passing as a second pitched-only run.
+    min_roll_deg = float(sys.argv[2]) if len(sys.argv) > 2 else 0.0
 
     rclpy.init()
     node = LeaningScanCheck()
@@ -115,6 +140,7 @@ def main():
     height = height_from_slant_range(slant, roll, pitch)
 
     sector = math.radians(FORWARD_SECTOR_DEG)
+    raw_bearing = nearest_bearing(scan, sector)
     raw = nearest_in_sector(
         scan.ranges, scan.angle_min, scan.angle_increment,
         scan.range_min, scan.range_max, sector)
@@ -123,10 +149,16 @@ def main():
         scan.range_min, scan.range_max, sector,
         roll, pitch, height, GROUND_MARGIN_M)
 
-    print(f"  attitude: roll {math.degrees(roll):.1f} deg, "
+    print(f"  attitude: roll {math.degrees(roll):.1f} deg "
+          "(banking right is positive, and drops the right wing), "
           f"pitch {math.degrees(pitch):.1f} deg (nose down is positive)")
     print(f"  rangefinder: {slant:.3f} m of slant, {height:.3f} m of height"
           + (f", truth {true_height:.3f} m" if true_height is not None else ""))
+    if raw_bearing is not None:
+        side = ("straight ahead" if abs(math.degrees(raw_bearing)) < 1.0
+                else "off the left" if raw_bearing > 0 else "off the right")
+        print(f"  the nearest raw return is {side}, at "
+              f"{math.degrees(raw_bearing):+.0f} deg")
     print(f"  nearest in the forward {FORWARD_SECTOR_DEG:.0f} deg sector: "
           f"raw {raw if raw is None else f'{raw:.3f} m'}, "
           f"compensated {compensated if compensated is None else f'{compensated:.3f} m'}")
@@ -141,9 +173,18 @@ def main():
                  f"{true_height:.3f} m, so this attitude does not exercise the "
                  "slant correction and the check proves nothing about it.")
 
-    if math.degrees(pitch) < MIN_PITCH_DEG:
-        sys.exit(f"The vehicle is only pitched {math.degrees(pitch):.1f} deg; "
-                 "this check needs it leaning to mean anything.")
+    # acos(cos roll cos pitch) is the angle between the airframe's own up and
+    # the world's, which is what "leaning" means when it is spread over two axes.
+    lean = math.degrees(math.acos(
+        max(-1.0, min(1.0, math.cos(roll) * math.cos(pitch)))))
+    if lean < MIN_LEAN_DEG:
+        sys.exit(f"The vehicle is only leaning {lean:.1f} deg; this check needs "
+                 "it leaning to mean anything.")
+    if abs(math.degrees(roll)) < min_roll_deg:
+        sys.exit(f"This run asked for at least {min_roll_deg:.0f} deg of roll "
+                 f"and the vehicle is rolled {math.degrees(roll):.1f} deg. "
+                 "Without roll the drop is even in the bearing and the scan's "
+                 "angular handedness goes untested.")
     if raw is None:
         sys.exit("The raw forward sector is empty, so the lidar is not seeing "
                  "the floor and there is nothing here to reject.")

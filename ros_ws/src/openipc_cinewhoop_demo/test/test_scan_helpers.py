@@ -258,10 +258,21 @@ class GroundReturnTest(unittest.TestCase):
         self.assertGreater(
             ground_return_height(self.AHEAD, 3.0, 0.0, -self.NOSE_DOWN), 0.0)
 
-    def test_rolling_right_lowers_what_is_off_the_left_wing(self):
-        # Roll right is negative about the forward axis, which drops the left.
+    def test_banking_left_lowers_what_is_off_the_left_wing(self):
+        # Negative roll about the forward axis is banking left, and banking left
+        # drops the left wing. The label was the other way round here, which is
+        # the exact confusion this test exists to prevent: in REP 103's
+        # x-forward, y-left, z-up body frame a positive roll takes the left wing
+        # towards +z, so it raises the left and drops the right - banking right.
         self.assertLess(
             ground_return_height(self.LEFT, 3.0, math.radians(-20), 0.0), 0.0)
+
+    def test_banking_right_lowers_what_is_off_the_right_wing(self):
+        # The other side of the same statement, so neither sign stands alone.
+        self.assertLess(
+            ground_return_height(-self.LEFT, 3.0, math.radians(20), 0.0), 0.0)
+        self.assertGreater(
+            ground_return_height(self.LEFT, 3.0, math.radians(20), 0.0), 0.0)
 
     def test_the_floor_is_recognised(self):
         # At 1 m up and 20 degrees of lean the beam meets the floor at
