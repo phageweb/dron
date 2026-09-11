@@ -1,0 +1,105 @@
+<?xml version="1.0"?>
+<!-- A closed room, so the demo has something to fly a circuit of.
+
+     indoor_test.sdf is not a room: it is a floor with a panel 4.5 m ahead and
+     another off to one side, which is all a vehicle that only ever flies in a
+     straight line needs. A vehicle that turns runs out of world there, and a
+     check that watched it do so would be watching nothing.
+
+     The interior is 8 m along x and 6 m along y, walls 2 m high. From the
+     origin the vehicle has 4 m of run to the wall ahead and stops 1.4 m short
+     of it, which leaves 2.6 m of travel; after a quarter turn it has 3 m to the
+     next wall and 1.6 m of travel. Both legs are long enough to see and to
+     measure, which is why the room is not smaller.
+
+     Deliberately empty otherwise. The floor rejection has two worlds of its own
+     and the obstacle stop has indoor_test; what is being watched here is that
+     the vehicle turns rather than stops, and furniture would only add ways for
+     a run to end early. -->
+<sdf version="1.10">
+  <world name="room_test">
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+
+    <gravity>0 0 -9.80665</gravity>
+    <magnetic_field>6e-06 2.3e-05 -4.2e-05</magnetic_field>
+    <atmosphere type="adiabatic"/>
+
+    <light name="ceiling_light" type="directional">
+      <pose>0 0 4 0 0 0</pose>
+      <cast_shadows>true</cast_shadows>
+      <direction>-0.3 0.4 -1</direction>
+      <diffuse>0.9 0.86 0.75 1</diffuse>
+    </light>
+
+    <!-- Same floor as every other world here: top surface at z = 0.025. -->
+    <model name="floor">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>10 8 0.05</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>10 8 0.05</size></box></geometry>
+          <material><diffuse>0.45 0.48 0.48 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Four walls, 0.1 m thick, their inner faces at x = +-4 and y = +-3. -->
+    <model name="wall_x_plus">
+      <static>true</static>
+      <pose>4.05 0 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.1 6.2 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.1 6.2 2.0</size></box></geometry>
+          <material><diffuse>0.62 0.60 0.56 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_x_minus">
+      <static>true</static>
+      <pose>-4.05 0 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.1 6.2 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.1 6.2 2.0</size></box></geometry>
+          <material><diffuse>0.62 0.60 0.56 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_y_plus">
+      <static>true</static>
+      <pose>0 3.05 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>8.2 0.1 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>8.2 0.1 2.0</size></box></geometry>
+          <material><diffuse>0.62 0.60 0.56 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_y_minus">
+      <static>true</static>
+      <pose>0 -3.05 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>8.2 0.1 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>8.2 0.1 2.0</size></box></geometry>
+          <material><diffuse>0.62 0.60 0.56 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <include>
+      <uri>model://openipc_cinewhoop</uri>
+      <pose>0 0 0.035 0 0 0</pose>
+    </include>
+  </world>
+</sdf>

@@ -108,8 +108,9 @@ def nearest_in_sector(
     pitch_rad: float = 0.0,
     height_above_floor_m: Optional[float] = None,
     ground_margin_m: float = 0.25,
+    centre_rad: float = 0.0,
 ) -> Optional[float]:
-    """Nearest valid return within a cone around straight ahead.
+    """Nearest valid return within a cone around a bearing, straight ahead by default.
 
     The front sensor is an LD06, which sweeps the whole 360 degrees. Taking the
     minimum over the entire scan would stop the vehicle for a wall behind it,
@@ -121,6 +122,11 @@ def nearest_in_sector(
     the floor are dropped as well. Leave those arguments out and nothing is
     dropped, which is what the unit tests of the sector logic rely on and what
     should happen whenever the altitude is unknown.
+
+    `centre_rad` points the cone somewhere other than ahead, which is how a
+    vehicle deciding which way to turn asks what is off each wing. The floor
+    rejection still applies, and has to: off the wing at a lean the floor is
+    exactly as present as it is in front.
     """
     half = abs(sector_rad) / 2.0
     nearest = None
@@ -129,9 +135,12 @@ def nearest_in_sector(
             continue
         angle = angle_min + index * angle_increment
         # Wrap into [-pi, pi] so a scan starting at -pi and one starting at 0
-        # both work out the same.
+        # both work out the same. The same wrap is applied to the offset from
+        # the cone's centre, so a cone pointed off the left wing is not split in
+        # two by the wrap-around behind the vehicle.
         angle = (angle + math.pi) % (2 * math.pi) - math.pi
-        if abs(angle) > half:
+        offset = (angle - centre_rad + math.pi) % (2 * math.pi) - math.pi
+        if abs(offset) > half:
             continue
         if is_ground_return(angle, value, roll_rad, pitch_rad,
                             height_above_floor_m, ground_margin_m):
@@ -310,3 +319,44 @@ def takeoff_needs_retry(
     if altitude is None or altitude_at_request is None:
         return True
     return altitude - altitude_at_request < margin_m
+
+
+def way_is_clear(
+    nearest_range: Optional[float],
+    stop_distance: float,
+    braking_distance: float,
+    margin_m: float,
+) -> bool:
+    """Whether the way ahead is clear enough to start moving again.
+
+    Deliberately not the negation of the test that stops the vehicle. That one
+    decides at the clearance plus the braking distance; this one demands a
+    further margin, so a vehicle that has just turned away from a wall does not
+    immediately find itself one centimetre inside the threshold again and turn
+    back. Without the gap the two decisions chatter against each other.
+    """
+    if nearest_range is None:
+        return True
+    return nearest_range >= stop_distance + braking_distance + margin_m
+
+
+def turn_direction(
+    left_range: Optional[float],
+    right_range: Optional[float],
+) -> float:
+    """Which way to yaw when the way ahead is blocked: +1 left, -1 right.
+
+    Towards whichever side has more room, with None meaning nothing is in range
+    at all and so all the room there is. Ties go left rather than being broken
+    some cleverer way: the vehicle has to commit to one side and keep turning,
+    and a rule that can change its mind halfway leaves it rocking in place.
+
+    Positive is left because that is what the message means - REP 103 puts yaw
+    positive counter-clockwise seen from above, and AP_DDS negates it on the way
+    into ArduPilot's NED.
+    """
+    if left_range is None:
+        return 1.0
+    if right_range is None:
+        return -1.0
+    return 1.0 if left_range >= right_range else -1.0

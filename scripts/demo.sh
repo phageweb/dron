@@ -15,16 +15,26 @@ cd "$project_root"
 
 gui="true"
 altitude="1.0"
+world="indoor_test.sdf"
+turning="false"
 passthrough=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --no-gui) gui="false"; passthrough+=("--no-gui") ;;
+    # A circuit needs a closed room to fly round; indoor_test.sdf is a floor
+    # with two panels on it, so a turning vehicle simply leaves.
+    --circuit)
+      turning="true"
+      world="room_test.sdf"
+      passthrough+=("--circuit") ;;
     --altitude)
       altitude="${2:?--altitude needs a value}"
       passthrough+=("--altitude" "$2")
       shift ;;
     -h|--help)
-      echo "usage: scripts/demo.sh [--no-gui] [--altitude METRES]"
+      echo "usage: scripts/demo.sh [--no-gui] [--circuit] [--altitude METRES]"
+      echo "  --circuit  fly a closed room and turn at the walls instead of"
+      echo "             stopping at one obstacle in indoor_test.sdf"
       exit 0 ;;
     *) echo "Unknown argument: $1" >&2; exit 2 ;;
   esac
@@ -93,6 +103,7 @@ trap cleanup EXIT INT TERM
 
 echo "==> Starting the scene: Gazebo${gui:+ (gui=$gui)}, SITL, bridges, RViz, DDS Agent."
 setsid ros2 launch openipc_cinewhoop_gazebo sitl_gazebo.launch.py "gui:=$gui" \
+  "world:=$world" \
   >"$project_root/logs/demo-launch.log" 2>&1 &
 launch_pid=$!
 
@@ -115,6 +126,7 @@ echo "==> Flying: arm, take off to ${altitude} m, creep forward, stop for the wa
 echo "==> It holds position when it stops. Ctrl-C when you have seen enough."
 echo
 setsid ros2 run openipc_cinewhoop_demo simple_indoor_autonomy \
-  --ros-args -p takeoff_altitude_m:="$altitude" &
+  --ros-args -p takeoff_altitude_m:="$altitude" \
+  -p enable_turning:="$turning" &
 demo_pid=$!
 wait "$demo_pid"

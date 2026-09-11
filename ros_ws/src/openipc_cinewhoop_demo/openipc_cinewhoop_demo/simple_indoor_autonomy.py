@@ -17,6 +17,8 @@ from std_srvs.srv import Trigger
 
 from openipc_cinewhoop_demo.scan_helpers import (
     compensation_height,
+    turn_direction,
+    way_is_clear,
     hold_reason,
     nearest_in_sector,
     reading_is_fresh,
@@ -45,6 +47,7 @@ WAIT_ARMED = "waiting for the motors to arm"
 TAKEOFF = "taking off"
 CLIMB = "climbing to altitude"
 CRUISE = "cruising"
+TURN = "turning away from an obstacle"
 
 
 class SimpleIndoorAutonomy(Node):
@@ -97,8 +100,21 @@ class SimpleIndoorAutonomy(Node):
         # With auto_takeoff false the node only publishes velocity and expects
         # something else to have put the vehicle in the air.
         self.declare_parameter("auto_takeoff", True)
+        # Turning is off by default. Stopping for the wall is the behaviour the
+        # flight check verifies and the one worth trusting; flying on past it is
+        # a second thing to ask for, not a change to the first.
+        self.declare_parameter("enable_turning", False)
+        self.declare_parameter("turn_yaw_rate_rps", 0.4)
+        # Resuming demands more clearance than stopping did, so a vehicle that
+        # has just turned away from a wall does not find itself back inside the
+        # threshold and turn again. Without the gap the two decisions chatter.
+        self.declare_parameter("turn_clear_margin_m", 0.3)
+        self.declare_parameter("side_sector_deg", 60.0)
 
         self._nearest = None
+        self._left = None
+        self._right = None
+        self._turn_sign = 0.0
         self._last_scan_time = None
         self._roll = 0.0
         self._pitch = 0.0
@@ -154,11 +170,22 @@ class SimpleIndoorAutonomy(Node):
     def _on_scan(self, msg: LaserScan):
         sector = math.radians(
             float(self.get_parameter("forward_sector_deg").value))
-        self._nearest = nearest_in_sector(
-            msg.ranges, msg.angle_min, msg.angle_increment,
-            msg.range_min, msg.range_max, sector,
-            self._roll, self._pitch, self._rejection_height(),
-            float(self.get_parameter("ground_margin_m").value))
+        side = math.radians(float(self.get_parameter("side_sector_deg").value))
+        height = self._rejection_height()
+        margin = float(self.get_parameter("ground_margin_m").value)
+
+        def nearest(centre_rad):
+            return nearest_in_sector(
+                msg.ranges, msg.angle_min, msg.angle_increment,
+                msg.range_min, msg.range_max,
+                sector if centre_rad == 0.0 else side,
+                self._roll, self._pitch, height, margin, centre_rad)
+
+        self._nearest = nearest(0.0)
+        # What is off each wing, for deciding which way to turn. The same
+        # rejection applies there: leaning, the floor is off the wing too.
+        self._left = nearest(math.pi / 2.0)
+        self._right = nearest(-math.pi / 2.0)
         self._last_scan_time = self.get_clock().now()
 
     def _on_status(self, msg):
@@ -287,6 +314,8 @@ class SimpleIndoorAutonomy(Node):
                 self._enter(TAKEOFF)
         elif self._state == CRUISE:
             self._cruise(fresh)
+        elif self._state == TURN:
+            self._turn(fresh)
 
     def _on_prearm(self, result):
         if result is not None and result.success:
@@ -310,6 +339,51 @@ class SimpleIndoorAutonomy(Node):
             self._takeoff_time = self.get_clock().now()
             self._enter(CLIMB)
 
+    def _publish(self, forward_mps, yaw_rps=0.0):
+        cmd = TwistStamped()
+        cmd.header.stamp = self.get_clock().now().to_msg()
+        # AP_DDS reads this frame_id: base_link means body frame, and it is what
+        # turns twist.angular.z into a yaw rate rather than nothing at all.
+        cmd.header.frame_id = "base_link"
+        cmd.twist.linear.x = forward_mps
+        cmd.twist.angular.z = yaw_rps
+        self._cmd_pub.publish(cmd)
+
+    def _turn(self, fresh):
+        """Yaw in place until the way ahead is clear, then cruise again.
+
+        Nothing moves forward here. The demo decides on a forward sector, so
+        while the vehicle is rotating it is deciding about air it is not flying
+        into; committing to a translation on that would be flying blind through
+        the turn.
+        """
+        if not fresh:
+            # A stale scan during a turn is the same danger as during a cruise,
+            # and the vehicle stops rather than keeps rotating: the clearance it
+            # would resume on could be seconds old.
+            if self._hold_reason != "no recent scan":
+                self.get_logger().info("Holding: no recent scan")
+                self._hold_reason = "no recent scan"
+            self._publish(0.0)
+            return
+
+        if way_is_clear(
+                self._nearest,
+                float(self.get_parameter("stop_distance_m").value),
+                float(self.get_parameter("braking_distance_m").value),
+                float(self.get_parameter("turn_clear_margin_m").value)):
+            ahead = ("nothing in range" if self._nearest is None
+                     else f"{self._nearest:.2f} m of room")
+            self.get_logger().info(f"Turn finished: {ahead} ahead")
+            self._hold_reason = None
+            self._enter(CRUISE)
+            return
+
+        self._publish(
+            0.0,
+            self._turn_sign
+            * float(self.get_parameter("turn_yaw_rate_rps").value))
+
     def _cruise(self, fresh):
         speed = 0.0
         if fresh:
@@ -330,14 +404,29 @@ class SimpleIndoorAutonomy(Node):
             if reason != self._hold_reason:
                 self.get_logger().info(f"Holding: {reason}{detail}")
                 self._hold_reason = reason
+            # Only an obstacle is a reason to turn. A stale scan or an empty one
+            # means the vehicle cannot see, and rotating on that would be
+            # choosing a direction out of a picture it does not have.
+            if reason == "obstacle" and bool(
+                    self.get_parameter("enable_turning").value):
+                # The side is chosen once and latched. A rule that can change
+                # its mind halfway through leaves the vehicle rocking in place.
+                self._turn_sign = turn_direction(self._left, self._right)
+                towards = "left" if self._turn_sign > 0 else "right"
+                self.get_logger().info(
+                    f"Turning {towards}: "
+                    f"{self._describe(self._left)} off the left wing, "
+                    f"{self._describe(self._right)} off the right")
+                self._enter(TURN)
+                return
         else:
             self._hold_reason = None
 
-        cmd = TwistStamped()
-        cmd.header.stamp = self.get_clock().now().to_msg()
-        cmd.header.frame_id = "base_link"
-        cmd.twist.linear.x = speed
-        self._cmd_pub.publish(cmd)
+        self._publish(speed)
+
+    @staticmethod
+    def _describe(value):
+        return "nothing in range" if value is None else f"{value:.3f} m"
 
 
 def main(args=None):

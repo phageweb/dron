@@ -14,6 +14,8 @@ from openipc_cinewhoop_demo.scan_helpers import (
     reading_is_fresh,
     safe_forward_speed,
     takeoff_needs_retry,
+    turn_direction,
+    way_is_clear,
 )
 
 
@@ -47,6 +49,58 @@ class ScanHelpersTest(unittest.TestCase):
 
     def test_no_braking_distance_keeps_the_old_behaviour(self):
         self.assertEqual(safe_forward_speed(0.8, 0.8, 0.5, 0.0), 0.5)
+
+    def test_a_cone_can_be_pointed_off_a_wing(self):
+        # Eight beams every 45 degrees from straight behind: the nearest return
+        # ahead, off the left and off the right are three different numbers, and
+        # a cone that could only look forward would collapse them into one.
+        ranges = [9.0, 9.0, 2.0, 9.0, 1.0, 9.0, 5.0, 9.0]
+        geometry = dict(angle_min=-math.pi, angle_increment=math.pi / 4,
+                        range_min=0.02, range_max=12.0,
+                        sector_rad=math.radians(60))
+        self.assertEqual(nearest_in_sector(ranges, **geometry), 1.0)
+        self.assertEqual(
+            nearest_in_sector(ranges, centre_rad=math.pi / 2, **geometry), 5.0)
+        self.assertEqual(
+            nearest_in_sector(ranges, centre_rad=-math.pi / 2, **geometry), 2.0)
+
+    def test_a_cone_behind_is_not_split_by_the_wrap_around(self):
+        # Straight behind is where the bearing wraps from +pi to -pi, so a cone
+        # centred there covers two ranges of angle rather than one. Without
+        # wrapping the offset as well this returns nothing.
+        ranges = [0.5, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0]
+        self.assertEqual(
+            nearest_in_sector(ranges, angle_min=-math.pi,
+                              angle_increment=math.pi / 4, range_min=0.02,
+                              range_max=12.0, sector_rad=math.radians(60),
+                              centre_rad=math.pi),
+            0.5)
+
+    def test_the_way_is_clear_only_past_the_stopping_distance_and_a_margin(self):
+        # Resuming is deliberately harder than stopping was: at exactly the
+        # threshold the vehicle stopped at, it may not start again.
+        self.assertFalse(way_is_clear(1.40, 0.8, 0.6, 0.3))
+        self.assertFalse(way_is_clear(1.69, 0.8, 0.6, 0.3))
+        self.assertTrue(way_is_clear(1.70, 0.8, 0.6, 0.3))
+
+    def test_an_empty_scan_ahead_counts_as_clear(self):
+        # Nothing in range is all the room there is. The caller only asks this
+        # while the scan is fresh, so an empty one is open air and not a fault.
+        self.assertTrue(way_is_clear(None, 0.8, 0.6, 0.3))
+
+    def test_the_turn_goes_towards_the_room(self):
+        self.assertEqual(turn_direction(5.0, 2.0), 1.0)
+        self.assertEqual(turn_direction(2.0, 5.0), -1.0)
+
+    def test_nothing_in_range_off_a_wing_is_all_the_room_there_is(self):
+        self.assertEqual(turn_direction(None, 2.0), 1.0)
+        self.assertEqual(turn_direction(2.0, None), -1.0)
+
+    def test_an_even_choice_still_commits_to_one_side(self):
+        # A vehicle that re-decides every scan rocks in place instead of
+        # turning, so the tie is broken the same way every time.
+        self.assertEqual(turn_direction(3.0, 3.0), 1.0)
+        self.assertEqual(turn_direction(None, None), 1.0)
 
     def test_a_reading_is_unusable_before_any_arrives(self):
         self.assertFalse(reading_is_fresh(None, 0.5))

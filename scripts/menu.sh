@@ -44,6 +44,7 @@ mark() { if [ "$1" = true ]; then printf '%s' "${green}yes${reset}"; else printf
 entries=(
   "HEAD||Watch it fly"
   "everything|dds|Everything: scene, flight to the wall, stays up until Ctrl-C|scripts/demo.sh|Opens Gazebo and RViz, waits for ArduPilot, then flies. Holds position when it stops."
+  "circuit|dds|Everything, in a closed room: it turns at the walls and keeps going|scripts/demo.sh --circuit|Opens Gazebo and RViz over room_test.sdf. It flies a leg, yaws towards the roomier side, and goes on."
   "demo|flight|Just the scene: Gazebo, SITL and RViz, no flight|ros2 launch openipc_cinewhoop_gazebo sitl_gazebo.launch.py gui:=true"
   "autonomy|dds|The autonomy node itself: arm, take off, creep, stop at the wall|__autonomy"
   "watchsweep|flight|Watch one rate-gain flight, the oscillating one|__watchsweep"
@@ -69,6 +70,7 @@ entries=(
   "forward|flight|Full autonomy flight, takeoff to wall|scripts/check_forward_flight.sh|Runs the whole demo without a window. Headless and silent: it prints nothing until it finishes, a few minutes from now."
   "unified|flight|One launch serves Gazebo, ArduPilot and TF|scripts/check_unified_launch.sh|Headless. Headless and silent: it prints nothing until it finishes, a few minutes from now."
   "attitude|flight|ArduPilot reports the attitude the vehicle really has|scripts/check_attitude_estimate.sh|Parks the vehicle on a ramp and compares three numbers. Nothing arms and nothing flies; under a minute."
+  "circuitcheck|flight|The demo turns at a wall and flies on, rather than stopping|scripts/check_room_circuit.sh|Two minutes of flight in a closed room, headless and silent until it finishes."
 
   "HEAD||Build"
   "colcon|always|Build the ROS workspace|colcon build"

@@ -166,11 +166,17 @@
       round the circle gives identical numbers there, while the roll term is odd
       and does not. With the roll sign flipped, `leaning_test` still passes and
       `banked_test` fails
-- [ ] Fly a circuit of the room. `simple_indoor_autonomy` publishes only
-      `twist.linear.x` - it has no yaw and no lateral command, so it cannot turn
-      at all. That is a demo behaviour rather than a test: a banked turn in
-      flight tests the same geometry as `banked_test.sdf` but with two streams
-      to align during a transient instead of two steady numbers
+- [x] Fly a circuit of the room. `simple_indoor_autonomy` gained a `TURN`
+      state: blocked ahead, it yaws towards whichever side has more room and
+      goes on. Off by default, because stopping for the wall is the behaviour
+      `check_forward_flight.sh` verifies and flying past it is a second thing to
+      ask for. `room_test.sdf` is a closed 8 by 6 m room and
+      `scripts/check_room_circuit.sh` flies it: 630 degrees of turning, closest
+      approach to a wall 0.75 m
+- [ ] Decide what the circuit is for. Turning towards the roomier side is enough
+      to fly a room and not enough to cover one: the vehicle repeats a loop
+      rather than visiting anywhere in particular, and nothing maps what it has
+      seen. Coverage or a map is the next question, and it is a bigger one
 - [x] Give the rejection the lidar's height rather than the rangefinder's. The
       two are 26 mm apart along x and 66 mm along z, which level was 66 mm of
       height thrown away and leaning is less, because the offset rotates with

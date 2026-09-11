@@ -64,6 +64,11 @@ cleanup() {
     cp -r "$test_tmpdir" "$KEEP_LOGS" 2>/dev/null || true
     echo "logs kept in $KEEP_LOGS" >&2
   fi
+  # Gazebo can outlive the launch that started it: killing the process group
+  # misses it often enough that a survivor was found holding the partition and
+  # failing the next check. Scoped to this project's own world files, so an
+  # unrelated simulation on the same machine is not touched.
+  pkill -9 -f "gz sim.*$project_root/install/openipc_cinewhoop_gazebo" 2>/dev/null || true
   rm -rf "$test_tmpdir"
 }
 trap cleanup EXIT

@@ -64,6 +64,11 @@ cleanup() {
   for pid in "${node_pids[@]:-}" "$pose_pid" "$launch_pid"; do
     [ -n "$pid" ] && wait "$pid" 2>/dev/null || true
   done
+  # Gazebo can outlive the launch that started it: killing the process group
+  # misses it often enough that a survivor was found holding the partition and
+  # failing the next check. Scoped to this project's own world files, so an
+  # unrelated simulation on the same machine is not touched.
+  pkill -9 -f "gz sim.*$project_root/install/openipc_cinewhoop_gazebo" 2>/dev/null || true
   rm -rf "$test_tmpdir"
 }
 trap cleanup EXIT

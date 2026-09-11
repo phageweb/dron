@@ -104,6 +104,27 @@ def generate_launch_description():
             "rviz", default_value="true",
             description="Start robot_state_publisher with RViz2; false leaves TF only.",
         ),
+        # These two belong to gazebo.launch.py, which this one includes. They
+        # were not declared here and not passed on, so `gui:=true` and
+        # `world:=...` on this launch went nowhere: scripts/demo.sh asked for a
+        # Gazebo window on every run and never got one, and --no-gui turned off
+        # something that was already off.
+        DeclareLaunchArgument(
+            "gui", default_value="false",
+            description=(
+                "Open the Gazebo window. False to match gazebo.launch.py, so "
+                "that declaring this argument makes it work rather than "
+                "changing what every existing caller gets. scripts/demo.sh "
+                "asks for true."
+            ),
+        ),
+        DeclareLaunchArgument(
+            "world", default_value="indoor_test.sdf",
+            description=(
+                "World to load. room_test.sdf is the closed room the demo flies "
+                "a circuit of with enable_turning."
+            ),
+        ),
         DeclareLaunchArgument(
             "agent", default_value="true",
             description="Start the Micro XRCE-DDS Agent so the /ap/ topics appear.",
@@ -123,7 +144,13 @@ def generate_launch_description():
             "ArduPilot defaults."
         )),
 
-        IncludeLaunchDescription(PythonLaunchDescriptionSource(gazebo_launch)),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(gazebo_launch),
+            launch_arguments={
+                "gui": LaunchConfiguration("gui"),
+                "world": LaunchConfiguration("world"),
+            }.items(),
+        ),
 
         # robot_state_publisher and RViz2 read the URDF, which is the description
         # package's business rather than a second copy of it here.
