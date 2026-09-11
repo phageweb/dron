@@ -90,11 +90,12 @@ done
 # /ap/pose/filtered, and AP_DDS is not running here. Take it from Gazebo's own
 # report of where the model is rather than repeating the world file's numbers in
 # this script, so the two cannot drift apart. The same query returns where the
-# downward sensor really is above the floor, which is the truth the slant-range
-# correction is checked against.
+# front lidar really is above the floor - the sensor whose beams are projected,
+# not the one that measures. Getting from one to the other is the whole of what
+# compensation_height does to a Range message, so that is what to check.
 quat="$(timeout 40 python3 scripts/gazebo_link_truth.py \
   "ros_ws/src/openipc_cinewhoop_gazebo/worlds/$world.sdf" "$world" \
-  openipc_cinewhoop rangefinder_link 2>"$test_tmpdir/truth.log")"
+  openipc_cinewhoop front_lidar_link 2>"$test_tmpdir/truth.log")"
 if [ -z "$quat" ]; then
   echo "Could not read the vehicle's attitude out of Gazebo." >&2
   cat "$test_tmpdir/truth.log" >&2 || true
@@ -102,7 +103,7 @@ if [ -z "$quat" ]; then
 fi
 read -r qx qy qz qw true_height <<<"$quat"
 echo "  vehicle attitude from Gazebo: x=$qx y=$qy z=$qz w=$qw"
-echo "  rangefinder_link is $true_height m above the floor surface"
+echo "  front_lidar_link is $true_height m above the floor surface"
 
 setsid ros2 topic pub -r 10 --qos-reliability best_effort /ap/pose/filtered \
   geometry_msgs/msg/PoseStamped \

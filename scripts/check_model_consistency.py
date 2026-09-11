@@ -14,6 +14,7 @@ relative to `base_link`, how it is rotated, and what the whole thing weighs.
 """
 
 import math
+import re
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -24,6 +25,7 @@ URDF = ROOT / "ros_ws/src/openipc_cinewhoop_description/urdf/openipc_cinewhoop.u
 SDF = ROOT / "ros_ws/src/openipc_cinewhoop_gazebo/models/openipc_cinewhoop/model.sdf"
 
 BASE = "base_link"
+DEMO = ROOT / "ros_ws/src/openipc_cinewhoop_demo/openipc_cinewhoop_demo"
 TOLERANCE_M = 1e-6
 TOLERANCE_RAD = 1e-6
 TOLERANCE_KG = 1e-9
@@ -139,6 +141,27 @@ def world_scoped_topics():
             if "<topic>" in line and "/world/" in line]
 
 
+def demo_sensor_offsets():
+    """The offsets the demo nodes carry, read out of their own source.
+
+    Both nodes need to know where the front lidar sits relative to the
+    rangefinder, because the rangefinder measures a height for a sensor that is
+    not it. That is model knowledge living outside the model, so it is checked
+    against the model rather than trusted: TF carries the same numbers and
+    neither node listens to TF.
+    """
+    found = {}
+    for path in sorted(DEMO.glob("*.py")):
+        text = path.read_text()
+        for axis, name in (("x", "lidar_ahead_of_rangefinder_m"),
+                           ("z", "lidar_above_rangefinder_m")):
+            match = re.search(
+                rf'declare_parameter\(\s*"{name}"\s*,\s*([-\d.eE+]+)\s*\)', text)
+            if match is not None:
+                found.setdefault((path.name, axis), float(match.group(1)))
+    return found
+
+
 def main():
     urdf, urdf_mass = urdf_poses()
     sdf, sdf_mass = sdf_poses()
@@ -171,6 +194,24 @@ def main():
         problems.append(
             f"total mass is {urdf_mass:.6f} kg in the URDF and {sdf_mass:.6f} kg in the SDF")
 
+    # The demo nodes carry the lidar's offset from the rangefinder as parameter
+    # defaults. Where the two sensors sit is the model's business, so a model
+    # that moves one of them has to fail here rather than leave a node quietly
+    # projecting from the wrong place.
+    (lidar_xyz, _), (range_xyz, _) = sdf["front_lidar_link"], sdf["rangefinder_link"]
+    offset = {"x": lidar_xyz[0] - range_xyz[0], "z": lidar_xyz[2] - range_xyz[2]}
+    offsets = demo_sensor_offsets()
+    if not offsets:
+        problems.append(
+            "no demo node declares the lidar's offset from the rangefinder; "
+            "either the parameters were renamed or this check is looking in "
+            "the wrong place")
+    for (node, axis), value in sorted(offsets.items()):
+        if abs(value - offset[axis]) > TOLERANCE_M:
+            problems.append(
+                f"{node} places the lidar {value:+.4f} m from the rangefinder "
+                f"along {axis} and the model places it {offset[axis]:+.4f} m")
+
     pinned = world_scoped_topics()
     if pinned:
         print("The SDF pins the model to one world through its sensor topics:",
@@ -182,7 +223,10 @@ def main():
         return 1
 
     if problems:
-        print("The URDF and the SDF describe different drones:", file=sys.stderr)
+        # Not only the URDF against the SDF any more: the demo nodes carry a
+        # piece of the model too, and naming the wrong pair of files is how a
+        # reader is sent to look in the wrong place.
+        print("The drone is described inconsistently across files:", file=sys.stderr)
         for problem in problems:
             print(f"  {problem}", file=sys.stderr)
         return 1
@@ -190,6 +234,8 @@ def main():
     print("  no sensor topic names a world, so the model is not pinned to one")
     print(f"  {len(shared)} shared links agree on position, rotation and total mass")
     print(f"  total mass {sdf_mass:.3f} kg")
+    print(f"  the demo nodes place the lidar {offset['x']:+.3f} m ahead of the "
+          f"rangefinder and {offset['z']:+.3f} m above it, as the model does")
     for name, why in sorted({**URDF_ONLY, **SDF_ONLY}.items()):
         print(f"  {name}: in one file only, {why}")
     print("Model consistency check passed.")

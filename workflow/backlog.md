@@ -171,13 +171,16 @@
       at all. That is a demo behaviour rather than a test: a banked turn in
       flight tests the same geometry as `banked_test.sdf` but with two streams
       to align during a transient instead of two steady numbers
-- [ ] Give the rejection the lidar's height rather than the rangefinder's. The
-      two sensors are 26 mm apart along x and 66 mm along z, so in
-      leaning_test.sdf the rangefinder is 0.551 m up and the lidar 0.595 m -
-      44 mm of systematic under-estimate, which over-rejects slightly. It is the
-      same third-row projection `ground_return_height` already does, but the
-      offset is model knowledge the demo nodes do not have today; TF already
-      carries it, and neither node listens to TF
+- [x] Give the rejection the lidar's height rather than the rangefinder's. The
+      two are 26 mm apart along x and 66 mm along z, which level was 66 mm of
+      height thrown away and leaning is less, because the offset rotates with
+      the airframe. `body_point_height` is the third row written once and used
+      twice, for a return in the scan plane and for the offset. The numbers are
+      parameter defaults rather than a TF lookup, and
+      `check_model_consistency.py` reads them out of the nodes and fails if the
+      model moves either sensor - the same guard that keeps the URDF and the SDF
+      together. Both worlds now assert the height against `front_lidar_link`
+      rather than `rangefinder_link`, which is the property itself
 - [ ] The attitude check is still simulation agreeing with simulation: SITL's
       EKF is fed a noiseless IMU, so it proves the convention rather than the
       accuracy. A real flight controller on a real ramp is what would test the

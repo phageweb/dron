@@ -36,6 +36,12 @@ class ObstacleMonitor(Node):
         # go stale while the lidar stays healthy. Rejecting the floor with an
         # attitude the vehicle no longer holds is worse than not rejecting it.
         self.declare_parameter("compensation_timeout_s", 0.5)
+        # The rangefinder is not the sensor being projected. It sits behind and
+        # below the lidar, so its reading is not the lidar's height: level, that
+        # is 66 mm thrown away. These are the URDF's own numbers and
+        # check_model_consistency.py fails if the model moves away from them.
+        self.declare_parameter("lidar_ahead_of_rangefinder_m", 0.026)
+        self.declare_parameter("lidar_above_rangefinder_m", 0.066)
 
         self._last_log_time = self.get_clock().now()
         self._started_at = self.get_clock().now()
@@ -105,7 +111,9 @@ class ObstacleMonitor(Node):
         height, reason, detail = compensation_height(
             self._age_s(self._pose_time), self._age_s(self._range_time),
             float(self.get_parameter("compensation_timeout_s").value),
-            self._slant_range, self._roll, self._pitch)
+            self._slant_range, self._roll, self._pitch,
+            float(self.get_parameter("lidar_ahead_of_rangefinder_m").value),
+            float(self.get_parameter("lidar_above_rangefinder_m").value))
         if reason != self._blind_reason:
             if reason:
                 self.get_logger().warning(

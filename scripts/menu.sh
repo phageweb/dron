@@ -60,12 +60,15 @@ entries=(
   "dropout|workspace|A dead lidar puts the demo nodes into a safe state|scripts/check_sensor_dropout.sh"
   "remap|workspace|Topics and services are remappable for hardware|scripts/check_topic_remap.sh"
   "lidar|workspace|Front lidar reaches the demo node|scripts/check_front_lidar.sh"
+  "leaning|workspace|A pitched drone does not report the floor|scripts/check_leaning_scan.sh leaning_test|Boots Gazebo over a world holding the model nose-down. About a minute."
+  "banked|workspace|A banked drone does not report the floor either|scripts/check_leaning_scan.sh banked_test 20|The one that exercises the roll term; a pitched world cannot. About a minute."
 
   "HEAD||Flight checks, need the external builds"
   "takeoff|flight|Guided takeoff: arm, climb, hold|scripts/check_guided_takeoff.sh|Headless. Headless and silent: it prints nothing until it finishes, a few minutes from now."
   "thrust|flight|Thrust stand: the rotors and lift model|scripts/check_thrust_stand.sh|Headless. Headless and silent: it prints nothing until it finishes, a few minutes from now."
   "forward|flight|Full autonomy flight, takeoff to wall|scripts/check_forward_flight.sh|Runs the whole demo without a window. Headless and silent: it prints nothing until it finishes, a few minutes from now."
   "unified|flight|One launch serves Gazebo, ArduPilot and TF|scripts/check_unified_launch.sh|Headless. Headless and silent: it prints nothing until it finishes, a few minutes from now."
+  "attitude|flight|ArduPilot reports the attitude the vehicle really has|scripts/check_attitude_estimate.sh|Parks the vehicle on a ramp and compares three numbers. Nothing arms and nothing flies; under a minute."
 
   "HEAD||Build"
   "colcon|always|Build the ROS workspace|colcon build"

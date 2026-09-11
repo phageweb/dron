@@ -34,6 +34,29 @@ def roll_pitch_from_quaternion(x: float, y: float, z: float, w: float):
     return roll, pitch
 
 
+def body_point_height(
+    x: float,
+    y: float,
+    z: float,
+    roll_rad: float,
+    pitch_rad: float,
+) -> float:
+    """How high a point fixed to the airframe sits, once the lean is undone.
+
+    Third row of Rz(yaw) Ry(pitch) Rx(roll). Yaw drops out: rotating about the
+    vertical cannot change a height. Written once and used twice - for a return
+    in the scan plane, and for the offset between the two sensors - because the
+    signs in it are the whole difficulty and two copies would be two chances to
+    get them wrong.
+
+    Angles follow REP 103 as the pose message gives them: x forward, y left,
+    z up, right-handed.
+    """
+    return (-math.sin(pitch_rad) * x
+            + math.cos(pitch_rad) * math.sin(roll_rad) * y
+            + math.cos(pitch_rad) * math.cos(roll_rad) * z)
+
+
 def ground_return_height(
     bearing_rad: float,
     range_m: float,
@@ -47,15 +70,11 @@ def ground_return_height(
     roughly level with the sensor; this says how far under it the return really
     sits, so the caller can compare that against the height it is flying at.
 
-    Angles follow REP 103 as the pose message gives them: x forward, y left,
-    z up, right-handed. The returned value is negative below the sensor.
+    The returned value is negative below the sensor.
     """
-    x = range_m * math.cos(bearing_rad)
-    y = range_m * math.sin(bearing_rad)
-    # Third row of Rz(yaw) Ry(pitch) Rx(roll) applied to a point in the scan
-    # plane. Yaw drops out: rotating about the vertical cannot change a height.
-    return (-math.sin(pitch_rad) * x
-            + math.cos(pitch_rad) * math.sin(roll_rad) * y)
+    return body_point_height(
+        range_m * math.cos(bearing_rad), range_m * math.sin(bearing_rad), 0.0,
+        roll_rad, pitch_rad)
 
 
 def is_ground_return(
@@ -221,6 +240,8 @@ def compensation_height(
     slant_range_m: Optional[float],
     roll_rad: float = 0.0,
     pitch_rad: float = 0.0,
+    lidar_ahead_m: float = 0.0,
+    lidar_above_m: float = 0.0,
 ):
     """The height to reject floor returns with, or None and why there is none.
 
@@ -237,9 +258,10 @@ def compensation_height(
     it is 30 degrees nose-down at 0.90 m turns a wall 1.35 m ahead into a 1.45 m
     reading at the sector edge, and 1.45 m is past the distance the demo stops at.
 
-    The height it hands back is the rangefinder's reading corrected for the lean
-    that same attitude describes, because the sensor reports slant range and
-    `is_ground_return` wants a height. Returning None instead switches the
+    The height it hands back is the front lidar's, which is not what the
+    rangefinder measures on either count: the reading is slant range rather than
+    height, and it is the height of a sensor sitting behind and below the one
+    whose beams are being projected. Both are undone with the same attitude. Returning None instead switches the
     rejection off, which is exactly what an unknown altitude already does:
     without a trustworthy lean and height nothing may be discarded.
 
@@ -260,7 +282,13 @@ def compensation_height(
     height = height_from_slant_range(slant_range_m, roll_rad, pitch_rad)
     if height is None:
         return None, "the vehicle is leaning past 90 degrees", ""
-    return height, "", ""
+    # The rangefinder is not the sensor whose beams are being projected. It sits
+    # 26 mm behind the lidar and 66 mm below it, which level is 66 mm of height
+    # the rejection was throwing away and leaning is less: the offset rotates
+    # with the airframe like everything else bolted to it.
+    return (height + body_point_height(lidar_ahead_m, 0.0, lidar_above_m,
+                                       roll_rad, pitch_rad),
+            "", "")
 
 
 def takeoff_needs_retry(

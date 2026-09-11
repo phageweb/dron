@@ -182,10 +182,12 @@ echo "==> simple_indoor_autonomy stops trusting an attitude that stopped arrivin
 # straight ahead before it drops a farther return at the edge of the sector.
 #
 # The numbers are that failure, arranged so both halves are visible. The
-# rangefinder reports 1.039 m of slant, which at 30 degrees of lean is 0.90 m of
-# height. Returns are then floor beyond 1.30 m of horizontal reach: the 1.35 m
-# wall dead ahead is floor, the 1.45 m return at 29 degrees reaches only 1.27 m
-# and is not. So a vehicle that really is leaning may fly -
+# rangefinder reports 0.988 m of slant; at 30 degrees that is 0.856 m of height
+# for the rangefinder, and the lidar sits 44 mm above it at this lean, so the
+# rejection works with 0.90 m. Returns are then floor beyond 1.30 m of
+# horizontal reach: the 1.35 m wall dead ahead is floor, the 1.45 m return at
+# 29 degrees reaches only 1.27 m and is not. So a vehicle that really is
+# leaning may fly -
 # and the same scan, once the lean can no longer be trusted, must stop it,
 # because 1.35 m is inside the 1.40 m the demo stops at.
 publish_leaning_scan() {
@@ -201,7 +203,7 @@ publish_leaning_scan() {
 setsid ros2 topic pub -r 10 -w 1 --qos-reliability best_effort \
   /openipc_cinewhoop/range/down sensor_msgs/msg/Range \
   "{header: {frame_id: rangefinder_link}, radiation_type: 1, field_of_view: 0.1,
-    min_range: 0.05, max_range: 8.0, range: 1.039}" \
+    min_range: 0.05, max_range: 8.0, range: 0.988}" \
   >"$test_tmpdir/range.log" 2>&1 &
 range_pid=$!
 
@@ -227,7 +229,7 @@ if [ "$leaning" = "none" ] || [ "$leaning" = "0.0" ]; then
   tail -n 20 "$test_tmpdir/autonomy.log" >&2
   exit 1
 fi
-echo "  leaning 30 deg, 1.039 m of slant = 0.90 m up, floor at 1.35 m: twist.linear.x = $leaning"
+echo "  leaning 30 deg, 0.988 m of slant = 0.90 m of lidar height, floor at 1.35 m: twist.linear.x = $leaning"
 
 # Only the attitude stops. The scan and the height keep arriving, so nothing
 # the node watches for staleness today has changed.

@@ -30,7 +30,7 @@ from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan, Range
 
 from openipc_cinewhoop_demo.scan_helpers import (
-    height_from_slant_range,
+    compensation_height,
     nearest_in_sector,
     roll_pitch_from_quaternion,
 )
@@ -45,6 +45,10 @@ POSE_TOPIC = "/ap/pose/filtered"
 STOP_THRESHOLD_M = 0.80 + 0.60
 FORWARD_SECTOR_DEG = 60.0
 GROUND_MARGIN_M = 0.25
+# The demo nodes' own defaults, which check_model_consistency.py holds to the
+# model: where the front lidar sits relative to the rangefinder.
+LIDAR_AHEAD_M = 0.026
+LIDAR_ABOVE_M = 0.066
 # Nothing useful can be said about a scan taken while the vehicle is level; the
 # whole point is the lean, so a pose that is not leaning is a setup failure.
 # Measured as the total tilt off vertical rather than per axis, because a world
@@ -133,11 +137,16 @@ def main():
     node.destroy_node()
     rclpy.shutdown()
 
-    # The sensor measures along its own axis, so leaning it reports the slant to
-    # the floor and not the height above it. Undo that before anything uses it
-    # as a height, and check the result against where the simulator says the
-    # sensor really is rather than against the formula that produced it.
-    height = height_from_slant_range(slant, roll, pitch)
+    # Two things separate what the rangefinder reports from what the rejection
+    # needs. It measures along its own axis, so leaning it gives slant and not
+    # height; and it is not the sensor being projected - the lidar sits ahead of
+    # it and above it. compensation_height undoes both, and the result is
+    # checked against where the simulator says the lidar is rather than against
+    # the formula that produced it.
+    height, reason, _ = compensation_height(
+        0.0, 0.0, 1.0, slant, roll, pitch, LIDAR_AHEAD_M, LIDAR_ABOVE_M)
+    if height is None:
+        sys.exit(f"No height to compensate with: {reason}.")
 
     sector = math.radians(FORWARD_SECTOR_DEG)
     raw_bearing = nearest_bearing(scan, sector)
@@ -152,7 +161,8 @@ def main():
     print(f"  attitude: roll {math.degrees(roll):.1f} deg "
           "(banking right is positive, and drops the right wing), "
           f"pitch {math.degrees(pitch):.1f} deg (nose down is positive)")
-    print(f"  rangefinder: {slant:.3f} m of slant, {height:.3f} m of height"
+    print(f"  rangefinder reports {slant:.3f} m of slant; the lidar is "
+          f"{height:.3f} m up"
           + (f", truth {true_height:.3f} m" if true_height is not None else ""))
     if raw_bearing is not None:
         side = ("straight ahead" if abs(math.degrees(raw_bearing)) < 1.0
@@ -165,9 +175,10 @@ def main():
 
     if true_height is not None and abs(height - true_height) > HEIGHT_TOLERANCE_M:
         sys.exit(f"The corrected height is {height:.3f} m where the simulator "
-                 f"puts the sensor {true_height:.3f} m above the floor. The "
-                 f"raw reading was {slant:.3f} m; if that is the closer of the "
-                 "two, the lean is not being undone.")
+                 f"puts the lidar {true_height:.3f} m above the floor. The raw "
+                 f"reading was {slant:.3f} m; if that is the closer of the two, "
+                 "the lean is not being undone, and if the gap is about 66 mm "
+                 "it is the offset between the two sensors.")
     if true_height is not None and abs(slant - true_height) <= HEIGHT_TOLERANCE_M:
         sys.exit(f"The raw reading {slant:.3f} m already matches the true "
                  f"{true_height:.3f} m, so this attitude does not exercise the "

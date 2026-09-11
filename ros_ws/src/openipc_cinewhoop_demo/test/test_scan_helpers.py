@@ -3,6 +3,7 @@ import unittest
 
 from openipc_cinewhoop_demo.scan_helpers import (
     compensation_height,
+    body_point_height,
     ground_return_height,
     height_from_slant_range,
     hold_reason,
@@ -100,6 +101,60 @@ class ScanHelpersTest(unittest.TestCase):
         self.assertAlmostEqual(
             height_from_slant_range(0.639, 0.0, math.radians(30)), 0.551,
             delta=0.01)
+
+    def test_the_lidar_sits_above_the_rangefinder_when_level(self):
+        # Level, the whole offset is height: the rejection was using a height
+        # 66 mm below the sensor it was projecting from.
+        height, reason, _ = compensation_height(
+            0.1, 0.1, 0.5, 0.9, 0.0, 0.0, 0.026, 0.066)
+        self.assertEqual(reason, "")
+        self.assertAlmostEqual(height, 0.966, places=6)
+
+    def test_the_offset_leans_with_the_airframe(self):
+        # Nose down, the part of the offset that is ahead of the rangefinder
+        # swings downwards and takes some of the height back. Both sensors are
+        # bolted to the same frame, so the offset rotates with it.
+        level, _, _ = compensation_height(
+            0.1, 0.1, 0.5, 1.0, 0.0, 0.0, 0.026, 0.066)
+        leaning, _, _ = compensation_height(
+            0.1, 0.1, 0.5, 1.0, 0.0, math.radians(30), 0.026, 0.066)
+        self.assertAlmostEqual(level - 1.0, 0.066, places=6)
+        self.assertAlmostEqual(
+            leaning - math.cos(math.radians(30)),
+            -math.sin(math.radians(30)) * 0.026
+            + math.cos(math.radians(30)) * 0.066, places=6)
+
+    def test_no_offset_given_is_the_rangefinder_height_itself(self):
+        self.assertAlmostEqual(
+            compensation_height(0.1, 0.1, 0.5, 0.9)[0], 0.9, places=6)
+
+    def test_the_lidar_height_matches_the_two_test_worlds(self):
+        """Against the world files, which state where the lidar lands.
+
+        leaning_test.sdf says 0.595 m at 30 degrees of pitch, banked_test.sdf
+        0.602 m at 25 of roll and 20 of pitch, and the simulated rangefinder
+        reports 0.639 m and 0.646 m of slant there. Both worlds, so a number
+        fitted to one of them fails the other.
+        """
+        for slant, roll, pitch, truth in ((0.639, 0.0, 30.0, 0.595),
+                                          (0.646, 25.0, 20.0, 0.602)):
+            height, _, _ = compensation_height(
+                0.1, 0.1, 0.5, slant, math.radians(roll), math.radians(pitch),
+                0.026, 0.066)
+            self.assertAlmostEqual(height, truth, delta=0.01)
+
+    def test_a_point_straight_up_stays_up_when_level(self):
+        self.assertAlmostEqual(body_point_height(0.0, 0.0, 0.5, 0.0, 0.0), 0.5)
+
+    def test_a_point_above_the_nose_drops_as_the_nose_drops(self):
+        # 90 degrees nose down puts what was above the nose straight ahead, at
+        # the sensor's own height, and what was ahead straight down.
+        self.assertAlmostEqual(
+            body_point_height(0.0, 0.0, 0.5, 0.0, math.radians(90)), 0.0,
+            places=6)
+        self.assertAlmostEqual(
+            body_point_height(0.5, 0.0, 0.0, 0.0, math.radians(90)), -0.5,
+            places=6)
 
     def test_a_stale_attitude_switches_the_rejection_off(self):
         height, reason, detail = compensation_height(0.8, 0.1, 0.5, 0.9)
