@@ -40,6 +40,9 @@ if [ -d ros_ws/src ] && find ros_ws/src -mindepth 2 -name package.xml -print -qu
 
   echo "==> Front-lidar E2E check"
   scripts/check_front_lidar.sh
+
+  echo "==> Leaning-scan attitude compensation check"
+  scripts/check_leaning_scan.sh
 else
   echo "==> ROS workspace build skipped: no ROS packages found under ros_ws/src yet."
 fi

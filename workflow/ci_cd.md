@@ -24,6 +24,7 @@ Current jobs:
 - verify the URDF and the SDF still describe the same drone
 - verify the bridged sensors carry the specified types, frames and axes
 - verify a dead lidar puts the demo nodes into a safe state
+- verify a leaning vehicle does not report the floor as an obstacle
 
 ## CI Script
 
@@ -54,6 +55,7 @@ scripts/check_sensor_interface.sh
 scripts/check_tf_tree.sh
 scripts/check_gazebo_headless.sh
 scripts/check_front_lidar.sh
+scripts/check_leaning_scan.sh
 ```
 
 The heavier SITL checks stay opt-in, because they need the ignored `external/`

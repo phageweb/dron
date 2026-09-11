@@ -1,0 +1,189 @@
+#!/usr/bin/env bash
+# Verify that a leaning vehicle does not report the floor as an obstacle.
+#
+# The attitude compensation in scan_helpers had unit tests and no flight behind
+# it: check_forward_flight.sh cruises at 1 m with a gentle attitude, so the floor
+# never enters the lidar's range there and the rejection is never exercised on a
+# scan Gazebo produced. leaning_test.sdf holds the model static at 30 degrees
+# nose-down, 0.60 m up, which is where the forward beams do meet the floor.
+#
+# Two things are asserted, and the second is worthless without the first:
+#   * the scan really does report the floor inside the demo's stop threshold
+#   * both demo nodes, given the attitude and the measured height, ignore it
+# The same nodes are run a second time with the rangefinder topic pointed at
+# nothing, which is how an unknown height is supposed to look. They must then
+# report the floor, because an unknown altitude may not discard anything - that
+# pair is what shows the compensation is doing the work rather than the scan
+# being empty.
+#
+# Headless, no SITL, no ArduPilot: this belongs in baseline CI.
+set -eo pipefail
+
+project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$project_root"
+
+if [ ! -f install/setup.bash ]; then
+  echo "Workspace is not built; run colcon build first." >&2
+  exit 1
+fi
+
+# Generated colcon hooks access optional variables, so do not enable nounset
+# until the overlay has been sourced.
+set +u
+source install/setup.bash
+set -u
+export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-78}"
+# The launch pins the partition to this, and `gz topic` below has to look in the
+# same one to find the world.
+export GZ_PARTITION="${GZ_PARTITION:-openipc_cinewhoop}"
+export GZ_IP="${GZ_IP:-127.0.0.1}"
+
+test_tmpdir="$(mktemp -d)"
+launch_pid=""
+pose_pid=""
+node_pids=()
+
+cleanup() {
+  for pid in "${node_pids[@]:-}" "$pose_pid" "$launch_pid"; do
+    if [ -n "$pid" ]; then
+      kill -TERM -- "-$pid" 2>/dev/null || true
+    fi
+  done
+  # `ros2 run` and `ros2 launch` children outlive a TERM to the group leader on
+  # some shutdown orders, and a leftover demo node publishing /ap/cmd_vel
+  # silently ruins the next flight check.
+  pkill -f "$project_root/install/openipc_cinewhoop_demo" 2>/dev/null || true
+  for pid in "${node_pids[@]:-}" "$pose_pid" "$launch_pid"; do
+    [ -n "$pid" ] && wait "$pid" 2>/dev/null || true
+  done
+  rm -rf "$test_tmpdir"
+}
+trap cleanup EXIT
+
+echo "==> Gazebo over the leaning world"
+setsid ros2 launch openipc_cinewhoop_gazebo gazebo.launch.py \
+  gui:=false use_bridge:=true world:=leaning_test.sdf \
+  >"$test_tmpdir/gazebo.log" 2>&1 &
+launch_pid=$!
+
+for topic in /openipc_cinewhoop/scan/front /openipc_cinewhoop/range/down; do
+  for _ in $(seq 1 160); do
+    ros2 topic list 2>/dev/null | grep -Fxq "$topic" && break
+    sleep 0.25
+  done
+  if ! ros2 topic list 2>/dev/null | grep -Fxq "$topic"; then
+    echo "$topic never appeared." >&2
+    tail -n 60 "$test_tmpdir/gazebo.log" >&2 || true
+    exit 1
+  fi
+done
+
+# The attitude the demo nodes use comes from the flight controller's estimate on
+# /ap/pose/filtered, and AP_DDS is not running here. Take it from Gazebo's own
+# report of where the model is rather than repeating the world file's numbers in
+# this script, so the two cannot drift apart.
+quat="$(timeout 20 gz topic -e -t /world/leaning_test/pose/info -n 1 2>/dev/null \
+  | python3 -c '
+import re, sys
+text = sys.stdin.read()
+for block in re.split(r"\npose \{", text):
+    if "\"openipc_cinewhoop\"" in block:
+        found = re.search(r"orientation \{(.*?)\n\}", block, re.S)
+        if found is None:
+            break
+        # Protobuf text format omits fields at their default, so x, y and z are
+        # absent when zero and only w is reliably printed.
+        q = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 0.0}
+        q.update({k: float(v) for k, v in
+                  re.findall(r"([xyzw]):\s*([-\d.e+]+)", found.group(1))})
+        print(q["x"], q["y"], q["z"], q["w"])
+        break
+')"
+if [ -z "$quat" ]; then
+  echo "Could not read the vehicle's attitude out of Gazebo." >&2
+  exit 1
+fi
+read -r qx qy qz qw <<<"$quat"
+echo "  vehicle attitude from Gazebo: x=$qx y=$qy z=$qz w=$qw"
+
+setsid ros2 topic pub -r 10 --qos-reliability best_effort /ap/pose/filtered \
+  geometry_msgs/msg/PoseStamped \
+  "{header: {frame_id: map}, pose: {position: {z: 0.6},
+    orientation: {x: $qx, y: $qy, z: $qz, w: $qw}}}" \
+  >"$test_tmpdir/pose.log" 2>&1 &
+pose_pid=$!
+
+echo "==> the scan is the floor, and the geometry rejects it"
+python3 scripts/check_leaning_scan.py
+
+echo "==> the demo nodes over the same scan"
+# Blind variants point at a rangefinder topic nobody publishes, which is exactly
+# what the node sees when the altitude is unknown: it may then discard nothing.
+run_node() {
+  local exe="$1" name="$2"
+  shift 2
+  setsid ros2 run openipc_cinewhoop_demo "$exe" --ros-args \
+    -r "__node:=$name" "$@" >"$test_tmpdir/$name.log" 2>&1 &
+  node_pids+=($!)
+}
+
+run_node obstacle_monitor obstacle_monitor -p log_period_s:=0.1
+run_node obstacle_monitor obstacle_monitor_blind -p log_period_s:=0.1 \
+  -p range_topic:=/openipc_cinewhoop/range/absent
+run_node simple_indoor_autonomy simple_indoor_autonomy \
+  -p auto_takeoff:=false
+run_node simple_indoor_autonomy simple_indoor_autonomy_blind \
+  -p auto_takeoff:=false -p cmd_vel_topic:=/ap/cmd_vel_blind \
+  -p range_topic:=/openipc_cinewhoop/range/absent
+
+expect() {
+  local name="$1" pattern="$2" what="$3"
+  local log="$test_tmpdir/$name.log"
+  for _ in $(seq 1 80); do
+    if grep -qE "$pattern" "$log" 2>/dev/null; then
+      echo "  $name: $(grep -hoE "$pattern" "$log" | head -1)"
+      return 0
+    fi
+    sleep 0.25
+  done
+  echo "$name never $what (looked for /$pattern/)." >&2
+  tail -n 30 "$log" >&2 || true
+  exit 1
+}
+
+# Blind first: it is the one that must see something, so if the scan or the
+# wiring is broken this fails before the compensated nodes pass vacuously.
+expect obstacle_monitor_blind "(Nearest obstacle|Obstacle close): [0-9.]+ m" \
+  "reported the floor with the height unknown"
+expect simple_indoor_autonomy_blind "Holding: obstacle at [0-9.]+ m" \
+  "held for the floor with the height unknown"
+expect obstacle_monitor "No valid front lidar range" \
+  "dropped the floor"
+expect simple_indoor_autonomy "Holding: no valid range in the scan" \
+  "dropped the floor"
+
+# A compensated node that also reported an obstacle would have satisfied the
+# greps above and still be wrong, so the absence is asserted too. Only from the
+# first correct line onwards: a node that has not yet received the pose and the
+# rangefinder has no attitude and no height, and reporting the floor is then the
+# right thing for it to do. The property is that it never goes back.
+absent_after() {
+  local name="$1" marker="$2"
+  local log="$test_tmpdir/$name.log"
+  local from
+  from="$(grep -nm1 -- "$marker" "$log" | cut -d: -f1)"
+  if tail -n "+$from" "$log" \
+      | grep -qE "Nearest obstacle|Obstacle close|Holding: obstacle at"; then
+    echo "$name went back to reporting the floor after it had the attitude" >&2
+    echo "and the height:" >&2
+    tail -n "+$from" "$log" \
+      | grep -hE "Nearest obstacle|Obstacle close|Holding: obstacle at" \
+      | head -5 >&2
+    exit 1
+  fi
+}
+
+absent_after obstacle_monitor "No valid front lidar range"
+absent_after simple_indoor_autonomy "Holding: no valid range in the scan"
+
+echo "Leaning scan check passed: the floor stops an uncompensated node and not a compensated one."

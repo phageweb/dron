@@ -118,12 +118,24 @@
       of bytes per second and the scan needs 108 kbit/s raw, so it has to ride
       the OpenIPC WiFi link beside the video - about 3.6 per cent of an 8 Mbit/s
       stream. wfb-ng has a data channel; nobody has configured or measured it
-- [ ] Still owed: a simulator test that actually leans the vehicle. The unit
-      tests pin the geometry and the sign, but the forward-flight check cruises
-      at 1 m with a gentle attitude, so it never exercises the rejection. Fly it
-      low, or command a real lean, and assert the floor is not reported
-- [ ] Give `obstacle_monitor` the same compensation, or it will report the floor
-      as the nearest obstacle while the autonomy node correctly ignores it
+- [x] Lean the vehicle in the simulator and assert the floor is not reported
+      (`scripts/check_leaning_scan.sh`, in baseline CI). `leaning_test.sdf` holds
+      the model static at 30 degrees nose-down and 0.60 m up, where the forward
+      beams meet the floor at 1.17 m - inside the demo's 1.40 m stop threshold.
+      Both nodes are run again with the rangefinder topic pointed at nothing,
+      and that blind pair must stop for the floor; without that control the
+      check would pass over an empty scan
+- [x] Give `obstacle_monitor` the same compensation, so it no longer reports the
+      floor as the nearest obstacle while the autonomy node ignores it
+- [x] Make the demo latch why it is holding rather than that it is holding. A
+      vehicle that stopped for a stale scan and then stayed stopped for a wall
+      logged only the first reason, so the log said the lidar was dead long
+      after it had recovered
+- [ ] The lean is asserted against an attitude fed in from outside, because
+      AP_DDS is not running in that check. It comes from Gazebo's own report of
+      the model rather than from a constant, but nothing there tests the EKF's
+      estimate against the truth; `check_forward_flight.sh` flies the real pose
+      and still never leans far enough to matter
 
 
 - [x] Implement `obstacle_monitor.py`

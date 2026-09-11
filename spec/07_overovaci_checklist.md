@@ -87,6 +87,9 @@ Tento checklist slouží jako závěrečná definice hotového dema.
 - [ ] ignoruje `nan` a `inf`
 - [ ] vypisuje nejbližší překážku v metrech
 - [ ] při vzdálenosti pod 0.8 m vypíše varování
+- [ ] bere jen výseč vpřed, ne stěnu za dronem
+- [ ] se sklopeným nosem nehlásí podlahu jako překážku
+      (`scripts/check_leaning_scan.sh`)
 
 ## `simple_indoor_autonomy.py`
 
@@ -98,6 +101,8 @@ Tento checklist slouží jako závěrečná definice hotového dema.
 - [ ] vzlétne na přibližně 1 m
 - [ ] letí dopředu přibližně 0.5 m/s
 - [ ] zastaví před překážkou pod 0.8 m
+- [ ] se sklopeným nosem nezastaví kvůli podlaze
+      (`scripts/check_leaning_scan.sh`)
 - [ ] po zastavení drží bezpečný stav nebo se pomalu otočí
 
 ## Finální příkazy v README

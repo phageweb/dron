@@ -51,6 +51,7 @@ Use E2E tests for:
 - sensor topics are published
 - TF tree is connected
 - obstacle monitor receives front lidar data
+- neither demo node mistakes the floor for an obstacle when the vehicle leans
 - autonomy node arms/takes off/stops in the simulated environment
 - one launch brings up Gazebo, the bridges, TF and the ArduPilot topics together
 
@@ -72,18 +73,30 @@ Micro XRCE-DDS Agent, which Nixpkgs does not provide:
 | `scripts/check_unified_launch.sh` | one launch serves Gazebo, ArduPilot and TF |
 | `scripts/sweep_rate_gains.sh` | measures where the roll rate loop starts to oscillate |
 
-Two more baseline checks cover the shape of the data rather than the graph:
+A few more baseline checks cover the shape of the data rather than the graph:
 
 | Check | What it proves |
 | --- | --- |
 | `scripts/check_model_consistency.py` | the URDF and the SDF describe the same drone |
 | `scripts/check_sensor_interface.sh` | message types, frames, the rangefinder cone and the IMU axes match the spec |
 | `scripts/check_sensor_dropout.sh` | a dead lidar stops the vehicle and is reported |
+| `scripts/check_leaning_scan.sh` | a leaning vehicle does not report the floor as an obstacle |
 
-All three are cheap enough for every run. The consistency check needs neither a
+All of them are cheap enough for every run. The consistency check needs neither a
 simulator nor a ROS graph - it expands the Xacro and reads both files - and the
 dropout check needs no simulator either: it publishes a scan from the command line and then stops, which is what a
 disconnected sensor looks like from inside a node.
+
+The leaning check does need Gazebo, but not SITL and not ArduPilot. It runs over
+`leaning_test.sdf`, a world whose only job is to hold the model static at 30
+degrees nose-down and 0.60 m up, which is where the front lidar's forward beams
+meet the floor. Both demo nodes are run twice over that one scan: once with the
+rangefinder topic connected and once with it pointed at nothing, which is what an
+unknown height looks like from inside a node. The blind pair must report the
+floor at 1.17 m and the compensated pair must report nothing, and the blind half
+is asserted first - without it the check would pass just as happily over an empty
+scan. That pattern is worth copying: a rejection test needs a control that proves
+there was something there to reject.
 
 `scripts/check_topic_remap.sh` runs in baseline CI and additionally exercises the
 service remapping when `external/dds_ws` is sourced, using

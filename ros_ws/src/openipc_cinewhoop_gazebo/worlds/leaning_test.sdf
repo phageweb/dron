@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<!-- A vehicle held leaning over the floor, so the front lidar really does
+     report the ground.
+
+     The attitude compensation in scan_helpers was written against unit tests and
+     then flown in indoor_test.sdf, where the demo cruises at 1 m with a gentle
+     attitude and the floor never comes into range. Nothing had ever exercised
+     the rejection on a scan that Gazebo produced, which is what this world is
+     for: the model is static and pitched nose-down, so the simulated LD06 sweeps
+     its forward beams into the floor on every scan and the result is repeatable
+     rather than a moment during a flight.
+
+     Geometry, at 30 degrees of pitch with base_link 0.60 m up:
+       front_lidar_link lands 0.595 m above the floor surface
+       the straight-ahead beam reaches the floor at 0.595 / sin(30) = 1.19 m
+       the edge of the 60 degree forward sector reaches it at 1.38 m
+     Both are inside the demo's 1.40 m stop threshold, so an uncompensated node
+     stops for the floor here. There is deliberately no obstacle: at this
+     attitude and height every forward beam meets the ground within 1.4 m, so
+     anything standing in the sector would be at the base of a wall, where the
+     geometry genuinely stops telling a wall from the floor. -->
+<sdf version="1.10">
+  <world name="leaning_test">
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+
+    <gravity>0 0 -9.80665</gravity>
+    <magnetic_field>6e-06 2.3e-05 -4.2e-05</magnetic_field>
+    <atmosphere type="adiabatic"/>
+
+    <light name="ceiling_light" type="directional">
+      <pose>0 0 4 0 0 0</pose>
+      <cast_shadows>true</cast_shadows>
+      <direction>-0.3 0.4 -1</direction>
+      <diffuse>0.9 0.86 0.75 1</diffuse>
+    </light>
+
+    <!-- Same floor as indoor_test.sdf: top surface at z = 0.025. -->
+    <model name="floor">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>10 6 0.05</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>10 6 0.05</size></box></geometry>
+          <material><diffuse>0.45 0.48 0.48 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <include>
+      <uri>model://openipc_cinewhoop</uri>
+      <!-- Static, because the point is the attitude and not the flight. Holding
+           a falling model at a pose with set_pose does not reset its velocity,
+           so it accelerates between teleports and the scan is different every
+           time; frozen, the same lean produces the same scan on every run. -->
+      <static>true</static>
+      <pose>0 0 0.60 0 0.5235987756 0</pose>
+    </include>
+  </world>
+</sdf>

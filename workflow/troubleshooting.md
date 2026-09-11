@@ -364,11 +364,16 @@ ground. At its 1 m cruise it takes about 45 degrees of lean to get there, which
 is far more than 0.5 m/s asks for. **Halve the altitude and 22 degrees is
 enough**, and 22 degrees is not an aggressive manoeuvre.
 
-Nothing in the code handles this today, and the simulation reproduces it
-faithfully, because the Gazebo sensor is rigidly attached in exactly the same
-way. That makes it testable before it is ever flown.
+The simulation reproduces it faithfully, because the Gazebo sensor is rigidly
+attached in exactly the same way, which made it testable before it was ever
+flown. `leaning_test.sdf` holds the model static at 30 degrees nose-down with the
+lidar 0.588 m above the floor, and the simulated LD06 reports the floor straight
+ahead at 1.175 m, rising to 1.352 m at the edge of the 60 degree forward sector -
+close to the 1.18 m the table's `h / sin(theta)` predicts, and inside the demo's
+1.40 m stop threshold. `scripts/check_leaning_scan.sh` asserts both that and the
+rejection.
 
-What the options are, worst to best:
+What the options were, worst to best; the last one is what was built:
 
 - **A gimbal.** Correct, and out of the question at 42 g of lidar on a 306 g
   aircraft.
@@ -379,9 +384,22 @@ What the options are, worst to best:
 - **Transform the scan and filter by height.** Every return becomes a point in a
   gravity-aligned frame using the vehicle's attitude, and anything below a
   height threshold is dropped as ground. This is the real answer, it handles
-  roll as well as pitch, and the pieces already exist: the TF tree is correct
+  roll as well as pitch, and the pieces already existed: the TF tree is correct
   and verified, and `/ap/pose/filtered` carries the orientation that
-  `trajectory_publisher` already subscribes to.
+  `trajectory_publisher` already subscribes to. `scan_helpers.is_ground_return`
+  does it, both demo nodes apply it, and the height comes from the downward
+  rangefinder.
+
+Two things about that answer are worth keeping in mind rather than forgetting:
+
+- **An unknown height rejects nothing.** Without a rangefinder reading there is
+  no way to tell a floor return from a wall, so the filter switches itself off
+  rather than guessing. A dead MTF-02P therefore brings the leaning problem
+  straight back, and the demo will stop for the ground again.
+- **Low and leaning, a wall and the floor are the same measurement.** At 0.5 m
+  and 20 degrees, a return 1 m out is aimed at a point 16 cm above the floor,
+  which is both the floor and the base of a wall. No filter fixes that; the
+  answer is to not fly like that.
 
 Note that ArduPilot compensates proximity data with attitude in its own
 avoidance layer, so if the LD06 is also wired to the flight controller, that path
