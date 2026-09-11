@@ -193,11 +193,43 @@
       EKF's own position, which nothing had checked before: every earlier check
       asked about attitude or about a distance the vehicle did not need to know
       where it was to get right
-- [ ] Broadcast `map` -> `base_link` so the map can be looked at. The grid is
-      stamped in a `map` frame that is not in the TF tree, so RViz has nowhere
-      to put it and `scripts/demo.sh --map` can only be echoed. The pose the
-      mapper already uses is that transform; what is missing is something
-      publishing it
+- [x] Root the TF tree in the world. `pose_tf_broadcaster` publishes
+      `map` -> `base_link` from `/ap/pose/filtered`, which is what the occupancy
+      map was stamped in and nothing reached. `sitl_gazebo.launch.py` starts it
+      and `check_unified_launch.sh` fails without it, so the launch that claims
+      to serve TF now serves a tree attached to something
+- [x] Ignore `/ap/pose/filtered`'s own `header.frame_id`, which says `base_link`
+      and is wrong: AP_DDS fills the body from
+      `get_relative_position_NED_home` swapped into ENU, so the content is where
+      base_link is relative to home. A pose saying where base_link is cannot be
+      expressed in base_link or it would be zero for ever, and anything
+      believing the label pins every mapped return to the vehicle
+- [x] Check the EKF's position and yaw against ground truth, neither of which
+      anything had done. `check_attitude_estimate.sh` parks the vehicle on a
+      ramp, and a parked vehicle at the origin says nothing about position;
+      a ramp cannot be tilted in yaw either, so yaw was the one axis never
+      compared against truth. `scripts/check_map_frame.sh` flies the circuit and
+      compares `map` -> `base_link` against Gazebo: 0.012 m at the median,
+      0.046 m at worst, yaw 0.01 degrees at the median. With the yaw sign
+      flipped it fails at 179.5 degrees while the position half still passes
+- [ ] Give the simulation a clock, or stop asking for one. Gazebo publishes no
+      clock topic here at all - not `/clock`, not `/world/<name>/clock`, and
+      `gz topic -l` lists neither - so the bridge's `/clock` entry forwards
+      messages that never come and every node launched with `use_sim_time: true`
+      sits at t = 0 for ever. That is exactly the hazard `demo.launch.py`'s own
+      comment warns about, and `sitl_gazebo.launch.py` passes
+      `use_sim_time: "true"` into `display.launch.py`, so RViz and
+      `robot_state_publisher` are running on a frozen clock today. Measured, not
+      inferred: no `/clock` message arrived in 15 s with the bridge up and the
+      topic listed on the ROS side. Nothing has broken visibly because every age
+      the demo nodes compute is taken from their own clock and they are run
+      without the setting - but a node that did use it would have every
+      staleness guard silently disabled
+- [ ] Confirm on a screen that RViz draws the occupancy map. The config has the
+      display and the transform now exists, but the Fixed Frame is `base_link`
+      so the room moves with the vehicle rather than standing still; `map` is
+      the frame to watch it in, and changing the default would break
+      `display.launch.py` on its own, where no `map` frame exists
 - [ ] Ask the coverage question somewhere it is a question. An empty convex room
       is the easy case: the LD06 sweeps the whole circle and reaches 12 m, so
       the vehicle maps 97 per cent of an 8 by 6 m room almost as soon as it is

@@ -118,10 +118,29 @@ if ! ros2 node list 2>/dev/null | grep -Fxq /robot_state_publisher; then
   exit 1
 fi
 
+# A TF tree rooted in nothing is the state this launch was in until
+# pose_tf_broadcaster existed: robot_state_publisher served base_link and every
+# sensor hanging off it, and nothing said where base_link was. Anything stamped
+# in a world-fixed frame - the occupancy map above all - had no transform
+# reaching it. /tf_static above proves the airframe's own tree; this proves it
+# is attached to the world.
+if ! timeout 30 ros2 run tf2_ros tf2_echo map base_link --ros-args \
+    -p use_sim_time:=true >"$test_tmpdir/tf_echo.log" 2>&1; then
+  # tf2_echo never exits on its own, so a timeout is the success path: what
+  # matters is whether it printed a transform before being cut off.
+  :
+fi
+if ! grep -q "Translation" "$test_tmpdir/tf_echo.log"; then
+  echo "No map -> base_link transform; the TF tree has no root in the world." >&2
+  tail -20 "$test_tmpdir/tf_echo.log" >&2 || true
+  exit 1
+fi
+echo "  map -> base_link is broadcast, so the TF tree is rooted in the world."
+
 # The demo nodes must stay runnable on their own, which is the plan's last point.
 if ! ros2 topic list 2>/dev/null | grep -Fxq /ap/cmd_vel; then
   echo "/ap/cmd_vel is missing, so the autonomy demo could not be run against it." >&2
   exit 1
 fi
 
-echo "Unified launch check passed: one launch serves Gazebo, ArduPilot and TF."
+echo "Unified launch check passed: one launch serves Gazebo, ArduPilot and a rooted TF tree."

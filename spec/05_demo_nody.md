@@ -58,6 +58,33 @@ ros2 run openipc_cinewhoop_demo obstacle_monitor --ros-args \
   -p warn_distance_m:=0.8
 ```
 
+## `pose_tf_broadcaster.py`
+
+Účel:
+
+- zakořenit TF strom ve světě: `map` -> `base_link`
+- bez něj `robot_state_publisher` ví, kde je lidar vůči dronu, a nikdo neví, kde
+  je dron - takže mapu ani nic jiného ve světovém rámci není kam umístit
+
+Vstup: `/ap/pose/filtered`. Výstup: `/tf`.
+
+`header.frame_id` té zprávy říká `base_link` a je to prostě špatně: AP_DDS ji
+plní z `get_relative_position_NED_home` převedeného do ENU, takže obsah je
+poloha base_linku vůči home. Póza říkající, kde base_link je, nemůže být v
+base_linku - byla by věčně nulová. Štítek se proto vědomě ignoruje.
+
+REP 105 chce `map` -> `odom` -> `base_link`. Odhad je tady jeden a není čím ho
+korigovat, takže by to byla jedna transformace napsaná dvakrát. Cena se ale
+vyplatí pojmenovat: při resetu EKF `base_link` skočí, kde by oddělený `odom`
+skok pohltil do `map` -> `odom`. Nic na té hladkosti dnes nestojí.
+
+Když póza přestane chodit, nevysílá se nic. Mezera v TF znamená, že se
+spotřebitel odmítne transformovat, což je správná odpověď na neznámou polohu;
+stará transformace by nakreslila mapu sebejistě špatně.
+
+Ověření: `scripts/check_map_frame.sh` porovná `map` -> `base_link` proti
+ground truth z Gazeba v poloze i v yaw.
+
 ## `occupancy_mapper.py`
 
 Účel:

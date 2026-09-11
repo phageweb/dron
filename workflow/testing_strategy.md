@@ -72,6 +72,7 @@ Micro XRCE-DDS Agent, which Nixpkgs does not provide:
 | `scripts/check_forward_flight.sh` | the autonomy demo takes off, creeps and stops |
 | `scripts/check_room_circuit.sh` | the demo turns at a wall and flies on instead of stopping |
 | `scripts/check_room_mapping.sh` | the map built over that circuit is the room the world file describes |
+| `scripts/check_map_frame.sh` | `map` -> `base_link` matches Gazebo in position and yaw |
 | `scripts/check_unified_launch.sh` | one launch serves Gazebo, ArduPilot and TF |
 | `scripts/check_attitude_estimate.sh` | AP_DDS reports the attitude the vehicle really has |
 | `scripts/sweep_rate_gains.sh` | measures where the roll rate loop starts to oscillate |

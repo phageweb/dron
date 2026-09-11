@@ -21,6 +21,7 @@ setup(
         "console_scripts": [
             "obstacle_monitor = openipc_cinewhoop_demo.obstacle_monitor:main",
             "occupancy_mapper = openipc_cinewhoop_demo.occupancy_mapper:main",
+            "pose_tf_broadcaster = openipc_cinewhoop_demo.pose_tf_broadcaster:main",
             "range_adapter = openipc_cinewhoop_demo.range_adapter:main",
             "simple_indoor_autonomy = openipc_cinewhoop_demo.simple_indoor_autonomy:main",
             "trajectory_publisher = openipc_cinewhoop_demo.trajectory_publisher:main",

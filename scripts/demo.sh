@@ -28,10 +28,10 @@ while [ $# -gt 0 ]; do
       turning="true"
       world="room_test.sdf"
       passthrough+=("--circuit") ;;
-    # Builds the map live rather than only inside the check. Not yet watchable
-    # in RViz: the grid is stamped in a "map" frame and nothing broadcasts
-    # map -> base_link, so RViz has nowhere to put it. `ros2 topic echo` and
-    # the mapper's own log are what there is until that transform exists.
+    # Builds the map live rather than only inside the check. The unified launch
+    # broadcasts map -> base_link, so RViz's Occupancy Map display has a
+    # transform to place the grid with; set its Fixed Frame to map to watch the
+    # room stand still rather than the vehicle.
     --map) mapping="true"; passthrough+=("--map") ;;
     --altitude)
       altitude="${2:?--altitude needs a value}"

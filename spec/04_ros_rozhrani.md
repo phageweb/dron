@@ -64,9 +64,14 @@ Pracovní názvy:
 | `/openipc_cinewhoop/map` | `nav_msgs/msg/OccupancyGrid` | `occupancy_mapper` | `map` |
 
 `/openipc_cinewhoop/map` je latchovaný (transient local): mapa publikovaná jen
-při změně je mapa, kterou ten, kdo se ptá poslední, nikdy neuvidí. Rámec `map`
-zatím v TF stromu není, takže RViz nemá kam mřížku umístit - chybí vysílač
-`map` -> `base_link`, viz backlog.
+při změně je mapa, kterou ten, kdo se ptá poslední, nikdy neuvidí.
+
+Rámec `map` do TF stromu vysílá `pose_tf_broadcaster` jako `map` -> `base_link`;
+bez něj byl strom zakořeněný jen v `base_link` a nic neříkalo, kde ten je.
+Pozor: `/ap/pose/filtered` má `header.frame_id` = `base_link`, což je špatně -
+obsah je poloha base_linku vůči home v ENU, tedy ve světovém rámci, a póza
+říkající, kde base_link je, nemůže být vyjádřená v base_linku. Kdo by tomu
+štítku věřil, položí každý návrat lidaru na dron.
 
 `/openipc_cinewhoop/range/down_raw` je jediný topic, který na reálném dronu
 neexistuje. Gazebo umí rangefinder jen jako malý lidar, takže bridge končí tady

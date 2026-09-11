@@ -44,6 +44,15 @@ Visualization Manager:
       Topic:
         Value: /openipc_cinewhoop/path
       Value: true
+    - Alpha: 0.7
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Enabled: true
+      Name: Occupancy Map
+      Topic:
+        Durability Policy: Transient Local
+        Value: /openipc_cinewhoop/map
+      Value: true
     - Class: rviz_default_plugins/Image
       Enabled: true
       Name: Front Camera

@@ -25,6 +25,7 @@ from launch.actions import (
 )
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch_ros.actions import Node
 from launch.substitutions import (
     EnvironmentVariable,
     LaunchConfiguration,
@@ -157,6 +158,26 @@ def generate_launch_description():
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(display_launch),
             launch_arguments={"use_sim_time": "true", "rviz": rviz}.items(),
+        ),
+
+        # The only thing that roots the TF tree in the world. Without it
+        # robot_state_publisher serves base_link and everything bolted to it,
+        # and nothing says where base_link is - so the occupancy map, which is
+        # stamped in a `map` frame, has no transform reaching it and RViz has
+        # nowhere to put it. It lives here rather than in demo.launch.py because
+        # it needs /ap/pose/filtered, which only exists when SITL does.
+        # No use_sim_time, and not by oversight. This node reads no clock - it
+        # restamps nothing, copying the pose's own stamp - so the setting would
+        # do nothing, and nothing is the best case: Gazebo publishes no clock
+        # topic at all here, the bridge's /clock entry forwards messages that
+        # never come, and a node told to use sim time therefore sits at t = 0
+        # for ever. See the backlog; it is a defect of this launch and not of
+        # this node.
+        Node(
+            package="openipc_cinewhoop_demo",
+            executable="pose_tf_broadcaster",
+            output="screen",
+            condition=IfCondition(sitl),
         ),
 
         ExecuteProcess(cmd=[bridge_bin], output="screen"),
