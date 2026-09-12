@@ -92,6 +92,11 @@ Tyto dokumenty popisují konkrétní simulovaný digitální prototyp:
 - [Ověřovací checklist](./07_overovaci_checklist.md)
 - [Pozdější rozšíření](./08_rozsireni.md)
 - [Nástroje, GitHub odkazy a údržba](./09_nastroje_komunita.md)
+- [**Implementační specifikace**](./10_implementation_spec.md) - co software
+  doopravdy dělá, do posledního pravidla a čísla. Na rozdíl od dokumentů výš,
+  které jsou návrh, je tenhle odvozený z postaveného a naměřeného, a je psaný
+  tak, aby se podle něj dalo chování postavit znovu v jiném jazyce, aniž by se
+  člověk podíval na stávající kód. Kde se rozchází s 04 nebo 05, platí on.
 
 ## Externí zdroje použité pro návrh
 

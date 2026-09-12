@@ -1,5 +1,10 @@
 # ROS 2 rozhraní, topics a TF
 
+> **Pozn.:** tohle je původní návrh rozhraní. Co je postavené, včetně
+> témat a QoS, které tu chybí, je v
+> [Implementační specifikaci](./10_implementation_spec.md); kde se ty dva
+> dokumenty rozcházejí, platí ona.
+
 ## Navržený namespace
 
 Pro vlastní dron:

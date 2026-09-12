@@ -1,5 +1,10 @@
 # Demo nody a autonomie
 
+> **Pozn.:** tohle je původní návrh uzlů a je v detailech zastaralý -
+> chybí v něm `frontier_explorer` i `range_adapter` a část parametrů se
+> jmenuje jinak, než jak byly nakonec postavené. Co uzly doopravdy dělají,
+> je v [Implementační specifikaci](./10_implementation_spec.md).
+
 ## `obstacle_monitor.py`
 
 Účel:

@@ -368,6 +368,10 @@
 - The other correction is that the check now asserts the improvement instead of only printing it. With the explorer flying, the vehicle must enter the enclosure and must read above the 88 per cent a flight from outside can get through the doorway - the ceiling that already proves a flight stayed out, used as a floor for one that went in. `EXPLORE=0` still flies the reactive rule and is held to none of it, so the comparison stays honest: 80 per cent, never in, closest approach 0.37 m.
 - It also collects the wall complaints to the end rather than exiting on the first. A check that stops at its first complaint shows whichever number it reached first, and the wall figures are the ones the coverage figures explain.
 
+- **Wrote the implementation specification, because there was no document anyone could build this from.** `spec/05_demo_nody.md` describes five nodes and is two nodes and a session behind - no `frontier_explorer`, no `range_adapter`, and parameters named things the code never called them, like `turn_duration_s`. Worse than incomplete: it would send a reimplementation the wrong way. And the algorithms live in the two helper modules, which no document in `spec/` mentions at all.
+- `spec/10_implementation_spec.md` is that document. Every rule, every constant and every edge case, written so the behaviour can be rebuilt in another language without reading the Python - which is the point, because that is what it is for. Each number says where it came from, and they are sorted at the end into the four kinds: out of the model, measured, policy, and unfounded. The last kind has one entry, the two degrees of attitude error, and it says so.
+- The two older documents now say at the top that they are the original design and that this one wins where they disagree.
+
 ## Log Entry Template
 
 ```text
