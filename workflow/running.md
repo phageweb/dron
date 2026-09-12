@@ -17,6 +17,24 @@ services actually answer, then flies the demo in the foreground: arm, take off t
 1 m, creep forward at 0.5 m/s and hold short of the wall. `--no-gui` and
 `--altitude METRES` are the two arguments. It re-enters `nix develop` on its own.
 
+`--circuit` flies a closed room and turns at the walls instead of stopping at
+one obstacle, and `--map` builds the occupancy grid live while it does.
+
+```bash
+scripts/demo.sh --explore
+```
+
+The coverage flight, with a window on it: the cluttered room, the map being
+built, and `frontier_explorer` choosing where to go from it rather than the
+vehicle turning towards the roomier side. It implies `--circuit` and `--map`.
+`check_room_coverage.sh` flies exactly this and measures the result, but it runs
+Gazebo headless because it is a check.
+
+In RViz, set Fixed Frame to `map` and add an Occupancy Map display on
+`/openipc_cinewhoop/map` to watch the room fill in - including the inside of the
+enclosure, which the reactive rule never sees. `frontier_explorer` says on its
+own log which opening it is heading for and how far the route to it is.
+
 Everything it starts, it kills on exit, including the leftover kind: a demo node
 that outlives its wrapper keeps publishing `/ap/cmd_vel` and silently stops the
 *next* run from taking off.

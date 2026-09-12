@@ -45,6 +45,8 @@ entries=(
   "HEAD||Watch it fly"
   "everything|dds|Everything: scene, flight to the wall, stays up until Ctrl-C|scripts/demo.sh|Opens Gazebo and RViz, waits for ArduPilot, then flies. Holds position when it stops."
   "circuit|dds|Everything, in a closed room: it turns at the walls and keeps going|scripts/demo.sh --circuit|Opens Gazebo and RViz over room_test.sdf. It flies a leg, yaws towards the roomier side, and goes on."
+  "explore|dds|Everything, in a cluttered room: it goes looking for what it has not seen|scripts/demo.sh --explore|Opens Gazebo and RViz over cluttered_room.sdf, building the map as it flies. Set RViz's Fixed Frame to map and add an Occupancy Map display on /openipc_cinewhoop/map to watch the room fill in, and the enclosure with it."
+  "table|dds|Everything, in a room with a table: what one scan plane misses|scripts/demo.sh --table|Opens Gazebo and RViz over table_room.sdf and flies at 0.5 m, where the plane cuts the legs. Add --altitude 1.0 to fly over the table instead and watch it stay out of the map entirely."
   "demo|flight|Just the scene: Gazebo, SITL and RViz, no flight|ros2 launch openipc_cinewhoop_gazebo sitl_gazebo.launch.py gui:=true"
   "autonomy|dds|The autonomy node itself: arm, take off, creep, stop at the wall|__autonomy"
   "watchsweep|flight|Watch one rate-gain flight, the oscillating one|__watchsweep"
@@ -73,6 +75,7 @@ entries=(
   "circuitcheck|flight|The demo turns at a wall and flies on, rather than stopping|scripts/check_room_circuit.sh|Two minutes of flight in a closed room, headless and silent until it finishes."
   "mapcheck|flight|The map the vehicle builds is the room it flew round|scripts/check_room_mapping.sh|The same circuit with occupancy_mapper running, then the map is measured against the walls in the world file."
   "mapframe|flight|map -> base_link is where the vehicle really is|scripts/check_map_frame.sh|The circuit with pose_tf_broadcaster running, comparing the transform against Gazebo's ground truth in position and in yaw."
+  "tablecheck|flight|The map holds what the scan plane met, and nothing else|scripts/check_table_height.sh 0.5|Flies the room with a table at 0.5 m, where the plane cuts the legs, and asserts they reach the map. Run it with no argument to fly at 1.0 m instead, where the geometry says the table cannot be in the map and the check asserts that it is not."
   "coveragecheck|flight|How much of a room with things in it the demo gets a look at|scripts/check_room_coverage.sh|The same circuit in a room with a pillar and a dogleg enclosure, measuring what reached the map and what stayed hidden. Over two minutes of flight, headless and silent until it finishes."
 
   "HEAD||Build"

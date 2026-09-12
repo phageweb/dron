@@ -18,6 +18,7 @@ altitude="1.0"
 world="indoor_test.sdf"
 turning="false"
 mapping="false"
+exploring="false"
 passthrough=()
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -33,15 +34,44 @@ while [ $# -gt 0 ]; do
     # transform to place the grid with; set its Fixed Frame to map to watch the
     # room stand still rather than the vehicle.
     --map) mapping="true"; passthrough+=("--map") ;;
+    # The coverage flight, with a window on it. check_room_coverage.sh flies
+    # exactly this and measures the result, but it runs Gazebo headless because
+    # it is a check; this is the same flight to watch rather than to score.
+    # cluttered_room.sdf is the world the question lives in - an enclosure
+    # behind a door that a vehicle circling the open middle never enters.
+    # The blind spot, with a window on it. A table is below the scan plane at
+    # the usual 1 m, so the flight to watch is the low one: at 0.5 m the plane
+    # cuts the legs and four posts appear in the map. --altitude after this
+    # overrides the 0.5, which is how to watch the vehicle fly straight over a
+    # table it cannot see.
+    --table)
+      turning="true"
+      mapping="true"
+      world="table_room.sdf"
+      altitude="0.5"
+      passthrough+=("--table") ;;
+    --explore)
+      exploring="true"
+      turning="true"
+      mapping="true"
+      world="cluttered_room.sdf"
+      passthrough+=("--explore") ;;
     --altitude)
       altitude="${2:?--altitude needs a value}"
       passthrough+=("--altitude" "$2")
       shift ;;
     -h|--help)
-      echo "usage: scripts/demo.sh [--no-gui] [--circuit] [--map] [--altitude METRES]"
+      echo "usage: scripts/demo.sh [--no-gui] [--circuit] [--map] [--explore] [--altitude METRES]"
       echo "  --circuit  fly a closed room and turn at the walls instead of"
       echo "             stopping at one obstacle in indoor_test.sdf"
       echo "  --map      build an occupancy grid on /openipc_cinewhoop/map"
+      echo "  --explore  fly the cluttered room, steering at the openings in"
+      echo "             the map instead of towards the roomier side; implies"
+      echo "             --circuit and --map"
+      echo "  --table    fly the room with a table in it at 0.5 m, where the"
+      echo "             scan plane cuts its legs; implies --circuit and --map."
+      echo "             --altitude 1.0 after it flies over the table instead,"
+      echo "             which the map does not show at all"
       exit 0 ;;
     *) echo "Unknown argument: $1" >&2; exit 2 ;;
   esac
@@ -86,6 +116,7 @@ set -u
 launch_pid=""
 demo_pid=""
 mapper_pid=""
+explorer_pid=""
 
 cleanup() {
   # The trap catches INT, TERM and EXIT, and Ctrl-C fires two of them; without
@@ -93,7 +124,7 @@ cleanup() {
   trap - EXIT INT TERM
   echo
   echo "==> Shutting the demo down."
-  for pid in "$mapper_pid" "$demo_pid" "$launch_pid"; do
+  for pid in "$explorer_pid" "$mapper_pid" "$demo_pid" "$launch_pid"; do
     [ -n "$pid" ] && kill -TERM -- "-$pid" 2>/dev/null || true
   done
   sleep 2
@@ -136,11 +167,18 @@ if [ "$mapping" = true ]; then
   mapper_pid=$!
 fi
 
+if [ "$exploring" = true ]; then
+  echo "==> Choosing where to fly from the map, on"
+  echo "    /openipc_cinewhoop/explore/target."
+  setsid ros2 run openipc_cinewhoop_demo frontier_explorer &
+  explorer_pid=$!
+fi
+
 echo "==> Flying: arm, take off to ${altitude} m, creep forward, stop for the wall."
 echo "==> It holds position when it stops. Ctrl-C when you have seen enough."
 echo
 setsid ros2 run openipc_cinewhoop_demo simple_indoor_autonomy \
   --ros-args -p takeoff_altitude_m:="$altitude" \
-  -p enable_turning:="$turning" &
+  -p enable_turning:="$turning" -p enable_exploring:="$exploring" &
 demo_pid=$!
 wait "$demo_pid"

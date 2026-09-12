@@ -1,0 +1,189 @@
+<?xml version="1.0"?>
+<!-- A room with a table in it, which is the obstacle this sensor cannot see.
+
+     The LD06 is a single-plane lidar: 360 degrees round, one ray high. That is
+     the real part, not a simplification of it - the datasheet sensor has one
+     scan plane and so does the model. Everything the vehicle knows about the
+     room is therefore a horizontal slice at whatever height it happens to be
+     flying, and an obstacle that does not cross that slice does not exist as
+     far as the map, the obstacle monitor or the autonomy node are concerned.
+
+     A table is the everyday shape of that blind spot. Its top is at 0.75 m and
+     the demo cruises at 1.00 m with the lidar 0.05 m above the airframe, so the
+     plane passes 0.30 m over the table: nothing is returned, nothing is mapped,
+     and the vehicle would fly over it perfectly happily - which in this one case
+     it can, being 0.30 m above it. The same blindness applied to a table with a
+     lamp on it, or to a person, is not so harmless.
+
+     Flown at 0.50 m instead, the plane cuts the legs and four small returns
+     appear in the map. It still is not a table: the map gets four posts, and
+     nothing anywhere says they are joined at the top. That is what a slice of a
+     room is, and this world exists so the difference can be measured rather
+     than argued about.
+
+     The legs are 0.08 m square, which is stout for a table and deliberate: the
+     LD06 takes one sample per degree, so at 3 m the beams are 52 mm apart and a
+     slimmer leg would be a matter of luck rather than a matter of height. The
+     question here is what the plane's height decides, and the leg is made thick
+     enough that nothing else does. -->
+<sdf version="1.10">
+  <world name="table_room">
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+
+    <gravity>0 0 -9.80665</gravity>
+    <magnetic_field>6e-06 2.3e-05 -4.2e-05</magnetic_field>
+    <atmosphere type="adiabatic"/>
+
+    <light name="ceiling_light" type="directional">
+      <pose>0 0 4 0 0 0</pose>
+      <diffuse>0.9 0.9 0.9 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.3 0.2 -1</direction>
+    </light>
+
+    <model name="floor">
+      <static>true</static>
+      <pose>0 0 -0.025 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>10 8 0.05</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>10 8 0.05</size></box></geometry>
+          <material><diffuse>0.35 0.35 0.38 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- The same 8 by 6 m room as room_test.sdf and cluttered_room.sdf, so the
+         walls are one known quantity and the table is the only new one. -->
+    <model name="wall_x_plus">
+      <static>true</static>
+      <pose>4.05 0 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.1 6.2 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.1 6.2 2.0</size></box></geometry>
+          <material><diffuse>0.55 0.55 0.58 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_x_minus">
+      <static>true</static>
+      <pose>-4.05 0 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.1 6.2 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.1 6.2 2.0</size></box></geometry>
+          <material><diffuse>0.55 0.55 0.58 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_y_plus">
+      <static>true</static>
+      <pose>0 3.05 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>8.2 0.1 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>8.2 0.1 2.0</size></box></geometry>
+          <material><diffuse>0.55 0.55 0.58 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_y_minus">
+      <static>true</static>
+      <pose>0 -3.05 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>8.2 0.1 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>8.2 0.1 2.0</size></box></geometry>
+          <material><diffuse>0.55 0.55 0.58 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- The table. One model per part, because the check reads heights out of
+         this file and a part's own <pose> and box size are where a height is
+         stated plainly. The top sits at 0.73 to 0.77 m and each leg runs from
+         the floor to 0.73 m, which is an ordinary dining table.
+
+         It stands in the -x half, off the middle of the room, so a vehicle
+         flying a circuit passes it on both sides rather than only meeting it
+         head on. -->
+    <model name="table_top">
+      <static>true</static>
+      <pose>-1.6 0.4 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1.4 0.9 0.04</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>1.4 0.9 0.04</size></box></geometry>
+          <material><diffuse>0.55 0.37 0.22 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="table_leg_a">
+      <static>true</static>
+      <pose>-2.22 0.02 0.365 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.08 0.08 0.73</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.08 0.08 0.73</size></box></geometry>
+          <material><diffuse>0.45 0.30 0.18 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="table_leg_b">
+      <static>true</static>
+      <pose>-2.22 0.78 0.365 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.08 0.08 0.73</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.08 0.08 0.73</size></box></geometry>
+          <material><diffuse>0.45 0.30 0.18 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="table_leg_c">
+      <static>true</static>
+      <pose>-0.98 0.02 0.365 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.08 0.08 0.73</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.08 0.08 0.73</size></box></geometry>
+          <material><diffuse>0.45 0.30 0.18 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="table_leg_d">
+      <static>true</static>
+      <pose>-0.98 0.78 0.365 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.08 0.08 0.73</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.08 0.08 0.73</size></box></geometry>
+          <material><diffuse>0.45 0.30 0.18 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <!-- The vehicle itself, at the origin as in every other world here, which
+         puts it 1.6 m clear of the table's near legs: far enough to fly at the
+         table rather than starting under it. -->
+    <include>
+      <uri>model://openipc_cinewhoop</uri>
+      <pose>0 0 0.035 0 0 0</pose>
+    </include>
+  </world>
+</sdf>

@@ -275,6 +275,20 @@
       the ones there is no way to; the published point is one stopping distance
       along the route. It also retired the timeout that used to guess an opening
       was "probably behind a wall", because the sweep answers that outright
+- [x] Measure what the demo makes of a table, which is the everyday shape of
+      what one scan plane misses. `table_room.sdf` and
+      `scripts/check_table_height.sh`: the table is never a surface in the map -
+      four to seven of the 126 cells it stands on, at either height - and what
+      does come back is its outline, because a slice of a table is where the
+      plane crosses its legs and its rim. The expected story, unseen at 1.00 m
+      and seen at 0.50 m, is not what happens: the plane tips with the airframe,
+      so at 0.90 m range 18 degrees of nose-down reaches a table the level plane
+      passes 0.28 m over, and braking does that
+- [ ] Give the vehicle a way to know a table is a table, which one plane cannot.
+      A tilted or nodding lidar, or a depth camera, plus a map with more than
+      one layer, plus frontier and clearance reasoning that works in it. That is
+      a milestone rather than a task, and until it exists the demo can only say
+      something stands about there
 - [ ] The floor rejection's margin is a fraction of the height it is flown at,
       and nothing says so. A return is called floor once it works out below
       `ground_margin_m` of 0.25 m, so at the demo's 1.00 m the lidar has 0.80 m
