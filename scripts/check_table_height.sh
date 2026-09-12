@@ -17,11 +17,19 @@
 #
 # What is true at both heights, and is what this asserts:
 #
-#   - the table is never a surface in the map. Its footprint is 126 cells and
-#     four to seven of them come back occupied, whichever height it is flown at
+#   - the table is never a surface in the map. Its footprint is 126 cells and a
+#     tenth of them or so come back occupied, whichever height it is flown at
 #   - what does come back is its outline. Every occupied cell sits within a
 #     couple of cells of the footprint's edge, because a slice of a table is the
 #     line where the plane crosses its legs and its rim, never the top
+#
+# The count moved once, and for a good reason worth keeping written down. With
+# the floor rejection using a flat 0.25 m bar, 0.50 m through the legs gave four
+# cells and two legs; with the bar made an error bar that grows with range, the
+# same flight gives fourteen and all four legs. Most of the table was being
+# thrown away as ground, because a beam that meets a leg 0.2 m up meets it below
+# a flat bar - which is the same defect that discarded walls, seen from the other
+# side.
 #
 # So the map cannot say there is a table, only that something stands about
 # there. Nothing downstream can fly under it, avoid its top, or know it is one
@@ -379,11 +387,12 @@ if len(occupied) < 100:
 # The footprint in cells, which is what "not a surface" is measured against.
 footprint_cells = round(((footprint[1] - footprint[0])
                          * (footprint[3] - footprint[2])) / resolution ** 2)
-# Four to seven cells were measured, at both heights. A tenth of the footprint
-# is far above that and far below anything that could be called a surface, so
-# this fails on a map that has started representing the table rather than on a
-# flight that went a little differently.
-MOST_OF_IT = 0.10
+# Fourteen cells of the 126 is the most this map has held of the table, and it
+# holds them as an outline. Thirty per cent is far above that and far below
+# anything that could be called a surface, so this fails on a map that has
+# started representing the table rather than on a flight that went a little
+# differently.
+MOST_OF_IT = 0.30
 print(f"  that is {100.0 * len(on_table) / footprint_cells:.0f} per cent of the "
       f"{footprint_cells} cells the table stands on")
 if len(on_table) > MOST_OF_IT * footprint_cells:

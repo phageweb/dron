@@ -31,7 +31,15 @@ class ObstacleMonitor(Node):
         # than either behaviour on its own - the two would disagree in flight.
         self.declare_parameter("range_topic", "/openipc_cinewhoop/range/down")
         self.declare_parameter("pose_topic", "/ap/pose/filtered")
-        self.declare_parameter("ground_margin_m", 0.25)
+        # An error bar rather than a clearance, which is what it always was.
+        # `ground_margin_m` covers what is wrong here - the rangefinder's
+        # reading, the floor not being flat - and the attitude term covers the
+        # lean, which is the part that grows with distance: an attitude wrong by
+        # two degrees puts a return 3 m out wrong by 0.10 m. A flat bar big
+        # enough for the far field throws away near walls struck low, which is
+        # exactly what a leaning vehicle's forward beams do.
+        self.declare_parameter("ground_margin_m", 0.10)
+        self.declare_parameter("ground_attitude_margin_deg", 2.0)
         # Neither the attitude nor the height arrives with the scan, so both can
         # go stale while the lidar stays healthy. Rejecting the floor with an
         # attitude the vehicle no longer holds is worse than not rejecting it.
@@ -138,7 +146,9 @@ class ObstacleMonitor(Node):
             msg.ranges, msg.angle_min, msg.angle_increment,
             msg.range_min, msg.range_max, sector,
             self._roll, self._pitch, self._rejection_height(),
-            float(self.get_parameter("ground_margin_m").value))
+            float(self.get_parameter("ground_margin_m").value), 0.0,
+            math.radians(
+                float(self.get_parameter("ground_attitude_margin_deg").value)))
         if nearest is None:
             self.get_logger().warning("No valid front lidar range")
             return

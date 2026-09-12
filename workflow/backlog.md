@@ -289,16 +289,19 @@
       one layer, plus frontier and clearance reasoning that works in it. That is
       a milestone rather than a task, and until it exists the demo can only say
       something stands about there
-- [ ] The floor rejection's margin is a fraction of the height it is flown at,
-      and nothing says so. A return is called floor once it works out below
-      `ground_margin_m` of 0.25 m, so at the demo's 1.00 m the lidar has 0.80 m
-      to give away and a return 3 m out survives a 15.5 degree nose-down. Flown
-      at 0.50 m it has 0.30 m, and the same return is discarded at 5.7 degrees -
-      less than the vehicle pitches to get moving. Low flight therefore throws
-      away real obstacles at range, quietly, exactly where flying low is what
-      the job needed. The margin wants to be a fraction of the height, or the
-      rejection wants the return's height rather than its drop; either way it is
-      a number that was chosen at one altitude and is used at all of them
+- [x] Make the floor rejection's margin an error bar rather than a flat
+      clearance. It asked whether a return was low when the question is whether
+      it is on the floor, and the two differ wherever a beam strikes something
+      tall near its foot - which is what a leaning vehicle's forward beams do.
+      It is now 0.10 m for what is wrong here plus two degrees of lean, which is
+      0.035 m per metre of range. Measured on the way: the same flight puts
+      fourteen cells of a table into the map where the flat bar put four, most
+      of it having been discarded as ground
+- [ ] Settle the two degrees on hardware. It is the whole error bar at range -
+      0.28 m of the 0.38 m at 8 m - and SITL's EKF is fed a noiseless IMU, so
+      the simulation would accept a tenth of it and prove nothing. This is the
+      same open question as the attitude check being simulation agreeing with
+      simulation, and the same flight would answer both
 - [ ] The corridor is the swath of a vehicle going forwards, which is all this
       demo ever does. A sideways or diagonal command would need it pointed along
       the commanded velocity rather than along the nose, and nothing currently

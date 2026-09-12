@@ -269,6 +269,13 @@ class ScanHelpersTest(unittest.TestCase):
         sector. Believing a 30 degree nose-down attitude it no longer holds, the
         node reads 1.45 m for a wall that is 1.35 m away - and 1.40 m is where
         the demo decides to stop.
+
+        The height that does it is 0.80 m and the window is about 0.04 m wide,
+        which is not a fragile test so much as a narrow truth: leaning 30
+        degrees, the two returns sit 0.09 m apart in height, and the rule has to
+        put the bar between them. Nothing here would work at all if the bar did
+        not grow with range - the nearer return is the higher one, and only the
+        bearing's cosine separates them.
         """
         increment = math.radians(15)
         ranges = [4.0, 4.0, 1.35, 4.0, 1.45]
@@ -278,7 +285,7 @@ class ScanHelpersTest(unittest.TestCase):
         self.assertAlmostEqual(nearest_in_sector(ranges, **geometry), 1.35)
         self.assertAlmostEqual(
             nearest_in_sector(ranges, roll_rad=0.0, pitch_rad=math.radians(30),
-                              height_above_floor_m=0.90, **geometry),
+                              height_above_floor_m=0.80, **geometry),
             1.45)
         # With the attitude stale there is no height to reject with, so the
         # wall comes back. The rangefinder reading that produces a 0.90 m
@@ -412,13 +419,35 @@ class GroundReturnTest(unittest.TestCase):
             is_ground_return(self.AHEAD, 1.4, 0.0, self.NOSE_DOWN, 1.0))
 
     def test_low_and_leaning_the_two_stop_being_distinguishable(self):
-        # This is a property of the geometry, not a shortcoming of the code. At
-        # 0.5 m up and 20 degrees down, a return 1.0 m out is aimed at a point
-        # 0.16 m above the floor. A wall's base and the floor itself are the
-        # same measurement there, and the honest answer is to treat it as
-        # ground: flying that low and that hard is what needs fixing.
+        # This is a property of the geometry, not a shortcoming of the code:
+        # far enough out, a wall's base and the floor are the same measurement.
+        # What decides where that starts is how well the return's height is
+        # known, and that is the error bar - 0.10 m of it here plus two degrees
+        # of attitude, which is 0.035 m for every metre of range.
+        #
+        # At 0.5 m up and 20 degrees down, 2.0 m out is aimed below the floor
+        # and there is nothing to tell apart.
         self.assertTrue(
+            is_ground_return(self.AHEAD, 2.0, 0.0, self.NOSE_DOWN, 0.5))
+
+    def test_near_enough_a_wall_is_still_a_wall_however_low_the_vehicle_is(self):
+        # The same lean and the same height, 1.0 m out: the return is 0.16 m up
+        # against a bar of 0.135 m, so it is a wall - and it has to be, because
+        # a return 0.16 m up a wall is the only warning of the two metres of
+        # wall above it. A flat 0.25 m bar called this ground and threw the
+        # warning away, which is the whole reason the bar now has a size that
+        # depends on the range it is measured at.
+        self.assertFalse(
             is_ground_return(self.AHEAD, 1.0, 0.0, self.NOSE_DOWN, 0.5))
+
+    def test_the_bar_grows_with_range_because_a_lean_error_does(self):
+        # An attitude wrong by an angle puts a return at range r wrong by r
+        # times that angle, so the same height means different things near and
+        # far. A return 0.20 m up is a wall at 1 m and indistinguishable at 6 m.
+        self.assertFalse(
+            is_ground_return(self.AHEAD, 1.0, 0.0, 0.0, 0.20))
+        self.assertTrue(
+            is_ground_return(self.AHEAD, 6.0, 0.0, 0.0, 0.20))
 
     def test_a_wall_in_level_flight_is_never_ground(self):
         self.assertFalse(is_ground_return(self.AHEAD, 1.4, 0.0, 0.0, 1.0))

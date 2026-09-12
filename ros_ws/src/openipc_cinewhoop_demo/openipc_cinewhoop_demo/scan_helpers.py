@@ -127,18 +127,42 @@ def is_ground_return(
     roll_rad: float,
     pitch_rad: float,
     height_above_floor_m: Optional[float],
-    margin_m: float = 0.25,
+    margin_m: float = 0.10,
+    attitude_margin_rad: float = 0.035,
 ) -> bool:
     """Whether a return is the floor rather than something worth stopping for.
 
     Needs to know how high the sensor is, which the downward rangefinder already
     measures. Without that height nothing can be ruled out, so nothing is: an
     unknown altitude must not start discarding real obstacles.
+
+    The question is whether the return is *on* the floor, and it used to be
+    asked as whether it was *low*: anything within a flat 0.25 m was floor. The
+    two differ wherever a beam strikes something tall near its foot, which is
+    exactly what a leaning vehicle's forward beams do. Nose-down 5.7 degrees at
+    0.55 m, a wall 3 m away is struck 0.25 m up its face - and that return, the
+    only evidence of a wall the vehicle is about to fly into, was thrown away as
+    ground. A return's height is not an obstacle's height.
+
+    So the margin is what it always really was, an error bar, and an error bar
+    grows with range: an attitude wrong by an angle puts a return at range r
+    wrong by r times that angle. `margin_m` covers what is wrong here - the
+    rangefinder's own reading, the floor not being flat - and the second term
+    covers the lean, which is the part that runs away with distance. At 3 m the
+    two make 0.21 m; at 8 m, 0.38 m, where a floor return genuinely cannot be
+    told from a low one.
+
+    `attitude_margin_rad` is two degrees and is the number here that hardware
+    has to settle. SITL's EKF is fed a noiseless IMU, so the simulation would
+    accept a far tighter one and prove nothing by it; two degrees is what a real
+    flight controller is usually good for, and the backlog carries the
+    measurement as an open item.
     """
     if height_above_floor_m is None:
         return False
     drop = ground_return_height(bearing_rad, range_m, roll_rad, pitch_rad)
-    return height_above_floor_m + drop <= margin_m
+    margin = margin_m + abs(range_m) * attitude_margin_rad
+    return height_above_floor_m + drop <= margin
 
 
 def nearest_in_sector(
@@ -151,8 +175,9 @@ def nearest_in_sector(
     roll_rad: float = 0.0,
     pitch_rad: float = 0.0,
     height_above_floor_m: Optional[float] = None,
-    ground_margin_m: float = 0.25,
+    ground_margin_m: float = 0.10,
     centre_rad: float = 0.0,
+    ground_attitude_margin_rad: float = 0.035,
 ) -> Optional[float]:
     """Nearest valid return within a cone around a bearing, straight ahead by default.
 
@@ -187,7 +212,8 @@ def nearest_in_sector(
         if abs(offset) > half:
             continue
         if is_ground_return(angle, value, roll_rad, pitch_rad,
-                            height_above_floor_m, ground_margin_m):
+                            height_above_floor_m, ground_margin_m,
+                            ground_attitude_margin_rad):
             continue
         if nearest is None or value < nearest:
             nearest = value
@@ -539,7 +565,8 @@ def nearest_in_corridor(
     roll_rad: float = 0.0,
     pitch_rad: float = 0.0,
     height_above_floor_m: Optional[float] = None,
-    ground_margin_m: float = 0.25,
+    ground_margin_m: float = 0.10,
+    ground_attitude_margin_rad: float = 0.035,
 ) -> Optional[float]:
     """How far ahead the vehicle can fly straight before it hits something.
 
@@ -585,7 +612,8 @@ def nearest_in_corridor(
         if abs(value * math.sin(angle)) > half_width_m:
             continue
         if is_ground_return(angle, value, roll_rad, pitch_rad,
-                            height_above_floor_m, ground_margin_m):
+                            height_above_floor_m, ground_margin_m,
+                            ground_attitude_margin_rad):
             continue
         if nearest is None or ahead < nearest:
             nearest = ahead

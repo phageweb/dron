@@ -99,7 +99,15 @@ class SimpleIndoorAutonomy(Node):
         # as soon as the nose drops. Returns that work out to be the ground are
         # dropped, which needs the height the downward rangefinder measures.
         self.declare_parameter("range_topic", "/openipc_cinewhoop/range/down")
-        self.declare_parameter("ground_margin_m", 0.25)
+        # An error bar rather than a clearance, which is what it always was.
+        # `ground_margin_m` covers what is wrong here - the rangefinder's
+        # reading, the floor not being flat - and the attitude term covers the
+        # lean, which is the part that grows with distance: an attitude wrong by
+        # two degrees puts a return 3 m out wrong by 0.10 m. A flat bar big
+        # enough for the far field throws away near walls struck low, which is
+        # exactly what a leaning vehicle's forward beams do.
+        self.declare_parameter("ground_margin_m", 0.10)
+        self.declare_parameter("ground_attitude_margin_deg", 2.0)
         # The scan has a freshness guard and these two did not, although neither
         # arrives with the scan: the pose comes from the flight controller over
         # DDS and the height from a different sensor. A lean that stopped
@@ -231,13 +239,16 @@ class SimpleIndoorAutonomy(Node):
         side = math.radians(float(self.get_parameter("side_sector_deg").value))
         height = self._rejection_height()
         margin = float(self.get_parameter("ground_margin_m").value)
+        lean_margin = math.radians(
+            float(self.get_parameter("ground_attitude_margin_deg").value))
 
         def nearest(centre_rad):
             return nearest_in_sector(
                 msg.ranges, msg.angle_min, msg.angle_increment,
                 msg.range_min, msg.range_max,
                 sector if centre_rad == 0.0 else side,
-                self._roll, self._pitch, height, margin, centre_rad)
+                self._roll, self._pitch, height, margin, centre_rad,
+                lean_margin)
 
         # What is in the way, which is a different question from what is in
         # front: the corridor reports how far the vehicle gets flying straight,
@@ -257,7 +268,7 @@ class SimpleIndoorAutonomy(Node):
             msg.ranges, msg.angle_min, msg.angle_increment,
             msg.range_min, msg.range_max,
             tip + float(self.get_parameter("corridor_margin_m").value), tip,
-            self._roll, self._pitch, height, margin)
+            self._roll, self._pitch, height, margin, lean_margin)
         # What is off each wing, for deciding which way to turn, and a cone is
         # right for that one: the question there is which side has more room,
         # not what the vehicle would hit going sideways, which it never does.

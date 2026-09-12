@@ -182,12 +182,16 @@ echo "==> simple_indoor_autonomy stops trusting an attitude that stopped arrivin
 # straight ahead before it drops a farther return at the edge of the sector.
 #
 # The numbers are that failure, arranged so both halves are visible. The
-# rangefinder reports 0.988 m of slant; at 30 degrees that is 0.856 m of height
+# rangefinder reports 0.850 m of slant; at 30 degrees that is 0.736 m of height
 # for the rangefinder, and the lidar sits 44 mm above it at this lean, so the
-# rejection works with 0.90 m. Returns are then floor beyond 1.30 m of
-# horizontal reach: the 1.35 m wall dead ahead is floor, the 1.45 m return at
-# 29 degrees reaches only 1.27 m and is not. So a vehicle that really is
-# leaning may fly -
+# rejection works with 0.780 m. Leaning that far, the beam straight ahead meets
+# the floor 0.105 m up at 1.35 m and the beam at 29 degrees meets it 0.152 m up
+# at 1.45 m, against an error bar of 0.10 m plus two degrees of attitude - which
+# is 0.147 m at the first range and 0.151 m at the second. So the near one is
+# floor and the far one is not, by four millimetres, and that narrowness is the
+# point: the two returns are 0.05 m apart in height and the rule has to put the
+# bar between them. The window of rangefinder readings that does it is 0.83 to
+# 0.87 m. So a vehicle that really is leaning may fly -
 # and the same scan, once the lean can no longer be trusted, must stop it,
 # because 1.35 m is inside the 1.40 m the demo stops at.
 publish_leaning_scan() {
@@ -203,7 +207,7 @@ publish_leaning_scan() {
 setsid ros2 topic pub -r 10 -w 1 --qos-reliability best_effort \
   /openipc_cinewhoop/range/down sensor_msgs/msg/Range \
   "{header: {frame_id: rangefinder_link}, radiation_type: 1, field_of_view: 0.1,
-    min_range: 0.05, max_range: 8.0, range: 0.988}" \
+    min_range: 0.05, max_range: 8.0, range: 0.850}" \
   >"$test_tmpdir/range.log" 2>&1 &
 range_pid=$!
 
@@ -229,7 +233,7 @@ if [ "$leaning" = "none" ] || [ "$leaning" = "0.0" ]; then
   tail -n 20 "$test_tmpdir/autonomy.log" >&2
   exit 1
 fi
-echo "  leaning 30 deg, 0.988 m of slant = 0.90 m of lidar height, floor at 1.35 m: twist.linear.x = $leaning"
+echo "  leaning 30 deg, 0.850 m of slant = 0.78 m of lidar height, floor at 1.35 m: twist.linear.x = $leaning"
 
 # Only the attitude stops. The scan and the height keep arriving, so nothing
 # the node watches for staleness today has changed.

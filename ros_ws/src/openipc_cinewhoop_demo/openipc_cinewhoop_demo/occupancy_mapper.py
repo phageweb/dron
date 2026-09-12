@@ -66,7 +66,15 @@ class OccupancyMapper(Node):
         # The lidar leans with the airframe, so a nose-down vehicle finds the
         # floor ahead of it; painted into a map that is not a transient stop but
         # a permanent arc of wall across the middle of an empty room.
-        self.declare_parameter("ground_margin_m", 0.25)
+        # An error bar rather than a clearance, which is what it always was.
+        # `ground_margin_m` covers what is wrong here - the rangefinder's
+        # reading, the floor not being flat - and the attitude term covers the
+        # lean, which is the part that grows with distance: an attitude wrong by
+        # two degrees puts a return 3 m out wrong by 0.10 m. A flat bar big
+        # enough for the far field throws away near walls struck low, which is
+        # exactly what a leaning vehicle's forward beams do.
+        self.declare_parameter("ground_margin_m", 0.10)
+        self.declare_parameter("ground_attitude_margin_deg", 2.0)
         self.declare_parameter("compensation_timeout_s", 0.5)
         self.declare_parameter("lidar_ahead_of_rangefinder_m", 0.026)
         self.declare_parameter("lidar_above_rangefinder_m", 0.066)
@@ -178,6 +186,8 @@ class OccupancyMapper(Node):
             self.get_logger().info("Mapping scans again")
             self._skip_reason = None
         margin = float(self.get_parameter("ground_margin_m").value)
+        lean_margin = math.radians(
+            float(self.get_parameter("ground_attitude_margin_deg").value))
         ahead = float(self.get_parameter("lidar_ahead_of_base_m").value)
         left = float(self.get_parameter("lidar_left_of_base_m").value)
         above = float(self.get_parameter("lidar_above_base_m").value)
@@ -196,7 +206,7 @@ class OccupancyMapper(Node):
             bearing = (bearing + math.pi) % (2 * math.pi) - math.pi
             hit = math.isfinite(value) and msg.range_min <= value <= msg.range_max
             if hit and is_ground_return(bearing, value, self._roll, self._pitch,
-                                        height, margin):
+                                        height, margin, lean_margin):
                 # Dropped whole rather than carved as free space up to the
                 # return. The beam did travel unobstructed to get there, but it
                 # was travelling downwards to do it, so what it proves is that
