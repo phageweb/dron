@@ -114,6 +114,16 @@
       Returns are projected into a gravity-aligned frame using the pose's roll
       and pitch, and dropped when they work out to be the floor. The height comes
       from the downward rangefinder, and an unknown height discards nothing
+- [ ] Decide where the ROS 2 nodes run, which is now a purchase and not only a
+      question. AP_DDS publishes no LaserScan and no proximity topic at all -
+      checked against the topic table, and no pull request adds one - so on real
+      hardware the scan has no way into ROS. The simulation hides it: there the
+      scan comes from Gazebo straight into ROS through ros_gz_bridge. Three ways
+      out and they cost differently: a companion computer carrying the lidar
+      driver and our nodes (10-20 g, what every ArduPilot indoor-autonomy guide
+      actually does), writing a LaserScan publisher into AP_DDS in C++ (no
+      grams, a fork), or keeping ROS on the ground (no grams, but see below).
+      The bill of materials cannot be finished before this is decided
 - [ ] Decide how lidar data reaches the ground. ELRS telemetry carries hundreds
       of bytes per second and the scan needs 108 kbit/s raw, so it has to ride
       the OpenIPC WiFi link beside the video - about 3.6 per cent of an 8 Mbit/s

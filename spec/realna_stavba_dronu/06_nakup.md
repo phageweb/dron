@@ -1,6 +1,10 @@
 # Nákupní seznam
 
-Praktický kusovník k [tabulce komponent](./03_komponenty.md). Ceny a sklad byly
+Praktický kusovník k [tabulce komponent](./03_komponenty.md). Alternativy ke
+každé položce a rešerše zkušeností uživatelů jsou vedle v
+[Alternativy a zkušenosti](./07_alternativy_a_zkusenosti.md) - **a je tam i
+nález, který tenhle seznam nedokončuje: chybí v něm palubní počítač, protože
+sken z lidaru se do ROS 2 přes DDS nedostane.** Ceny a sklad byly
 ověřené **11. 9. 2026**; před zaplacením je zkontroluj znovu. Doprava, případné
 clo a DPH u dovozu v součtech nejsou.
 

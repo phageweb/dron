@@ -52,6 +52,7 @@ Začni zde, pokud řešíš fyzické komponenty, zapojení a postup bezpečného
 - [Reálná stavba dronu - přehled](./realna_stavba_dronu/README.md)
 - [Reálná stavba dronu - plán stavby](./realna_stavba_dronu/01_plan_stavby.md)
 - [Rozhraní simulace vs. reálný dron](./realna_stavba_dronu/02_rozhrani_sim_real.md)
+- [Alternativy a zkušenosti uživatelů](./realna_stavba_dronu/07_alternativy_a_zkusenosti.md)
 
 Tato větev řeší:
 
