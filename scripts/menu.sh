@@ -76,6 +76,7 @@ entries=(
   "mapcheck|flight|The map the vehicle builds is the room it flew round|scripts/check_room_mapping.sh|The same circuit with occupancy_mapper running, then the map is measured against the walls in the world file."
   "mapframe|flight|map -> base_link is where the vehicle really is|scripts/check_map_frame.sh|The circuit with pose_tf_broadcaster running, comparing the transform against Gazebo's ground truth in position and in yaw."
   "tablecheck|flight|The map holds what the scan plane met, and nothing else|scripts/check_table_height.sh 0.5|Flies the room with a table at 0.5 m, where the plane cuts the legs, and asserts they reach the map. Run it with no argument to fly at 1.0 m instead, where the geometry says the table cannot be in the map and the check asserts that it is not."
+  "batterycheck|flight|It puts itself down when the pack runs out|scripts/check_low_battery_landing.sh|Flies a circuit, tells the running node its pack is flat, and asserts it says why, asks for LAND, reaches the floor and disarms there. About two minutes."
   "coveragecheck|flight|How much of a room with things in it the demo gets a look at|scripts/check_room_coverage.sh|The same circuit in a room with a pillar and a dogleg enclosure, measuring what reached the map and what stayed hidden. Over two minutes of flight, headless and silent until it finishes."
 
   "HEAD||Build"

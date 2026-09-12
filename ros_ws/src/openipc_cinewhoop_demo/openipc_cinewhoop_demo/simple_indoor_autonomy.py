@@ -12,10 +12,11 @@ import rclpy
 from geometry_msgs.msg import PointStamped, PoseStamped, TwistStamped
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
-from sensor_msgs.msg import LaserScan, Range
+from sensor_msgs.msg import BatteryState, LaserScan, Range
 from std_srvs.srv import Trigger
 
 from openipc_cinewhoop_demo.scan_helpers import (
+    battery_is_low,
     compensation_height,
     nearest_in_corridor,
     nearest_valid_range,
@@ -44,6 +45,10 @@ except ImportError:  # pragma: no cover - depends on an external workspace
     ARDUPILOT_SRVS = False
 
 GUIDED_MODE = 4
+# ArduPilot's Copter mode numbers. LAND descends where it stands and disarms on
+# the ground, which is the right ending indoors: there is no room to fly a
+# pattern and nothing here knows the way home.
+LAND_MODE = 9
 
 WAIT_SCAN = "waiting for the front lidar"
 WAIT_SERVICES = "waiting for ArduPilot services"
@@ -55,6 +60,7 @@ TAKEOFF = "taking off"
 CLIMB = "climbing to altitude"
 CRUISE = "cruising"
 TURN = "turning away from an obstacle"
+LAND = "landing, because the battery is nearly out"
 
 
 class SimpleIndoorAutonomy(Node):
@@ -154,6 +160,23 @@ class SimpleIndoorAutonomy(Node):
         # frontier_explorer running or not.
         self.declare_parameter("enable_exploring", False)
         self.declare_parameter("target_topic", "/openipc_cinewhoop/explore/target")
+        # Putting it down while it can still be put down. The airframe carries a
+        # 4S LiHV pack, and a lithium cell holds about 3.7 V across most of its
+        # charge and then falls off a cliff, so 3.5 V per cell is the last point
+        # at which a controlled descent is a choice rather than a consequence.
+        # ArduPilot's own battery failsafe is the backstop underneath this and
+        # is set in the parameter file; this one exists so the vehicle stops
+        # exploring deliberately and says why, rather than being taken over
+        # mid-turn by a failsafe that knows nothing about the flight.
+        self.declare_parameter("battery_topic", "/ap/battery")
+        self.declare_parameter("battery_cells", 4)
+        self.declare_parameter("land_below_volts_per_cell", 3.5)
+        # A battery that stops reporting is not a battery that is fine. Nothing
+        # else here can tell how much is left, so silence gets the same landing
+        # as a flat pack after this long - generously long, because a dropped
+        # message is not worth ending a flight over, and short enough that the
+        # remaining charge is still the vehicle's own to spend.
+        self.declare_parameter("battery_timeout_s", 5.0)
         # The target comes from another node reading a map built from a third
         # node's scans, so it is the furthest thing here from first hand and it
         # gets the same freshness guard as everything else that is not. A stale
@@ -166,6 +189,11 @@ class SimpleIndoorAutonomy(Node):
         # 10 degrees is 0.7 m.
         self.declare_parameter("align_tolerance_deg", 10.0)
 
+        self._battery_volts = None
+        self._battery_time = None
+        self._battery_low = False
+        self._landing_requested = False
+        self._battery_silent_logged = False
         self._nearest = None
         self._scan_has_returns = False
         self._left = None
@@ -206,6 +234,9 @@ class SimpleIndoorAutonomy(Node):
         self.create_subscription(
             PointStamped, self.get_parameter("target_topic").value,
             self._on_target, 10)
+        self.create_subscription(
+            BatteryState, self.get_parameter("battery_topic").value,
+            self._on_battery, qos_profile_sensor_data)
 
         self._auto = bool(self.get_parameter("auto_takeoff").value)
         if self._auto and not ARDUPILOT_SRVS:
@@ -294,6 +325,10 @@ class SimpleIndoorAutonomy(Node):
         self._roll, self._pitch = roll_pitch_from_quaternion(q.x, q.y, q.z, q.w)
         self._yaw = yaw_from_quaternion(q.x, q.y, q.z, q.w)
         self._pose_time = self.get_clock().now()
+
+    def _on_battery(self, msg: BatteryState):
+        self._battery_volts = msg.voltage
+        self._battery_time = self.get_clock().now()
 
     def _on_target(self, msg: PointStamped):
         self._target = (msg.point.x, msg.point.y)
@@ -386,10 +421,66 @@ class SimpleIndoorAutonomy(Node):
         future.add_done_callback(lambda f: on_done(f.result()))
         self._pending = future
 
+    def _battery_reason(self):
+        """Why the vehicle should stop flying on the battery's account, or None.
+
+        Two ways to be out of battery and only one of them is measured. A pack
+        that has reached the floor says so; a pack that has stopped saying
+        anything is not a pack that is fine, and nothing else here can tell how
+        much is left. Both end the flight, and they are told apart only so the
+        log says which happened.
+        """
+        cells = int(self.get_parameter("battery_cells").value)
+        floor = float(self.get_parameter("land_below_volts_per_cell").value)
+        was_low = self._battery_low
+        self._battery_low = battery_is_low(
+            self._battery_volts, cells, floor, was_low)
+        if self._battery_low:
+            if was_low:
+                return None
+            return (f"{self._battery_volts:.2f} V across {cells} cells is "
+                    f"{self._battery_volts / cells:.2f} V each, at or under the "
+                    f"{floor:.2f} V this lands at")
+        if self._battery_time is None:
+            # Never a single message, which is not the same as one that stopped
+            # and is not a reason to land: the node runs without ArduPilot at
+            # all in several checks. It is a reason to say so once, because
+            # this is exactly the state the vehicle was in before any of this
+            # existed - an unwatched battery, and nothing anywhere admitting it.
+            if not self._battery_silent_logged:
+                self._battery_silent_logged = True
+                self.get_logger().warn(
+                    "Nothing is publishing "
+                    f"{self.get_parameter('battery_topic').value}; flying with "
+                    "no idea how much is left. ArduPilot's own failsafe is the "
+                    "only thing watching.")
+            return None
+        age = (self.get_clock().now() - self._battery_time).nanoseconds * 1e-9
+        if reading_is_fresh(
+                age, float(self.get_parameter("battery_timeout_s").value)):
+            return None
+        self._battery_low = True
+        return (f"the battery last reported {age:.1f} s ago, and how much is "
+                "left is now a guess")
+
     def _tick(self):
         # A stale scan is treated exactly like no scan: the vehicle stops.
         fresh = reading_is_fresh(
             self._scan_age_s(), float(self.get_parameter("scan_timeout_s").value))
+
+        # Asked before anything else and only while there is something to land
+        # from. On the ground it is prearm's business, and in the middle of a
+        # climb or a turn it is still the most important thing there is.
+        if self._state in (CLIMB, CRUISE, TURN):
+            reason = self._battery_reason()
+            if reason is not None:
+                self.get_logger().warn(f"Landing: {reason}.")
+                self._publish(0.0)
+                self._enter(LAND)
+                return
+        if self._state == LAND:
+            self._land()
+            return
 
         if self._state == WAIT_SCAN:
             if fresh:
@@ -446,6 +537,33 @@ class SimpleIndoorAutonomy(Node):
     def _on_prearm(self, result):
         if result is not None and result.success:
             self._enter(MODE)
+
+    def _land(self):
+        """Put it down where it stands, and stay put once asked.
+
+        Nothing is published on `cmd_vel` from here on. A velocity command in a
+        position-controlled mode is what replaced the takeoff once already, and
+        the same trick would fight the descent - the vehicle has been given to
+        ArduPilot and taking it back halfway down is not a thing to do on a flat
+        battery.
+
+        Without the services - `auto_takeoff:=false`, which is how the checks
+        drive the node - there is nothing to ask, and holding still is the whole
+        of what this node can do about it.
+        """
+        if not self._auto:
+            return
+        if self._landing_requested:
+            return
+        request = ModeSwitch.Request()
+        request.mode = LAND_MODE
+        self._call(self._mode, request, self._on_land_mode)
+
+    def _on_land_mode(self, result):
+        if result is not None and result.status:
+            self._landing_requested = True
+            self.get_logger().info(
+                "ArduPilot has it: descending to the floor and disarming there.")
 
     def _on_mode(self, result):
         if result is not None and result.status:

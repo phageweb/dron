@@ -78,3 +78,43 @@ ATC_RAT_PIT_I 0.040
 ATC_RAT_PIT_D 0.0005
 ATC_RAT_YAW_P 0.023
 ATC_RAT_YAW_I 0.0023
+
+# The battery, and what to do when it runs out.
+#
+# Nothing was set here at all, which meant ArduPilot's own failsafe sat at its
+# defaults - and its default is to do nothing. The demo node lands deliberately
+# on a flat pack and says why, but it is a ROS node talking over DDS: if it
+# stops, or the agent does, the vehicle would have gone on hovering until it
+# fell. This is the layer underneath that, and it works whether or not anything
+# is listening.
+#
+# The airframe carries a 4S LiHV pack, so the simulated one is told to be a 4S
+# LiHV pack too. SITL's default is 12.6 V, which is a flat 4S and a full 3S, and
+# against it every threshold below would either trip on the pad or never trip at
+# all. 16.4 V is a 4S LiHV a little way into its charge.
+# And the monitor has to exist before any of the rest of this means anything.
+# AP_DDS publishes /ap/battery only for an instance the battery library calls
+# healthy, and an unconfigured monitor is not healthy, so the topic simply never
+# appeared - which is also how the demo node learned nothing was watching. 4 is
+# the analog voltage-and-current monitor the SITL defaults use, and it is what
+# feeds SIM_BATT_VOLTAGE through.
+#
+# This is the second thing that says the header of this file is optimistic:
+# SITL is started with --defaults naming this file and the DDS one, so
+# copter.parm is not loaded and nothing here is inherited from it.
+BATT_MONITOR 4
+SIM_BATT_VOLTAGE 16.4
+
+# 3.5 V per cell is where a lithium cell has fallen off its plateau and a
+# controlled descent is still a choice; 3.3 V is where it is not. Both act by
+# landing rather than by returning: this vehicle flies indoors, has no idea
+# where home is, and the shortest way to the floor is the only plan it can
+# carry out.
+BATT_LOW_VOLT 14.0
+BATT_CRT_VOLT 13.2
+BATT_FS_LOW_ACT 1
+BATT_FS_CRT_ACT 1
+# Ten seconds under the threshold before it acts, because a pack sags under
+# throttle and recovers, and a failsafe that fires on the sag would land the
+# vehicle every time it accelerated.
+BATT_LOW_TIMER 10

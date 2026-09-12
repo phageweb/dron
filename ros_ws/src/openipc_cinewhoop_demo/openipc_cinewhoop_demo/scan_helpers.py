@@ -618,3 +618,35 @@ def nearest_in_corridor(
         if nearest is None or ahead < nearest:
             nearest = ahead
     return nearest
+
+
+def battery_is_low(
+    voltage_v: Optional[float],
+    cells: int,
+    land_below_volts_per_cell: float,
+    already_low: bool,
+) -> bool:
+    """Whether there is too little left to go on flying, and time to put it down.
+
+    Per cell rather than per pack, because that is where the chemistry is: a
+    lithium cell holds about 3.7 V across most of its charge and then falls off
+    a cliff, and the pack's number is only that times however many cells this
+    airframe carries.
+
+    Sticky, and that is the whole of it. A battery under load sags and recovers
+    the moment the load drops, so a vehicle that decided to land, slowed down,
+    saw the voltage come back and carried on would do exactly that over and over
+    while the charge it was measuring went on leaving. The first honest reading
+    is the one to act on.
+
+    An unknown voltage is not low. It is not high either, and the caller has to
+    decide what to do about not knowing - here that is a separate question with
+    a separate answer, because a message that failed to arrive and a battery
+    that is nearly flat call for different words in the log even when they call
+    for the same landing.
+    """
+    if already_low:
+        return True
+    if voltage_v is None or not math.isfinite(voltage_v) or voltage_v <= 0.0:
+        return False
+    return voltage_v / cells <= land_below_volts_per_cell

@@ -297,6 +297,27 @@
       0.035 m per metre of range. Measured on the way: the same flight puts
       fourteen cells of a table into the map where the flat bar put four, most
       of it having been discarded as ground
+- [x] Put the vehicle down when the pack runs out. Nothing watched the battery
+      at all and ArduPilot's own failsafe sat at its default, which is to do
+      nothing, so a flight that ran the pack flat would have gone on hovering
+      until it fell. The demo now lands deliberately at 3.5 V per cell and says
+      why, and `BATT_FS_LOW_ACT` is the layer underneath that works whether or
+      not ROS is alive. `scripts/check_low_battery_landing.sh` flies it
+- [x] Write a document this could be rebuilt from.
+      `spec/10_implementation_spec.md` carries every rule, constant and edge
+      case, self-contained on purpose: `spec/05_demo_nody.md` was two nodes
+      behind and named parameters the code never used, and the algorithms in
+      the helper modules were in no document at all
+- [ ] `/ap/battery` was never being published and nobody noticed, because
+      AP_DDS only publishes it for an instance the battery library calls
+      healthy and `BATT_MONITOR` was unset. Worth asking the same question of
+      every other topic the demo assumes: which of them would be silently
+      absent rather than obviously wrong, and what would notice
+- [ ] The header of `ardupilot_params.parm` says everything not set there comes
+      from `copter.parm`, and it does not - SITL is started with `--defaults`
+      naming only our two files, so nothing is inherited. The battery monitor
+      was the first thing that turned up missing because of it; the file wants
+      auditing for anything else that was assumed rather than set
 - [ ] Settle the two degrees on hardware. It is the whole error bar at range -
       0.28 m of the 0.38 m at 8 m - and SITL's EKF is fed a noiseless IMU, so
       the simulation would accept a tenth of it and prove nothing. This is the

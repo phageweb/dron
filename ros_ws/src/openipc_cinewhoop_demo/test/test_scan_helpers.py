@@ -2,6 +2,7 @@ import math
 import unittest
 
 from openipc_cinewhoop_demo.scan_helpers import (
+    battery_is_low,
     compensation_height,
     body_point_height,
     ground_return_height,
@@ -738,3 +739,46 @@ class NearestInCorridorTest(unittest.TestCase):
         # it, so the wall is still in the way and the vehicle still stops.
         self.assertAlmostEqual(
             self.corridor(self.wall_with_gap(1.4, 0.5)), 1.4, places=2)
+
+
+class BatteryTest(unittest.TestCase):
+    """When to stop flying and put it down.
+
+    A 4S LiHV pack, which is what the airframe carries, landing at 3.5 V per
+    cell: 14.0 V across the pack.
+    """
+
+    CELLS = 4
+    FLOOR = 3.5
+
+    def low(self, voltage, already_low=False):
+        return battery_is_low(voltage, self.CELLS, self.FLOOR, already_low)
+
+    def test_a_full_pack_is_not_low(self):
+        self.assertFalse(self.low(16.8))
+
+    def test_a_pack_at_the_floor_is_low(self):
+        self.assertTrue(self.low(14.0))
+
+    def test_below_the_floor_is_low(self):
+        self.assertTrue(self.low(13.6))
+
+    def test_the_decision_sticks_once_it_is_made(self):
+        # A battery under load sags and recovers the moment the load drops, so
+        # a vehicle that decided to land, slowed down and saw 15.2 V come back
+        # would carry on flying - and do it again, and again, while the charge
+        # it kept measuring went on leaving.
+        self.assertTrue(self.low(15.2, already_low=True))
+
+    def test_an_unknown_voltage_is_not_low(self):
+        # Not high either. What to do about not knowing is the caller's
+        # question, and it deserves its own words in the log.
+        self.assertFalse(self.low(None))
+        self.assertFalse(self.low(math.nan))
+        self.assertFalse(self.low(0.0))
+
+    def test_the_cell_count_is_what_makes_the_number_mean_anything(self):
+        # 14.0 V is a flat 4S and a comfortable 3S, and the same pack voltage
+        # must not decide both.
+        self.assertTrue(battery_is_low(14.0, 4, self.FLOOR, False))
+        self.assertFalse(battery_is_low(14.0, 3, self.FLOOR, False))
