@@ -108,16 +108,17 @@ sitl_pid=""
 demo_pid=""
 mapper_pid=""
 range_adapter_pid=""
+explorer_pid=""
 
 cleanup() {
-  for pid in "$range_adapter_pid" "$mapper_pid" "$demo_pid" "$sitl_pid" "$agent_pid" "$gz_bridge_pid" \
+  for pid in "$explorer_pid" "$range_adapter_pid" "$mapper_pid" "$demo_pid" "$sitl_pid" "$agent_pid" "$gz_bridge_pid" \
     "$bridge_pid" "$gazebo_pid"; do
     if [ -n "$pid" ]; then
       kill -INT "$pid" 2>/dev/null || true
     fi
   done
   sleep 1
-  for pid in "$range_adapter_pid" "$mapper_pid" "$demo_pid" "$sitl_pid" "$agent_pid" "$gz_bridge_pid" \
+  for pid in "$explorer_pid" "$range_adapter_pid" "$mapper_pid" "$demo_pid" "$sitl_pid" "$agent_pid" "$gz_bridge_pid" \
     "$bridge_pid" "$gazebo_pid"; do
     if [ -n "$pid" ]; then
       kill -9 "$pid" 2>/dev/null || true
@@ -131,6 +132,7 @@ cleanup() {
   pkill -9 -f "$project_root/install/openipc_cinewhoop_demo/lib/openipc_cinewhoop_demo/simple_indoor_autonomy" 2>/dev/null || true
   pkill -9 -f "$project_root/install/openipc_cinewhoop_demo/lib/openipc_cinewhoop_demo/occupancy_mapper" 2>/dev/null || true
   pkill -9 -f "$project_root/install/openipc_cinewhoop_demo/lib/openipc_cinewhoop_demo/range_adapter" 2>/dev/null || true
+  pkill -9 -f "$project_root/install/openipc_cinewhoop_demo/lib/openipc_cinewhoop_demo/frontier_explorer" 2>/dev/null || true
   pkill -9 -f "parameter_bridge --ros-args -p config_file:=$test_tmpdir" 2>/dev/null || true
   if [ -n "${KEEP_LOGS:-}" ]; then
     cp -r "$test_tmpdir" "$KEEP_LOGS" 2>/dev/null || true
@@ -205,8 +207,25 @@ ros2 run openipc_cinewhoop_demo occupancy_mapper \
   >"$test_tmpdir/mapper.log" 2>&1 &
 mapper_pid=$!
 
+# EXPLORE=0 flies the reactive rule - turn towards whichever side has more room
+# - which is what this world was built to show the limits of. The default runs
+# frontier_explorer beside it and steers at the openings in the map instead.
+# Both are kept because the number only means something next to the other one.
+if [ "${EXPLORE:-1}" = "0" ]; then
+  explore_args=""
+  export EXPLORING=0
+  echo "  rule: reactive, turning towards the roomier side"
+else
+  explore_args="-p enable_exploring:=true"
+  export EXPLORING=1
+  ros2 run openipc_cinewhoop_demo frontier_explorer \
+    >"$test_tmpdir/explorer.log" 2>&1 &
+  explorer_pid=$!
+  echo "  rule: steering at the frontiers in the map"
+fi
+
 ros2 run openipc_cinewhoop_demo simple_indoor_autonomy \
-  --ros-args -p takeoff_altitude_m:=1.0 -p enable_turning:=true \
+  --ros-args -p takeoff_altitude_m:=1.0 -p enable_turning:=true $explore_args \
   >"$test_tmpdir/demo.log" 2>&1 &
 demo_pid=$!
 
@@ -217,6 +236,7 @@ demo_pid=$!
 # about geometry.
 python3 - "$test_tmpdir" "$project_root/$world_path" <<'ANALYSIS'
 import math
+import os
 import sys
 import time
 import xml.etree.ElementTree as ET
@@ -374,17 +394,61 @@ for name, box in sorted(obstacles.items()):
 # partly missing is this world working, not the mapper failing - which is why
 # the empty room keeps the strict version and this one only asks that each wall
 # is substantially there, enough to catch a mapper that has stopped working.
+# The demo flies a corridor its own width plus a margin either side -
+# rotor_tip_half_width_m 0.08335 and corridor_margin_m 0.25 in
+# simple_indoor_autonomy - and it will not fly down anything narrower. The
+# enclosure stands 0.50 m off the x- wall, so 2.9 m of that wall is behind a
+# slot the vehicle cannot enter, and what is behind it can only ever be grazed
+# from the two ends. Holding the mapper to it measures the path rather than the
+# mapper: the same flight read 47, 48 and 73 per cent of that wall on three runs
+# that differed only in how long the vehicle spent inside the enclosure.
+CORRIDOR_WIDTH_M = 2 * (0.08335 + 0.25)
+
+
+def screened(value, fixed, along_x):
+    """Whether this point of a wall has an obstacle parked too close in front of it.
+
+    Too close meaning the vehicle cannot fit between the two, so it can never
+    put the sensor in front of this stretch, however good its rule for where to
+    fly.
+    """
+    for box in obstacles.values():
+        near, far, low_side, high_side = (
+            (box[2], box[3], box[0], box[1]) if along_x
+            else (box[0], box[1], box[2], box[3]))
+        if not low_side <= value <= high_side:
+            continue
+        gap = (near - fixed) if fixed < 0 else (fixed - far)
+        if 0.0 <= gap < CORRIDOR_WIDTH_M:
+            return True
+    return False
+
+
 def wall_coverage(fixed, low, high, along_x):
+    """How much of a wall reached the map, out of what could have reached it."""
     steps = max(1, int(round((high - low) / resolution)))
     found = 0
+    reachable = 0
     for step in range(steps):
         value = low + (step + 0.5) * resolution
+        if screened(value, fixed, along_x):
+            continue
+        reachable += 1
         x, y = (value, fixed) if along_x else (fixed, value)
         col, row = cell_of(x, y, resolution, origin_x, origin_y)
         if any((col + (0 if along_x else dc), row + (dc if along_x else 0))
                in occupied for dc in (-2, -1, 0, 1, 2)):
             found += 1
-    return found / steps
+    if reachable == 0:
+        return None
+    return found / reachable
+
+
+def wall_reachable(fixed, low, high, along_x):
+    """What fraction of a wall the vehicle could get in front of at all."""
+    steps = max(1, int(round((high - low) / resolution)))
+    return sum(0 if screened(low + (step + 0.5) * resolution, fixed, along_x)
+               else 1 for step in range(steps)) / steps
 
 
 sides = {
@@ -393,18 +457,29 @@ sides = {
     "y-": (-half_y, -half_x, half_x, True),
     "y+": (half_y, -half_x, half_x, True),
 }
-print("  length of each outer wall mapped: " + ", ".join(
+print("  of each outer wall, the part the vehicle can get in front of: " +
+      ", ".join(f"{label} {100 * wall_reachable(*spec):.0f} per cent"
+                for label, spec in sorted(sides.items())))
+print("  of that part, how much reached the map: " + ", ".join(
     f"{label} {100 * wall_coverage(*spec):.0f} per cent"
     for label, spec in sorted(sides.items())))
-MIN_WALL_COVERAGE = 0.60
-for label, spec in sorted(sides.items()):
-    covered = wall_coverage(*spec)
-    if covered < MIN_WALL_COVERAGE:
-        sys.exit(f"Only {100 * covered:.0f} per cent of the {label} wall is in "
-                 f"the map, under {100 * MIN_WALL_COVERAGE:.0f}. Some of it is "
-                 "legitimately behind the enclosure, but not that much - "
-                 "check_room_mapping.sh reaches 100 per cent on every wall of "
-                 "an empty room, so this is the mapper and not the geometry.")
+# Against the reachable length rather than the whole wall, this is back to being
+# a statement about the mapper, so it can be strict again: check_room_mapping.sh
+# gets 100 per cent of every wall of an empty room.
+MIN_WALL_COVERAGE = 0.80
+# Held back to the end rather than exited on, because this one is about the
+# walls and everything below is about the room, and a check that stops at the
+# first complaint shows the reader whichever number it happened to reach first.
+# The path is what decides this figure and the path is what the numbers below
+# are for, so they have to be printed together or neither can be read.
+deferred = [
+    f"Only {100 * wall_coverage(*spec):.0f} per cent of the reachable length of "
+    f"the {label} wall is in the map, under {100 * MIN_WALL_COVERAGE:.0f}. What "
+    "is behind the enclosure has already been taken out of that figure, so this "
+    "is the mapper and not the geometry - check_room_mapping.sh reaches 100 per "
+    "cent on every wall of an empty room."
+    for label, spec in sorted(sides.items())
+    if wall_coverage(*spec) < MIN_WALL_COVERAGE]
 
 # The path, before the coverage it explains. Whether the vehicle went through
 # the door is the single fact that decides how the enclosure's figure should be
@@ -477,6 +552,32 @@ if not inside_path and inside > MAX_COVERAGE_FROM_OUTSIDE:
         "lets the whole pocket be seen from outside, and every number above "
         "stays plausible while it does.")
 
+# And the other side of that threshold, which is what the exploring rule was
+# written to cross. A flight that stayed outside cannot read above 88 per cent;
+# a flight steering at the frontiers in the map has to, because the only way
+# past that figure is through the door. Asserted only when the explorer flew:
+# the reactive rule is not being held to a standard it was never going to meet,
+# and EXPLORE=0 still flies it to keep the comparison honest. Measured at 97 per
+# cent where the reactive circuit gets 77 to 80, so the floor is the ceiling
+# itself rather than a number near the measurement - crossing it at all is the
+# property, and it leaves room for a bad run without letting a rule that stopped
+# going in pass.
+if os.environ.get("EXPLORING") == "1":
+    if not inside_path:
+        sys.exit(
+            "The explorer never got into the enclosure. That is the whole "
+            "difference between steering at the frontiers in the map and "
+            "turning towards the roomier side, and without it this flight is "
+            "the reactive circuit with extra nodes running.")
+    if inside <= MAX_COVERAGE_FROM_OUTSIDE:
+        sys.exit(
+            f"The explorer went in and still only mapped {100 * inside:.0f} per "
+            f"cent of the enclosure, at or under the "
+            f"{100 * MAX_COVERAGE_FROM_OUTSIDE:.0f} per cent a flight that "
+            "stayed outside can get through the doorway. Going in has stopped "
+            "being worth anything, which is the regression this number exists "
+            "to catch.")
+
 with open(f"{tmpdir}/map.pgm", "wb") as handle:
     handle.write(f"P5\n{cols} {rows}\n255\n".encode())
     for row in range(rows - 1, -1, -1):
@@ -484,6 +585,11 @@ with open(f"{tmpdir}/map.pgm", "wb") as handle:
             128 if value == UNKNOWN else 255 - int(2.55 * value)
             for value in grid.data[row * cols:(row + 1) * cols]))
 print(f"  map written to {tmpdir}/map.pgm")
+
+if deferred:
+    for problem in deferred:
+        print(problem, file=sys.stderr)
+    sys.exit(1)
 
 print("Room coverage check passed: the clutter is mapped and the room is "
       "measured, the enclosure separately.")

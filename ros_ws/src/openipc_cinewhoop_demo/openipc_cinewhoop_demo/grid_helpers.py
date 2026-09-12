@@ -246,3 +246,303 @@ def coverage_fraction(
     if inside == 0:
         return None
     return free / inside
+
+
+def frontier_cells(
+    values: Iterable[int],
+    cols: int,
+    rows: int,
+    free_below: int = 50,
+) -> List[Tuple[int, int]]:
+    """The free cells that touch something unknown - the edge of what is known.
+
+    This is the whole idea behind going somewhere on purpose rather than turning
+    towards the roomier side. A frontier cell is floor the vehicle has already
+    established it could be on, next to floor it knows nothing about, so it is
+    both reachable and worth reaching. Where there are none left inside the walls,
+    the room is covered and there is nothing further to fly at.
+
+    Only the four edge neighbours count, not the eight. A cell touching unknown
+    at one corner is not an opening - in a quantised grid every real boundary
+    already has edge neighbours to spare, and counting corners adds cells whose
+    only connection to the unknown is a point.
+
+    Off the edge of the grid does not count as unknown either, though in the
+    plainest sense it is. Nothing can ever be mapped there, so a cell at the
+    edge is at the limit of what the map can represent rather than at a way
+    through, and steering at it would be steering at the map instead of at the
+    room.
+    """
+    values = list(values)
+    frontier = []
+    for index, value in enumerate(values):
+        if value == UNKNOWN or value >= free_below:
+            continue
+        col, row = index % cols, index // cols
+        for neighbour_col, neighbour_row in ((col - 1, row), (col + 1, row),
+                                             (col, row - 1), (col, row + 1)):
+            if not in_bounds(neighbour_col, neighbour_row, cols, rows):
+                continue
+            if values[neighbour_row * cols + neighbour_col] == UNKNOWN:
+                frontier.append((col, row))
+                break
+    return frontier
+
+
+def frontier_clusters(cells: Iterable[Tuple[int, int]]) -> List[List[Tuple[int, int]]]:
+    """Frontier cells grouped into the openings they belong to.
+
+    Eight-connected here, where finding the cells was four-connected, and the
+    difference is not an oversight: the two are different questions. Whether a
+    cell is on a boundary is about what it touches, and a corner is not a touch.
+    Whether two boundary cells are the same boundary is about whether one leads
+    to the other, and along a wall at any angle but square the frontier runs
+    diagonally. Splitting that into single cells would leave nothing but slivers,
+    and slivers are exactly what the size filter throws away.
+    """
+    remaining = set(cells)
+    clusters = []
+    while remaining:
+        seed = remaining.pop()
+        cluster = [seed]
+        pending = [seed]
+        while pending:
+            col, row = pending.pop()
+            for d_col in (-1, 0, 1):
+                for d_row in (-1, 0, 1):
+                    neighbour = (col + d_col, row + d_row)
+                    if neighbour in remaining:
+                        remaining.discard(neighbour)
+                        cluster.append(neighbour)
+                        pending.append(neighbour)
+        clusters.append(cluster)
+    return clusters
+
+
+def cluster_centroid(
+    cluster: Iterable[Tuple[int, int]],
+    resolution_m: float,
+    origin_x_m: float,
+    origin_y_m: float,
+) -> Tuple[float, float]:
+    """Where an opening is, as one point in the map frame.
+
+    A direction to set off in rather than a place to arrive at, and the
+    difference matters for a frontier bent round a corner, whose centroid can
+    land inside the wall it bends around. Nothing here plans a path: the vehicle
+    turns towards this and the reactive layer deals with whatever is actually in
+    front of it, which is the same arrangement as before with a better answer to
+    "which way".
+    """
+    centres = [cell_centre(col, row, resolution_m, origin_x_m, origin_y_m)
+               for col, row in cluster]
+    return (sum(x for x, _ in centres) / len(centres),
+            sum(y for _, y in centres) / len(centres))
+
+
+def blocked_cells(
+    values: Iterable[int],
+    cols: int,
+    rows: int,
+    clearance_cells: int,
+    occupied_above: int = 65,
+) -> set:
+    """Cells the vehicle cannot put its centre in: a wall, or too near one.
+
+    Flying is not a thing that happens at a point. The map is drawn in 0.10 m
+    cells and the vehicle needs a third of a metre either side of it, so a route
+    that hugs a wall on the grid is a route into the wall in the room. Growing
+    the walls by what the vehicle needs is the standard way round that, and it
+    means everything downstream can go back to treating the vehicle as a point.
+
+    Round rather than square, because clearance is a distance and a square
+    corner would claim 1.41 times it diagonally - enough, at a doorway, to close
+    an opening the vehicle fits through.
+    """
+    values = list(values)
+    disc = [(d_col, d_row)
+            for d_col in range(-clearance_cells, clearance_cells + 1)
+            for d_row in range(-clearance_cells, clearance_cells + 1)
+            if d_col * d_col + d_row * d_row <= clearance_cells * clearance_cells]
+    blocked = set()
+    for index, value in enumerate(values):
+        if value == UNKNOWN or value < occupied_above:
+            continue
+        col, row = index % cols, index // cols
+        for d_col, d_row in disc:
+            neighbour = (col + d_col, row + d_row)
+            if in_bounds(neighbour[0], neighbour[1], cols, rows):
+                blocked.add(neighbour)
+    return blocked
+
+
+def reachability(
+    values: Iterable[int],
+    cols: int,
+    rows: int,
+    start: Tuple[int, int],
+    clearance_cells: int,
+    free_below: int = 50,
+    occupied_above: int = 65,
+):
+    """How far every cell is from the vehicle by a way it could actually fly.
+
+    One breadth-first sweep outward over known free floor, which answers both
+    questions the explorer has at once: which openings can be got to at all, and
+    which of them is nearest the way the vehicle would have to go rather than
+    the way the crow flies. Those differ by the width of a wall, and it is the
+    difference that decides whether steering at an opening takes the vehicle
+    through the door or into the wall beside it.
+
+    Unknown cells are not flown through. That is what makes the frontier the
+    destination instead of a waypoint: the vehicle goes to the edge of what it
+    knows, looks, and the next sweep can go further.
+
+    The vehicle's own cell is always a place it can be, whatever the map says.
+    It is already there, and a start that ruled itself out would leave a vehicle
+    that has drifted near a wall unable to plan its way off it.
+
+    Getting out of that is allowed too, and it has to be. A vehicle standing
+    closer to a wall than the clearance has every neighbour grown over, so a
+    sweep that only ever stepped onto clear cells would find nowhere at all to
+    go, and would report a covered room from half a metre off a wall it had not
+    looked behind.
+
+    The escape is bounded, and the bound is what keeps it from being a hole in
+    the clearance. The grown region round a wall is `clearance_cells` thick, so
+    that many steps is what leaving one can take; allowed any further, the sweep
+    would thread the grown strip along a wall from end to end, and squeeze
+    through the very doorways the clearance exists to rule out. Reaching clear
+    floor spends the allowance and it does not come back, so the route can leave
+    the region it should not be in and cannot choose to re-enter it.
+
+    Returns the step count to each reachable cell and the cell each was reached
+    from, which is the route back.
+    """
+    values = list(values)
+    blocked = blocked_cells(values, cols, rows, clearance_cells, occupied_above)
+
+    def known_floor(cell):
+        col, row = cell
+        if not in_bounds(col, row, cols, rows):
+            return False
+        value = values[row * cols + col]
+        return value != UNKNOWN and value < free_below
+
+    distance = {start: 0}
+    parent = {}
+    # How many grown-over cells the route has walked through to get here, and
+    # zero the moment it reaches clear floor.
+    escaped = {start: 0}
+    queue = [start]
+    head = 0
+    while head < len(queue):
+        cell = queue[head]
+        head += 1
+        col, row = cell
+        for neighbour in ((col - 1, row), (col + 1, row),
+                          (col, row - 1), (col, row + 1)):
+            if neighbour in distance or not known_floor(neighbour):
+                continue
+            if neighbour in blocked:
+                # Only ever from inside the grown region, which means only ever
+                # along the chain out of it: a blocked cell is reached from a
+                # blocked cell or from the vehicle's own, never from clear
+                # floor. Without that clause the allowance would be spent and
+                # renewed at every clear cell, and the route would step in and
+                # out of the clearance all the way through a doorway too narrow
+                # to fly.
+                if cell not in blocked and cell != start:
+                    continue
+                if escaped[cell] >= clearance_cells:
+                    continue
+                escaped[neighbour] = escaped[cell] + 1
+            else:
+                escaped[neighbour] = 0
+            distance[neighbour] = distance[cell] + 1
+            parent[neighbour] = cell
+            queue.append(neighbour)
+    return distance, parent
+
+
+def nearest_reachable_cluster(
+    clusters: Iterable[Iterable[Tuple[int, int]]],
+    distance: dict,
+    min_cells: int = 4,
+):
+    """The opening nearest by flying, and which of its cells to fly to.
+
+    Nearest by the route rather than by the straight line, which is the whole
+    reason for the sweep. An opening 2 m away through a wall and 9 m away round
+    it is 9 m away; the straight line calls it the closest thing in the room and
+    sends the vehicle at the wall, over and over, because turning away does not
+    move it.
+
+    An opening no cell of which was reached is not returned at all. Before there
+    was a route to ask, unreachable had to be guessed at from how long the
+    vehicle had been failing to arrive, and a guess is what it was: the timeout
+    could not tell a wall in the way from an opening that was simply far off.
+
+    Returns (cluster, cell) or None.
+    """
+    best = None
+    best_distance = None
+    for cluster in clusters:
+        cluster = list(cluster)
+        if len(cluster) < min_cells:
+            continue
+        for cell in cluster:
+            if cell not in distance:
+                continue
+            if best_distance is None or distance[cell] < best_distance:
+                best, best_distance = (cluster, cell), distance[cell]
+    return best
+
+
+def route_to(
+    goal: Tuple[int, int],
+    parent: dict,
+    start: Tuple[int, int],
+) -> List[Tuple[int, int]]:
+    """The cells from the vehicle to a goal, start first."""
+    route = [goal]
+    while route[-1] != start:
+        route.append(parent[route[-1]])
+    route.reverse()
+    return route
+
+
+def carrot(
+    route: Iterable[Tuple[int, int]],
+    resolution_m: float,
+    origin_x_m: float,
+    origin_y_m: float,
+    lookahead_m: float = 1.5,
+) -> Tuple[float, float]:
+    """A point on the route far enough ahead to steer at, in the map frame.
+
+    Steering at the far end of the route is what pointing at the opening already
+    did, and it fails the same way: through a door the line to the destination
+    crosses the wall beside it, so the vehicle turns to a heading that is
+    blocked and gives up on a route it could have flown. A point a stride ahead
+    is on the route by construction, so turning to it is turning along the way.
+
+    Far enough ahead to be a direction rather than the cell the vehicle is
+    standing in, and near enough to stay on the route round a corner. A stride
+    is the demo's own stopping distance, which is as far as it commits to
+    anything.
+
+    The whole route when it is shorter than a stride: the destination is close
+    enough that its direction is the route's direction.
+    """
+    route = list(route)
+    for index in range(1, len(route)):
+        # Counted rather than accumulated: adding the cell size nine times over
+        # lands just under nine times the cell size, and a carrot that steps one
+        # cell further than asked whenever the sum falls short is a bug that
+        # only ever shows up as a slightly odd heading.
+        if index * resolution_m >= lookahead_m:
+            return cell_centre(route[index][0], route[index][1],
+                               resolution_m, origin_x_m, origin_y_m)
+    return cell_centre(route[-1][0], route[-1][1],
+                       resolution_m, origin_x_m, origin_y_m)

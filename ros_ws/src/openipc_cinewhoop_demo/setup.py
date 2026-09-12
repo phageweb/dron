@@ -19,6 +19,7 @@ setup(
     license="MIT",
     entry_points={
         "console_scripts": [
+            "frontier_explorer = openipc_cinewhoop_demo.frontier_explorer:main",
             "obstacle_monitor = openipc_cinewhoop_demo.obstacle_monitor:main",
             "occupancy_mapper = openipc_cinewhoop_demo.occupancy_mapper:main",
             "pose_tf_broadcaster = openipc_cinewhoop_demo.pose_tf_broadcaster:main",

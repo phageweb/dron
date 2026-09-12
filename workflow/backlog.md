@@ -248,13 +248,42 @@
       figure falls to 77. The check asserts that too now - an enclosure over
       88 per cent on a flight that stayed outside fails, because the vehicle
       cannot have got better and the geometry can only have stopped hiding
-- [ ] A rule for where to fly that is better than "turn towards the roomier
-      side". There is now a number that separates one rule from another and a
-      world where it moves: the enclosure's 77 per cent is what a policy that
-      goes in would raise, and the check deliberately puts no ceiling on it while
-      the vehicle is inside. Both apertures - the door and the gap past the
-      baffle - are the 1.6 m the demo needs ahead of it, so entering is flyable
-      under the clearance it already keeps
+- [x] A rule for where to fly that is better than "turn towards the roomier
+      side". `frontier_explorer` reads the map for floor that touches unknown
+      space and says which opening to head for; the demo steers at it and is
+      otherwise unchanged. 96 per cent of the enclosure on both flights with it,
+      against 80 for the reactive rule, which never went in at all. It took two
+      further pieces, and each was named by the flight that failed without it:
+      the clearance rule had to stop being a cone, and the explorer had to say
+      how to get there rather than only where to go
+- [x] Decide what is in the way by the swath the vehicle flies rather than by a
+      cone. A 60 degree cone at the 1.7 m the demo wants clear is 1.7 m across,
+      so no opening narrower than that could ever read clear - on a vehicle
+      0.167 m wide. The explorer chose the 1.6 m door eight times in one flight
+      and the demo turned away at 1.35 to 1.40 m every time, which was
+      arithmetic and not bad luck. `nearest_in_corridor` reports the along-track
+      distance of what lies within the rotor tips plus a margin, so a wall still
+      stops the vehicle at the same distance and a doorjamb it would pass
+      cleanly no longer does. The width is the model's own and
+      `check_model_consistency.py` fails if either node's copy drifts from it
+- [x] Give the explorer a way there, not only a destination. Publishing the
+      frontier itself put the vehicle's nose on a line that crosses the wall
+      beside the door, so it entered the enclosure in one flight out of two and
+      that one was the line happening to pass through the opening. One
+      breadth-first sweep over free cells, with the walls grown by what the
+      vehicle needs, ranks openings by the distance actually flown and rules out
+      the ones there is no way to; the published point is one stopping distance
+      along the route. It also retired the timeout that used to guess an opening
+      was "probably behind a wall", because the sweep answers that outright
+- [ ] The corridor is the swath of a vehicle going forwards, which is all this
+      demo ever does. A sideways or diagonal command would need it pointed along
+      the commanded velocity rather than along the nose, and nothing currently
+      says so out loud
+- [ ] `obstacle_monitor` still reports the nearest return in a cone while the
+      demo decides on the corridor. That is defensible - one is a proximity
+      warning and the other is a decision - but it means the log can say an
+      obstacle is 0.9 m away while the vehicle correctly flies past it, and
+      nothing in the monitor's output explains why
 - [ ] Place each return with the pose the scan was taken at. The mapper uses the
       latest pose when the message arrives, and the two are tens of milliseconds
       apart; turning at 0.4 rad/s that is a couple of degrees, which at 4 m is

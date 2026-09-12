@@ -6,16 +6,24 @@ from openipc_cinewhoop_demo.grid_helpers import (
     LOG_ODDS_LIMIT,
     OCCUPIED_UPDATE,
     UNKNOWN,
+    blocked_cells,
+    carrot,
     cell_centre,
     cell_of,
     cells_on_ray,
+    cluster_centroid,
     coverage_fraction,
+    frontier_cells,
+    frontier_clusters,
     grid_shape,
     in_rectangle,
     in_bounds,
     map_extent,
+    nearest_reachable_cluster,
     nearest_wall_distance,
     occupancy_percent,
+    reachability,
+    route_to,
     scan_return_offset,
     update_cell,
 )
@@ -292,3 +300,299 @@ class MapMeasurementTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def room(picture):
+    """A small map written the way a room is drawn, top row first.
+
+    `.` is unknown, `f` is free floor, `#` is a wall. OccupancyGrid counts its
+    rows from the origin corner upwards, so the picture is reversed on the way
+    in: written top-down because that is how it reads, stored bottom-up because
+    that is what the message means. A test map that is symmetric top to bottom
+    would pass either way round, which is precisely how that convention goes
+    wrong unnoticed, so every picture below is deliberately not.
+    """
+    # Stripped per line rather than once over the block: the pictures are
+    # indented to the test that owns them, and only the first line of a triple
+    # quoted string starts at the margin.
+    lines = [line.strip() for line in picture.strip().splitlines()]
+    cols = len(lines[0])
+    values = []
+    for line in reversed(lines):
+        assert len(line) == cols, "the picture is not rectangular"
+        values.extend({".": UNKNOWN, "f": 0, "#": 100}[character]
+                      for character in line)
+    return values, cols, len(lines)
+
+
+class FrontierTest(unittest.TestCase):
+    def test_a_frontier_is_floor_at_the_edge_of_what_is_known(self):
+        # A patch of known floor in an unknown room. Its rim touches the unknown
+        # and its middle does not, which is the whole definition.
+        values, cols, rows = room("""
+        .....
+        .fff.
+        .fff.
+        .fff.
+        .....
+        """)
+        found = set(frontier_cells(values, cols, rows))
+        self.assertEqual(len(found), 8)
+        self.assertNotIn((2, 2), found)
+        self.assertIn((1, 1), found)
+
+    def test_a_wall_facing_the_unknown_is_not_a_frontier(self):
+        # There is unknown on the far side of every wall in every map. It is not
+        # somewhere to fly, and a rule that thought so would drive at the wall.
+        values, cols, rows = room("""
+        .....
+        .###.
+        .#f#.
+        .###.
+        .....
+        """)
+        self.assertEqual(frontier_cells(values, cols, rows), [])
+
+    def test_a_corner_touch_is_not_an_opening(self):
+        # The only unknown this cell can reach is diagonal, through the join
+        # between two walls. Nothing fits through a point.
+        values, cols, rows = room("""
+        ##.
+        #f#
+        ###
+        """)
+        self.assertEqual(frontier_cells(values, cols, rows), [])
+
+    def test_the_edge_of_the_map_is_not_a_way_out(self):
+        # Every cell on the boundary has neighbours off the grid, and in the
+        # plainest sense those are unknown. Nothing can ever be mapped there, so
+        # treating them as openings would send the vehicle at the map's own
+        # limits rather than at the room's.
+        values, cols, rows = room("""
+        fff
+        fff
+        """)
+        self.assertEqual(frontier_cells(values, cols, rows), [])
+
+    def test_the_way_into_a_room_nobody_has_entered_is_its_doorway(self):
+        # The thing all of this is for. The floor below the gap is the only
+        # known floor touching the unmapped space beyond it, so the opening the
+        # vehicle should head for falls out of the map without anyone naming a
+        # door.
+        values, cols, rows = room("""
+        #########
+        #.......#
+        #.......#
+        ###...###
+        #fffffff#
+        #fffffff#
+        #########
+        """)
+        self.assertEqual(sorted(frontier_cells(values, cols, rows)),
+                         [(3, 2), (4, 2), (5, 2)])
+        self.assertEqual(
+            cluster_centroid(
+                frontier_clusters(frontier_cells(values, cols, rows))[0],
+                1.0, 0.0, 0.0),
+            (4.5, 2.5))
+
+    def test_a_frontier_running_diagonally_is_one_opening(self):
+        # Along any wall that is not square to the grid the frontier steps
+        # corner to corner. Split into single cells it would be nothing but
+        # slivers, and the size filter would then throw the whole opening away.
+        clusters = frontier_clusters([(0, 0), (1, 1), (2, 2)])
+        self.assertEqual(len(clusters), 1)
+        self.assertEqual(sorted(clusters[0]), [(0, 0), (1, 1), (2, 2)])
+
+    def test_two_openings_stay_two(self):
+        clusters = frontier_clusters([(0, 0), (1, 0), (9, 9), (9, 8)])
+        self.assertEqual(sorted(len(cluster) for cluster in clusters), [2, 2])
+
+    def test_the_centroid_is_in_the_map_frame_and_not_in_cells(self):
+        # A negative origin and a resolution that is not 1, because those are
+        # the two ways a cell index reaches the outside world still looking
+        # plausible.
+        x, y = cluster_centroid([(0, 0), (1, 0)], 0.1, -10.0, -10.0)
+        self.assertAlmostEqual(x, -9.9)
+        self.assertAlmostEqual(y, -9.95)
+
+
+class RouteTest(unittest.TestCase):
+    """Getting to an opening, as opposed to knowing where one is.
+
+    Every picture here is a room with a way round and a way through, because
+    that is the case the straight line gets wrong: it picks the near side of a
+    wall over the far end of a corridor that actually leads somewhere.
+    """
+
+    # A room split by a wall with a door at one end of it. The vehicle is in
+    # the lower half, and the door is deliberately nowhere near the straight
+    # line to the far half: a rule that flies at where it wants to be ends up at
+    # the wall, every time, and turning away does not move the wall. The door is
+    # four cells wide so that it is still a door to a vehicle needing a cell of
+    # room either side, and stops being one to a vehicle needing two.
+    SPLIT = """
+        .............
+        #############
+        #fffffffffff#
+        #fffffffffff#
+        #fffffffffff#
+        #######ffff##
+        #fffffffffff#
+        #fffffffffff#
+        #fffffffffff#
+        #############
+    """
+
+    def split(self):
+        return room(self.SPLIT)
+
+    def test_the_route_goes_through_the_door_rather_than_the_wall(self):
+        values, cols, rows = self.split()
+        _, parent = reachability(values, cols, rows, (2, 2), 0)
+        route = route_to((2, 6), parent, (2, 2))
+        self.assertTrue(
+            any(cell[0] in (7, 8, 9, 10) and cell[1] == 4 for cell in route),
+            f"the route skipped the door: {route}")
+
+    def test_a_cell_behind_a_wall_with_no_door_is_not_reached_at_all(self):
+        values, cols, rows = room("""
+            ..........
+            ##########
+            #ffffffff#
+            ##########
+            #ffffffff#
+            ##########
+        """)
+        distance, _ = reachability(values, cols, rows, (2, 1), 0)
+        self.assertIn((7, 1), distance)
+        self.assertNotIn((2, 3), distance)
+
+    def test_the_vehicle_can_always_be_where_it_already_is(self):
+        # Hard against a wall, closer than the clearance it flies with: a start
+        # that ruled itself out would leave it unable to plan its way off.
+        values, cols, rows = self.split()
+        distance, _ = reachability(values, cols, rows, (1, 1), 2)
+        self.assertEqual(distance[(1, 1)], 0)
+
+    def test_clearance_keeps_the_route_off_the_walls(self):
+        values, cols, rows = self.split()
+        _, parent = reachability(values, cols, rows, (2, 2), 1)
+        route = route_to((2, 6), parent, (2, 2))
+        blocked = blocked_cells(values, cols, rows, 1)
+        for cell in route[1:]:
+            self.assertNotIn(cell, blocked,
+                             f"the route hugged a wall it does not fit past: {route}")
+
+    def test_a_door_narrower_than_the_clearance_is_not_a_way_through(self):
+        # The same room, with the vehicle needing two cells of room either
+        # side: the four cell door stops being a door.
+        values, cols, rows = self.split()
+        distance, _ = reachability(values, cols, rows, (2, 2), 2)
+        self.assertNotIn((2, 6), distance)
+
+    def test_walls_grow_by_the_clearance_and_do_so_roundly(self):
+        values, cols, rows = room("""
+            fff
+            f#f
+            fff
+        """)
+        blocked = blocked_cells(values, cols, rows, 1)
+        self.assertIn((1, 1), blocked)
+        self.assertIn((0, 1), blocked)
+        # The diagonal is 1.41 cells away, which is further than the clearance.
+        # A square mask would take it and close a door the vehicle fits through.
+        self.assertNotIn((0, 0), blocked)
+
+    def test_the_nearest_opening_is_the_one_the_route_is_shortest_to(self):
+        # Two openings, and the near one in a straight line is the far one to
+        # fly to: it is behind the dividing wall, reached only round through the
+        # door, while the other is a couple of cells along the same room.
+        values, cols, rows = self.split()
+        distance, _ = reachability(values, cols, rows, (2, 2), 0)
+        # Three cells away in a straight line and fifteen by the only route
+        # there is, against four cells away along the room the vehicle is in.
+        behind_the_wall = [(2, 5), (3, 5)]  # the far side of the dividing wall
+        along_the_room = [(6, 2), (7, 2)]
+        self.assertLess(math.dist((2, 2), behind_the_wall[0]),
+                        math.dist((2, 2), along_the_room[0]))
+        chosen = nearest_reachable_cluster(
+            [behind_the_wall, along_the_room], distance, min_cells=2)
+        self.assertEqual(chosen[0], along_the_room)
+
+    def test_an_opening_with_no_way_to_it_is_not_chosen(self):
+        values, cols, rows = room("""
+            ..........
+            ##########
+            #ffffffff#
+            ##########
+            #ffffffff#
+            ##########
+        """)
+        distance, _ = reachability(values, cols, rows, (2, 1), 0)
+        self.assertIsNone(nearest_reachable_cluster(
+            [[(2, 3), (3, 3), (4, 3), (5, 3)]], distance, min_cells=4))
+
+    def test_a_sliver_is_not_an_opening_however_close_it_is(self):
+        # Quantisation leaves one and two cell frontiers at the ends of walls,
+        # and nearest-first would pick them for ever because they are, quite
+        # truthfully, the nearest thing there is.
+        values, cols, rows = self.split()
+        distance, _ = reachability(values, cols, rows, (2, 2), 0)
+        sliver = [(3, 2)]
+        real = [(8, 1), (8, 2), (8, 3), (7, 3)]
+        chosen = nearest_reachable_cluster([sliver, real], distance, min_cells=4)
+        self.assertEqual(chosen[0], real)
+
+    def test_nothing_reachable_at_all_is_nothing_to_fly_at(self):
+        values, cols, rows = self.split()
+        distance, _ = reachability(values, cols, rows, (2, 2), 0)
+        self.assertIsNone(nearest_reachable_cluster([], distance))
+
+    def test_the_carrot_is_a_stride_along_the_route_and_not_its_end(self):
+        # Ten cells of route at 0.10 m, asked for 0.50 m ahead: the fifth cell,
+        # whose centre at the origin-cornered grid is 0.55 m out.
+        route = [(index, 0) for index in range(10)]
+        x, y = carrot(route, 0.10, 0.0, 0.0, 0.50)
+        self.assertAlmostEqual(x, 0.55)
+        self.assertAlmostEqual(y, 0.05)
+
+    def test_a_route_shorter_than_a_stride_is_followed_to_its_end(self):
+        route = [(0, 0), (1, 0), (2, 0)]
+        self.assertAlmostEqual(carrot(route, 0.10, 0.0, 0.0, 1.5)[0], 0.25)
+
+    def test_the_carrot_turns_the_corner_the_route_turns(self):
+        # A route that goes along and then up. Steering at the destination would
+        # point across the corner; the carrot stays on the route.
+        route = [(index, 0) for index in range(6)] + [(5, index) for index in range(1, 6)]
+        x, y = carrot(route, 0.10, 0.0, 0.0, 0.90)
+        self.assertAlmostEqual(x, 0.55)
+        self.assertAlmostEqual(y, 0.45)
+
+    def test_a_vehicle_inside_the_clearance_can_still_get_out(self):
+        # In the corner, which is where the demo ends up whenever it passes a
+        # wall: every neighbour is grown over, and a sweep that insisted on
+        # clear cells would find nowhere at all to go and report a covered room
+        # from half a metre off a wall it had not looked behind.
+        values, cols, rows = self.split()
+        distance, _ = reachability(values, cols, rows, (1, 1), 1)
+        self.assertIn((6, 2), distance)
+
+    def test_the_escape_does_not_become_a_way_along_a_wall(self):
+        # The allowance is spent by reaching clear floor and does not come
+        # back, so a route cannot thread the grown strip beside a wall. Started
+        # in the corner, the way to the far half is still the door and not the
+        # gap between the dividing wall and the room's own.
+        values, cols, rows = self.split()
+        _, parent = reachability(values, cols, rows, (1, 1), 1)
+        route = route_to((2, 6), parent, (1, 1))
+        blocked = blocked_cells(values, cols, rows, 1)
+        left_the_clearance = False
+        for cell in route:
+            if cell not in blocked:
+                left_the_clearance = True
+            elif left_the_clearance:
+                self.fail(f"the route went back into the clearance: {route}")
+        self.assertTrue(
+            any(cell[0] in (7, 8, 9, 10) and cell[1] == 4 for cell in route),
+            f"the route did not use the door: {route}")
