@@ -161,6 +161,44 @@ SENSOR_OFFSETS = {
 AXES = ("x", "y", "z")
 
 
+def sdf_rotor_tip_half_width():
+    """How far the rotor tips reach from the centre, out of the model itself.
+
+    The demo decides what is in its way by the swath the airframe occupies, so
+    the airframe's own half-width is a number a node has to carry - and carrying
+    it is the same hazard as carrying a sensor offset. A frame with longer arms
+    or a bigger propeller has to fail here rather than fly down a corridor
+    narrower than it is.
+
+    Taken over every rotor rather than from one, because the quad is only
+    symmetric while nobody has moved a motor.
+    """
+    root = ET.fromstring(SDF.read_text())
+    model = root.find("model")
+    reach = []
+    for link in model.findall("link"):
+        if not (link.get("name") or "").startswith("rotor_"):
+            continue
+        pose = [float(v) for v in link.find("pose").text.split()]
+        radius = link.find(".//visual/geometry/cylinder/radius")
+        if radius is None:
+            continue
+        reach.append(max(abs(pose[0]), abs(pose[1])) + float(radius.text))
+    return max(reach) if reach else None
+
+
+def demo_declared(name):
+    """A parameter default the demo nodes carry, wherever they carry it."""
+    found = {}
+    for path in sorted(DEMO.glob("*.py")):
+        match = re.search(
+            rf'declare_parameter\(\s*"{name}"\s*,\s*([-\d.eE+]+)\s*\)',
+            path.read_text())
+        if match is not None:
+            found[path.name] = float(match.group(1))
+    return found
+
+
 def demo_sensor_offsets():
     """The offsets the demo nodes carry, read out of their own source."""
     found = {}
@@ -211,6 +249,26 @@ def main():
     expected = {}
     for name, (link, reference, axis) in SENSOR_OFFSETS.items():
         expected[name] = sdf[link][0][axis] - sdf[reference][0][axis]
+    # The airframe's own half-width, which the demo carries for the same reason
+    # and with the same risk as the sensor offsets above.
+    tip = sdf_rotor_tip_half_width()
+    declared_tip = demo_declared("rotor_tip_half_width_m")
+    if tip is None:
+        problems.append(
+            "the SDF has no rotor with a propeller radius, so how wide the "
+            "vehicle is cannot be read out of the model")
+    elif not declared_tip:
+        problems.append(
+            "no demo node declares rotor_tip_half_width_m; the model still says "
+            "how wide the vehicle is, so either it was renamed or the node "
+            "stopped deciding what is in its way by the airframe's width")
+    else:
+        for node, value in sorted(declared_tip.items()):
+            if abs(value - tip) > TOLERANCE_M:
+                problems.append(
+                    f"{node} flies a corridor {value:.5f} m either side of the "
+                    f"centre and the model's rotor tips reach {tip:.5f} m")
+
     offsets = demo_sensor_offsets()
     if not offsets:
         problems.append(
@@ -250,6 +308,8 @@ def main():
     print("  no sensor topic names a world, so the model is not pinned to one")
     print(f"  {len(shared)} shared links agree on position, rotation and total mass")
     print(f"  total mass {sdf_mass:.3f} kg")
+    print(f"  the rotor tips reach {tip:.5f} m from the centre, which is the "
+          "half-width the demo flies a corridor of")
     for name, (link, reference, axis) in SENSOR_OFFSETS.items():
         print(f"  the demo nodes put {link} {expected[name]:+.3f} m from "
               f"{reference} along {AXES[axis]}, as the model does")

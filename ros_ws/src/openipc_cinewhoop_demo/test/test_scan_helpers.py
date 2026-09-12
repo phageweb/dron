@@ -8,14 +8,20 @@ from openipc_cinewhoop_demo.scan_helpers import (
     height_from_slant_range,
     hold_reason,
     is_ground_return,
+    nearest_in_corridor,
     nearest_in_sector,
     nearest_valid_range,
     range_reading,
     reading_is_fresh,
+    relative_bearing,
     safe_forward_speed,
     takeoff_needs_retry,
     turn_direction,
+    turn_is_finished,
+    turn_is_going_round,
+    turn_sign_towards,
     way_is_clear,
+    wrap_angle,
 )
 
 
@@ -30,25 +36,35 @@ class ScanHelpersTest(unittest.TestCase):
         self.assertIsNone(nearest_valid_range([0.01, 6.0], 0.1, 5.0))
 
     def test_safe_forward_speed_stops_without_a_valid_scan(self):
-        self.assertEqual(safe_forward_speed(None, 0.8, 0.5), 0.0)
+        # Nothing in the corridor and nothing in the scan either: a vehicle that
+        # cannot see does not move, whatever its corridor looks like.
+        self.assertEqual(safe_forward_speed(None, False, 0.8, 0.5), 0.0)
+
+    def test_an_empty_corridor_under_a_working_lidar_is_a_clear_run(self):
+        # The other half of the same None, and the one that used to be missing.
+        # A scan full of returns with none of them in the corridor is the
+        # ordinary case of flying down a room: the walls are beside the vehicle
+        # and the way ahead is open. Stopping for it would mean the vehicle can
+        # only move while something is in front of it.
+        self.assertEqual(safe_forward_speed(None, True, 0.8, 0.5), 0.5)
 
     def test_safe_forward_speed_stops_below_the_threshold(self):
-        self.assertEqual(safe_forward_speed(0.79, 0.8, 0.5), 0.0)
+        self.assertEqual(safe_forward_speed(0.79, True, 0.8, 0.5), 0.0)
 
     def test_safe_forward_speed_allows_motion_at_the_threshold(self):
-        self.assertEqual(safe_forward_speed(0.8, 0.8, 0.5), 0.5)
+        self.assertEqual(safe_forward_speed(0.8, True, 0.8, 0.5), 0.5)
 
     def test_braking_distance_moves_the_stop_decision_earlier(self):
-        self.assertEqual(safe_forward_speed(1.0, 0.8, 0.5, 0.6), 0.0)
+        self.assertEqual(safe_forward_speed(1.0, True, 0.8, 0.5, 0.6), 0.0)
 
     def test_braking_distance_still_allows_motion_with_room_to_stop(self):
-        self.assertEqual(safe_forward_speed(1.5, 0.8, 0.5, 0.6), 0.5)
+        self.assertEqual(safe_forward_speed(1.5, True, 0.8, 0.5, 0.6), 0.5)
 
     def test_braking_distance_boundary_is_inclusive(self):
-        self.assertEqual(safe_forward_speed(1.4, 0.8, 0.5, 0.6), 0.5)
+        self.assertEqual(safe_forward_speed(1.4, True, 0.8, 0.5, 0.6), 0.5)
 
     def test_no_braking_distance_keeps_the_old_behaviour(self):
-        self.assertEqual(safe_forward_speed(0.8, 0.8, 0.5, 0.0), 0.5)
+        self.assertEqual(safe_forward_speed(0.8, True, 0.8, 0.5, 0.0), 0.5)
 
     def test_a_cone_can_be_pointed_off_a_wing(self):
         # Eight beams every 45 degrees from straight behind: the nearest return
@@ -421,22 +437,275 @@ class HoldReasonTest(unittest.TestCase):
     """
 
     def test_a_stale_scan_outranks_whatever_the_last_one_showed(self):
-        self.assertEqual(hold_reason(False, 5.0)[0], "no recent scan")
+        self.assertEqual(hold_reason(False, True, 5.0)[0], "no recent scan")
 
     def test_a_fresh_but_empty_scan_says_so(self):
         self.assertEqual(
-            hold_reason(True, None)[0], "no valid range in the scan")
+            hold_reason(True, False, None)[0], "no valid range in the scan")
 
     def test_an_obstacle_carries_its_distance_in_the_detail(self):
-        self.assertEqual(hold_reason(True, 1.17), ("obstacle", " at 1.17 m"))
+        self.assertEqual(hold_reason(True, True, 1.17),
+                         ("obstacle", " at 1.17 m"))
 
     def test_an_obstacle_that_moves_a_little_is_the_same_reason(self):
         # Otherwise the node would re-log ten times a second while holding.
-        self.assertEqual(hold_reason(True, 1.17)[0], hold_reason(True, 1.16)[0])
+        self.assertEqual(hold_reason(True, True, 1.17)[0],
+                         hold_reason(True, True, 1.16)[0])
 
     def test_a_recovered_lidar_showing_a_wall_is_a_new_reason(self):
         # The case that was silently wrong: the vehicle stopped for a dead
         # lidar, the lidar came back with a wall in front of it, and the log
         # still said the lidar was dead.
         self.assertNotEqual(
-            hold_reason(False, None)[0], hold_reason(True, 0.9)[0])
+            hold_reason(False, False, None)[0], hold_reason(True, True, 0.9)[0])
+
+
+class SteeringToATargetTest(unittest.TestCase):
+    """Turning towards a place worth going, rather than towards the roomier side.
+
+    Every case below is stated as where the vehicle is, which way it is facing
+    and where the thing it wants is - never as an angle that should come out of
+    a formula. The sign is the whole problem here, as it was for the floor
+    rejection: REP 103 puts yaw positive counter-clockwise seen from above, so
+    positive is left, and a flipped sign turns every vehicle away from every
+    frontier it finds while still looking like it is exploring.
+    """
+
+    def test_a_target_dead_ahead_is_a_bearing_of_zero(self):
+        self.assertAlmostEqual(relative_bearing(0.0, 0.0, 0.0, 5.0, 0.0), 0.0)
+
+    def test_a_target_off_the_left_wing_is_positive(self):
+        # Facing +x, the target is at +y, which REP 103 puts to the left.
+        self.assertAlmostEqual(
+            relative_bearing(0.0, 0.0, 0.0, 0.0, 5.0), math.pi / 2)
+
+    def test_a_target_off_the_right_wing_is_negative(self):
+        self.assertAlmostEqual(
+            relative_bearing(0.0, 0.0, 0.0, 0.0, -5.0), -math.pi / 2)
+
+    def test_the_bearing_turns_with_the_vehicle_and_not_with_the_world(self):
+        # The same point in the room, the vehicle turned to face it: dead ahead.
+        self.assertAlmostEqual(
+            relative_bearing(0.0, 0.0, math.pi / 2, 0.0, 5.0), 0.0)
+
+    def test_a_target_just_behind_is_reached_the_short_way_round(self):
+        # 170 degrees to the left and 190 to the right are the same place, and
+        # only one of them is a turn worth making.
+        bearing = relative_bearing(
+            0.0, 0.0, math.radians(179.0), 1.0, 0.0)
+        self.assertAlmostEqual(bearing, math.radians(-179.0), places=6)
+        self.assertEqual(turn_sign_towards(bearing, 0.05, 1.0), -1.0)
+
+    def test_wrap_angle_folds_the_long_way_round_into_the_short_one(self):
+        self.assertAlmostEqual(wrap_angle(math.radians(350.0)),
+                               math.radians(-10.0))
+        self.assertAlmostEqual(wrap_angle(math.radians(-350.0)),
+                               math.radians(10.0))
+
+    def test_the_vehicle_turns_towards_a_target_off_its_side(self):
+        self.assertEqual(turn_sign_towards(math.radians(40.0), 0.05, -1.0), 1.0)
+        self.assertEqual(
+            turn_sign_towards(math.radians(-40.0), 0.05, 1.0), -1.0)
+
+    def test_a_target_on_the_nose_behind_a_wall_keeps_the_vehicle_turning(self):
+        # Aligned and still in the turn means the way ahead is blocked, or the
+        # turn would be over. The thing worth flying at is behind that wall, so
+        # the vehicle carries on round looking for another way in rather than
+        # stopping nose-on to it.
+        self.assertEqual(turn_sign_towards(0.0, 0.05, -1.0), -1.0)
+        self.assertEqual(turn_sign_towards(0.0, 0.05, 1.0), 1.0)
+
+    def test_a_blocked_target_on_the_nose_commits_the_turn_to_going_round(self):
+        self.assertTrue(turn_is_going_round(0.0, False, 0.05, False))
+
+    def test_a_target_off_to_one_side_is_still_worth_steering_at(self):
+        self.assertFalse(
+            turn_is_going_round(math.radians(40.0), False, 0.05, False))
+
+    def test_a_clear_way_ahead_is_not_giving_up_on_anything(self):
+        # Aligned and clear is a turn about to end, not a target behind a wall.
+        self.assertFalse(turn_is_going_round(0.0, True, 0.05, False))
+
+    def test_going_round_sticks_once_it_is_set(self):
+        # The whole point of it. Without the memory the vehicle steers back at
+        # the target the instant it has turned a hair past the tolerance, and
+        # rocks on the spot at the edge of the cone instead of going round.
+        self.assertTrue(
+            turn_is_going_round(math.radians(40.0), False, 0.05, True))
+        self.assertTrue(turn_is_going_round(None, True, 0.05, True))
+
+    def test_nothing_to_explore_never_commits_to_going_round(self):
+        # With no target there is nothing to give up on, and the turn is the
+        # reactive one it always was.
+        self.assertFalse(turn_is_going_round(None, False, 0.05, False))
+
+    def test_going_round_ignores_the_target_and_keeps_the_latched_sign(self):
+        self.assertEqual(
+            turn_sign_towards(math.radians(40.0), 0.05, -1.0, True), -1.0)
+        self.assertEqual(
+            turn_sign_towards(math.radians(-40.0), 0.05, 1.0, True), 1.0)
+
+    def test_going_round_ends_the_turn_on_a_clear_way_alone(self):
+        # Requiring aligned as well would be a deadlock rather than a
+        # safeguard: the target is behind a wall, so aligned and clear are
+        # never true in the same instant and the turn would rotate for ever.
+        self.assertTrue(turn_is_finished(math.radians(90.0), True, 0.05, True))
+        self.assertFalse(
+            turn_is_finished(math.radians(90.0), False, 0.05, True))
+
+    def test_the_vehicle_gets_round_instead_of_rocking_on_the_spot(self):
+        """The defect this exists for, flown rather than asserted piecemeal.
+
+        A target dead ahead behind a wall that never clears. Before the turn
+        could commit to going round, the two rules fought every tick: 9.2
+        degrees of rotation in 20 seconds and 195 changes of mind in 200 ticks,
+        and one real flight sat in a single such turn for 92 of its 130
+        seconds. What is asserted is that the vehicle comes round.
+        """
+        tolerance, rate, dt = math.radians(10.0), 0.4, 0.1
+        yaw, latched, going_round = 0.0, 1.0, False
+        signs = []
+        for _ in range(200):
+            bearing = relative_bearing(0.0, 0.0, yaw, 4.0, 0.0)
+            going_round = turn_is_going_round(
+                bearing, False, tolerance, going_round)
+            sign = turn_sign_towards(bearing, tolerance, latched, going_round)
+            signs.append(sign)
+            yaw += sign * rate * dt
+
+        reversals = sum(1 for a, b in zip(signs, signs[1:]) if a != b)
+        self.assertLessEqual(reversals, 1)
+        self.assertGreater(abs(math.degrees(yaw)), 360.0)
+
+    def test_with_nothing_to_explore_the_turn_is_the_old_reactive_one(self):
+        self.assertEqual(turn_sign_towards(None, 0.05, -1.0), -1.0)
+        self.assertTrue(turn_is_finished(None, True, 0.05))
+        self.assertFalse(turn_is_finished(None, False, 0.05))
+
+    def test_the_turn_ends_only_when_it_is_both_clear_and_pointing_somewhere(self):
+        aligned, off_to_one_side = 0.0, math.radians(40.0)
+        self.assertTrue(turn_is_finished(aligned, True, 0.05))
+        self.assertFalse(turn_is_finished(aligned, False, 0.05))
+        self.assertFalse(turn_is_finished(off_to_one_side, True, 0.05))
+
+    def test_a_clear_way_ahead_is_not_enough_on_its_own(self):
+        # The old rule, and why the vehicle circles the middle of a room: the
+        # instant a wall leaves the forward sector it flies off down whatever
+        # bearing it happens to be on, which is never the one it chose.
+        self.assertFalse(turn_is_finished(math.radians(90.0), True, 0.05))
+
+
+class NearestInCorridorTest(unittest.TestCase):
+    """What is in the way, as opposed to what is in front.
+
+    The numbers are the demo's own: a vehicle 0.167 m across that wants 1.7 m
+    clear before it will fly, looking at the 1.6 m door the coverage world puts
+    in front of it.
+    """
+
+    INCREMENT = math.radians(1.0)
+    ANGLE_MIN = -math.pi
+    HALF_WIDTH = 0.33
+    # The rotor tips reach 0.0833 m from the centre in every direction, so that
+    # is where the nose is and where the corridor starts.
+    NOSE = 0.0833
+
+    def wall_with_gap(self, distance_m, gap_m):
+        """A scan of a wall across the front with an opening in the middle of it.
+
+        One beam per degree, the whole circle, cast at a plane at x =
+        `distance_m`. Beams through the gap return nothing, which is what a
+        doorway with a room behind it deeper than the sensor's range looks like.
+        """
+        ranges = []
+        for index in range(360):
+            bearing = self.ANGLE_MIN + index * self.INCREMENT
+            if math.cos(bearing) <= 1e-9:
+                ranges.append(math.inf)
+                continue
+            value = distance_m / math.cos(bearing)
+            if abs(value * math.sin(bearing)) < gap_m / 2.0:
+                ranges.append(math.inf)
+            else:
+                ranges.append(value)
+        return ranges
+
+    def corridor(self, ranges, half_width_m=None):
+        return nearest_in_corridor(
+            ranges, self.ANGLE_MIN, self.INCREMENT, 0.02, 12.0,
+            self.HALF_WIDTH if half_width_m is None else half_width_m, self.NOSE)
+
+    def test_a_wall_across_the_front_is_as_far_as_it_looks(self):
+        self.assertAlmostEqual(
+            self.corridor(self.wall_with_gap(1.4, 0.0)), 1.4, places=6)
+
+    def test_a_return_off_to_the_side_is_not_in_the_way(self):
+        # 0.7 m to the left at 1.0 m ahead: well inside a 60 degree cone, and
+        # the vehicle flies past it with 0.6 m to spare.
+        bearing = math.atan2(0.7, 1.0)
+        ranges = [math.inf] * 360
+        ranges[round((bearing - self.ANGLE_MIN) / self.INCREMENT)] = math.hypot(0.7, 1.0)
+        self.assertIsNone(self.corridor(ranges))
+
+    def test_what_is_reported_is_how_far_the_vehicle_gets(self):
+        # A return at the corridor's edge is further away than it is ahead, and
+        # the distance that matters is the one along the track. At 30 degrees
+        # and 0.70 m that is 0.61 m, and taking the slant range instead would
+        # claim 0.09 m of room the vehicle has not got.
+        bearing = math.radians(30.0)
+        ranges = [math.inf] * 360
+        ranges[round((bearing - self.ANGLE_MIN) / self.INCREMENT)] = 0.70
+        self.assertAlmostEqual(self.corridor(ranges, 0.4), 0.70 * math.cos(bearing))
+
+    def test_what_is_abeam_has_been_passed_rather_than_reached(self):
+        # Dead abeam and inside the corridor's width, which is where a naive
+        # along-track distance of zero would stop the vehicle for a wall it is
+        # already alongside.
+        ranges = [math.inf] * 360
+        ranges[round((math.radians(90.0) - self.ANGLE_MIN) / self.INCREMENT)] = 0.30
+        self.assertIsNone(self.corridor(ranges))
+
+    def test_the_wall_behind_is_still_behind(self):
+        ranges = [math.inf] * 360
+        ranges[0] = 0.5
+        self.assertIsNone(self.corridor(ranges))
+
+    def test_the_floor_is_rejected_here_too(self):
+        # Nose down 20 degrees at 1.0 m: the beam straight ahead is finding the
+        # floor at 2.9 m, and it is dead centre of the corridor.
+        ranges = [math.inf] * 360
+        ranges[round(-self.ANGLE_MIN / self.INCREMENT)] = 2.9
+        nose_down = math.radians(20.0)
+        self.assertAlmostEqual(
+            nearest_in_corridor(ranges, self.ANGLE_MIN, self.INCREMENT, 0.02,
+                                12.0, self.HALF_WIDTH, self.NOSE, 0.0, nose_down),
+            2.9, places=6)
+        self.assertIsNone(
+            nearest_in_corridor(ranges, self.ANGLE_MIN, self.INCREMENT, 0.02,
+                                12.0, self.HALF_WIDTH, self.NOSE, 0.0, nose_down,
+                                1.0))
+
+    def test_a_doorway_the_vehicle_fits_through_reads_clear(self):
+        # The point of the whole thing. Lined up on a 1.6 m door 1.4 m ahead,
+        # the corridor finds nothing in the way and the vehicle flies in.
+        self.assertTrue(way_is_clear(
+            self.corridor(self.wall_with_gap(1.4, 1.6)), 0.8, 0.6, 0.3))
+
+    def test_the_cone_could_never_have_flown_through_that_door(self):
+        # The same scan through the rule this replaces. The jamb sits 29.7
+        # degrees off the nose, inside the 60 degree cone, at a slant range of
+        # 1.61 m - under the 1.7 m the demo wants - so the cone says blocked
+        # while the vehicle is perfectly lined up on an opening ten times its
+        # own width. Turning away is then the only thing left to do, which is
+        # exactly what eight approaches in the coverage flight did.
+        nearest = nearest_in_sector(
+            self.wall_with_gap(1.4, 1.6), self.ANGLE_MIN, self.INCREMENT,
+            0.02, 12.0, math.radians(60.0))
+        self.assertAlmostEqual(nearest, math.hypot(1.4, 0.8), places=2)
+        self.assertFalse(way_is_clear(nearest, 0.8, 0.6, 0.3))
+
+    def test_a_gap_narrower_than_the_vehicle_stays_blocked(self):
+        # 0.5 m of opening against a corridor 0.66 m wide: the jambs are inside
+        # it, so the wall is still in the way and the vehicle still stops.
+        self.assertAlmostEqual(
+            self.corridor(self.wall_with_gap(1.4, 0.5)), 1.4, places=2)

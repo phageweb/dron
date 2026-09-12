@@ -163,8 +163,42 @@ expect simple_indoor_autonomy_blind "Holding: obstacle at [0-9.]+ m" \
   "held for the floor with the height unknown"
 expect obstacle_monitor "No valid front lidar range" \
   "dropped the floor"
-expect simple_indoor_autonomy "Holding: no valid range in the scan" \
-  "dropped the floor"
+
+# The autonomy node is asked for its command rather than for a log line, and
+# that is the difference the corridor made. It used to hold with "no valid range
+# in the scan" - the floor gone and nothing else in the forward cone - and that
+# line was the evidence. Asking about the corridor instead, an empty corridor is
+# a clear way ahead rather than a blind vehicle, so a node that has dropped the
+# floor now flies. Commanding 0.5 m/s over a scan that is entirely floor is the
+# same property stated the stronger way: not "it stopped reporting the floor"
+# but "it is willing to fly through it".
+moving="none"
+for _ in $(seq 1 40); do
+  moving="$(timeout 4 ros2 topic echo --once --field twist.linear.x \
+    /ap/cmd_vel 2>/dev/null | grep -m1 -E '^-?[0-9]+\.?[0-9]*$' || true)"
+  [ -n "$moving" ] && [ "$moving" != "0.0" ] && break
+  moving="${moving:-none}"
+  sleep 0.25
+done
+if [ "$moving" = "none" ] || [ "$moving" = "0.0" ]; then
+  echo "simple_indoor_autonomy would not fly over a scan that is all floor" >&2
+  echo "(commanded '$moving'); it is still treating the floor as an obstacle." >&2
+  tail -n 30 "$test_tmpdir/simple_indoor_autonomy.log" >&2 || true
+  exit 1
+fi
+echo "  simple_indoor_autonomy: flies at $moving m/s over it"
+
+# And the blind one must not, over the same scan at the same moment. Without
+# this the line above would pass just as happily if the demo had stopped
+# stopping for anything at all.
+blind_speed="$(timeout 4 ros2 topic echo --once --field twist.linear.x \
+  /ap/cmd_vel_blind 2>/dev/null | grep -m1 -E '^-?[0-9]+\.?[0-9]*$' || true)"
+if [ "${blind_speed:-none}" != "0.0" ]; then
+  echo "simple_indoor_autonomy_blind commanded '${blind_speed:-none}' over a" >&2
+  echo "scan it cannot tell from an obstacle; it should be holding." >&2
+  exit 1
+fi
+echo "  simple_indoor_autonomy_blind: holds at $blind_speed m/s over the same scan"
 
 # A compensated node that also reported an obstacle would have satisfied the
 # greps above and still be wrong, so the absence is asserted too. Only from the
@@ -188,6 +222,9 @@ absent_after() {
 }
 
 absent_after obstacle_monitor "No valid front lidar range"
-absent_after simple_indoor_autonomy "Holding: no valid range in the scan"
+# Anchored on the node saying the compensation is on, which is the first moment
+# it has both inputs. Before that it has no height and reporting the floor is
+# the right thing for it to do.
+absent_after simple_indoor_autonomy "Rejecting floor returns"
 
 echo "Leaning scan check passed over $world: the floor stops an uncompensated node and not a compensated one."

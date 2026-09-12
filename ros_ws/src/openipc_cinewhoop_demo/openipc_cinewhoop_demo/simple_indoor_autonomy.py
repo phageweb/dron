@@ -9,7 +9,7 @@ vehicle refuses to move whenever it cannot see.
 import math
 
 import rclpy
-from geometry_msgs.msg import PoseStamped, TwistStamped
+from geometry_msgs.msg import PointStamped, PoseStamped, TwistStamped
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan, Range
@@ -17,7 +17,13 @@ from std_srvs.srv import Trigger
 
 from openipc_cinewhoop_demo.scan_helpers import (
     compensation_height,
+    nearest_in_corridor,
+    nearest_valid_range,
+    relative_bearing,
     turn_direction,
+    turn_is_finished,
+    turn_is_going_round,
+    turn_sign_towards,
     way_is_clear,
     hold_reason,
     nearest_in_sector,
@@ -25,6 +31,7 @@ from openipc_cinewhoop_demo.scan_helpers import (
     roll_pitch_from_quaternion,
     safe_forward_speed,
     takeoff_needs_retry,
+    yaw_from_quaternion,
 )
 
 # ArduPilot's own message package lives in the opt-in DDS workspace, so it is
@@ -64,9 +71,30 @@ class SimpleIndoorAutonomy(Node):
         self.declare_parameter("takeoff_altitude_m", 1.0)
         self.declare_parameter("scan_timeout_s", 0.5)
         # The LD06 sweeps all 360 degrees, so "the obstacle ahead" has to say
-        # how far ahead it means. Without this the vehicle stops for the wall
-        # behind it, on hardware exactly as in simulation.
+        # how far ahead it means. This is still how the vehicle asks what is off
+        # each wing; what is in front of it is the corridor below.
         self.declare_parameter("forward_sector_deg", 60.0)
+        # What is in the way is asked about as the swath the vehicle flies down
+        # rather than as a cone, because a cone cannot tell a wall from a
+        # doorjamb: at the 1.7 m this demo wants clear a 60 degree cone spans
+        # 1.7 m across, so no opening narrower than that can ever read clear,
+        # and the vehicle is 0.167 m wide. The coverage flight showed what that
+        # costs - eight approaches to a 1.6 m door, eight turns away at 1.35 to
+        # 1.40 m - and no better steering could have got through it.
+        #
+        # The rotor tips reach this far from the centre in every direction:
+        # 0.04525 m of arm plus a 0.0381 m propeller radius, the numbers that
+        # are in the model. check_model_consistency.py fails if the airframe
+        # moves away from them, the same guard the sensor offsets have.
+        self.declare_parameter("rotor_tip_half_width_m", 0.08335)
+        # How much room to leave either side of the tips. The forward flight
+        # check measures 0.16 to 0.23 m of clearance where the vehicle stops
+        # itself against a wall, so this is the same order of room asked for
+        # sideways, rounded up: it covers the cross-track error of a GUIDED
+        # velocity command and the yaw the vehicle holds while cruising. It
+        # makes the corridor 0.67 m wide, so the 1.6 m door has to be found to
+        # within 0.47 m of its centre rather than exactly.
+        self.declare_parameter("corridor_margin_m", 0.25)
         # The lidar leans with the airframe, so its forward beams find the floor
         # as soon as the nose drops. Returns that work out to be the ground are
         # dropped, which needs the height the downward rangefinder measures.
@@ -110,14 +138,41 @@ class SimpleIndoorAutonomy(Node):
         # threshold and turn again. Without the gap the two decisions chatter.
         self.declare_parameter("turn_clear_margin_m", 0.3)
         self.declare_parameter("side_sector_deg", 60.0)
+        # Turning towards somewhere chosen instead of towards the roomier side.
+        # Off by default and separate from enable_turning, because the two are
+        # different promises: turning at all is what check_room_circuit.sh
+        # verifies, and where to turn is what check_room_coverage.sh measures.
+        # With this off the demo is the reactive circuit it has always been,
+        # frontier_explorer running or not.
+        self.declare_parameter("enable_exploring", False)
+        self.declare_parameter("target_topic", "/openipc_cinewhoop/explore/target")
+        # The target comes from another node reading a map built from a third
+        # node's scans, so it is the furthest thing here from first hand and it
+        # gets the same freshness guard as everything else that is not. A stale
+        # target means the explorer has stopped or has nothing left to say, and
+        # the answer is the reactive rule rather than a heading from memory.
+        self.declare_parameter("target_timeout_s", 3.0)
+        # How close to the nose the target has to be before the turn may end.
+        # Wide enough that the vehicle is not chasing the last degree while a
+        # wall sits in front of it, narrow enough to be a direction: at 4 m,
+        # 10 degrees is 0.7 m.
+        self.declare_parameter("align_tolerance_deg", 10.0)
 
         self._nearest = None
+        self._scan_has_returns = False
         self._left = None
         self._right = None
         self._turn_sign = 0.0
+        # Whether the turn in progress has set its target aside and is just
+        # looking for a way through. Per turn, cleared by _enter(TURN).
+        self._going_round = False
         self._last_scan_time = None
         self._roll = 0.0
         self._pitch = 0.0
+        self._yaw = 0.0
+        self._position = None
+        self._target = None
+        self._target_time = None
         self._slant_range = None
         self._pose_time = None
         self._range_time = None
@@ -140,6 +195,9 @@ class SimpleIndoorAutonomy(Node):
         self.create_subscription(
             Range, self.get_parameter("range_topic").value,
             self._on_range, qos_profile_sensor_data)
+        self.create_subscription(
+            PointStamped, self.get_parameter("target_topic").value,
+            self._on_target, 10)
 
         self._auto = bool(self.get_parameter("auto_takeoff").value)
         if self._auto and not ARDUPILOT_SRVS:
@@ -181,9 +239,30 @@ class SimpleIndoorAutonomy(Node):
                 sector if centre_rad == 0.0 else side,
                 self._roll, self._pitch, height, margin, centre_rad)
 
-        self._nearest = nearest(0.0)
-        # What is off each wing, for deciding which way to turn. The same
-        # rejection applies there: leaning, the floor is off the wing too.
+        # What is in the way, which is a different question from what is in
+        # front: the corridor reports how far the vehicle gets flying straight,
+        # and ignores what it would pass cleanly to one side. obstacle_monitor
+        # still reports the cone, and that is not the two nodes disagreeing -
+        # it is telling whoever is watching what is nearby, which is what a
+        # proximity warning is for, while this decides whether to move.
+        # Whether the lidar saw anything at all, anywhere in its sweep, which
+        # is a different question from whether anything is in the way and has to
+        # be asked separately now that the way ahead is a corridor. A corridor
+        # with nothing in it is the ordinary case of a clear run; a scan with
+        # nothing in it is a vehicle that cannot see.
+        self._scan_has_returns = nearest_valid_range(
+            msg.ranges, msg.range_min, msg.range_max) is not None
+        tip = float(self.get_parameter("rotor_tip_half_width_m").value)
+        self._nearest = nearest_in_corridor(
+            msg.ranges, msg.angle_min, msg.angle_increment,
+            msg.range_min, msg.range_max,
+            tip + float(self.get_parameter("corridor_margin_m").value), tip,
+            self._roll, self._pitch, height, margin)
+        # What is off each wing, for deciding which way to turn, and a cone is
+        # right for that one: the question there is which side has more room,
+        # not what the vehicle would hit going sideways, which it never does.
+        # The same floor rejection applies: leaning, the floor is off the wing
+        # too.
         self._left = nearest(math.pi / 2.0)
         self._right = nearest(-math.pi / 2.0)
         self._last_scan_time = self.get_clock().now()
@@ -193,9 +272,41 @@ class SimpleIndoorAutonomy(Node):
 
     def _on_pose(self, msg: PoseStamped):
         self._altitude = msg.pose.position.z
+        # Where the vehicle is, as well as how it is leaning. The pose's own
+        # header.frame_id says base_link and is wrong - AP_DDS fills the body
+        # from get_relative_position_NED_home swapped into ENU, so the content
+        # is where base_link is relative to home, which cannot be expressed in
+        # base_link. It is the same frame the map is built in, which is the only
+        # reason a target out of the map can be compared against it at all.
+        self._position = (msg.pose.position.x, msg.pose.position.y)
         q = msg.pose.orientation
         self._roll, self._pitch = roll_pitch_from_quaternion(q.x, q.y, q.z, q.w)
+        self._yaw = yaw_from_quaternion(q.x, q.y, q.z, q.w)
         self._pose_time = self.get_clock().now()
+
+    def _on_target(self, msg: PointStamped):
+        self._target = (msg.point.x, msg.point.y)
+        self._target_time = self.get_clock().now()
+
+    def _bearing_to_target(self):
+        """Where the chosen opening lies relative to the nose, or None.
+
+        None every time anything is missing or stale, and None is what makes
+        the steering fall back to the reactive rule rather than to a guess.
+        """
+        if not bool(self.get_parameter("enable_exploring").value):
+            return None
+        if self._target is None or self._position is None:
+            return None
+        if self._target_time is None:
+            return None
+        age = (self.get_clock().now() - self._target_time).nanoseconds * 1e-9
+        if not reading_is_fresh(
+                age, float(self.get_parameter("target_timeout_s").value)):
+            return None
+        return relative_bearing(
+            self._position[0], self._position[1], self._yaw,
+            self._target[0], self._target[1])
 
     def _on_range(self, msg: Range):
         # Outside the sensor's window the reading means "no detection", and an
@@ -245,6 +356,10 @@ class SimpleIndoorAutonomy(Node):
         return (self.get_clock().now() - self._last_scan_time).nanoseconds / 1e9
 
     def _enter(self, state):
+        if state == TURN:
+            # Each turn asks the target question again from scratch, against
+            # the map as it now stands rather than as it stood last time.
+            self._going_round = False
         self._state = state
         self.get_logger().info(state)
 
@@ -367,21 +482,46 @@ class SimpleIndoorAutonomy(Node):
             self._publish(0.0)
             return
 
-        if way_is_clear(
-                self._nearest,
-                float(self.get_parameter("stop_distance_m").value),
-                float(self.get_parameter("braking_distance_m").value),
-                float(self.get_parameter("turn_clear_margin_m").value)):
+        clear = way_is_clear(
+            self._nearest,
+            float(self.get_parameter("stop_distance_m").value),
+            float(self.get_parameter("braking_distance_m").value),
+            float(self.get_parameter("turn_clear_margin_m").value))
+        bearing = self._bearing_to_target()
+        tolerance = math.radians(
+            float(self.get_parameter("align_tolerance_deg").value))
+
+        was_going_round = self._going_round
+        self._going_round = turn_is_going_round(
+            bearing, clear, tolerance, self._going_round)
+        if self._going_round and not was_going_round:
+            self.get_logger().info(
+                "The opening is on the nose and the way is still blocked, so "
+                "it is behind a wall; carrying on round to look for another")
+
+        if turn_is_finished(bearing, clear, tolerance, self._going_round):
             ahead = ("nothing in range" if self._nearest is None
                      else f"{self._nearest:.2f} m of room")
-            self.get_logger().info(f"Turn finished: {ahead} ahead")
+            towards = ("" if bearing is None or self._going_round
+                       else f", pointed at the opening within "
+                            f"{math.degrees(abs(bearing)):.0f} deg")
+            self.get_logger().info(f"Turn finished: {ahead} ahead{towards}")
             self._hold_reason = None
             self._enter(CRUISE)
             return
 
+        # The sign is recomputed every tick rather than held from the decision
+        # that started the turn, so while the target is off to one side this
+        # steers towards it by the short way round and self-corrects on an
+        # overshoot. What is held is the decision to stop steering at it: once
+        # the turn has committed to going round, the latched sign carries it the
+        # rest of the way. Recomputing that part every tick instead is what left
+        # the vehicle rocking at the edge of the tolerance for 92 seconds of a
+        # 130 second flight.
         self._publish(
             0.0,
-            self._turn_sign
+            turn_sign_towards(
+                bearing, tolerance, self._turn_sign, self._going_round)
             * float(self.get_parameter("turn_yaw_rate_rps").value))
 
     def _cruise(self, fresh):
@@ -389,13 +529,16 @@ class SimpleIndoorAutonomy(Node):
         if fresh:
             speed = safe_forward_speed(
                 self._nearest,
+                self._scan_has_returns,
                 float(self.get_parameter("stop_distance_m").value),
                 float(self.get_parameter("forward_speed_mps").value),
                 float(self.get_parameter("braking_distance_m").value))
 
         if speed == 0.0:
-            # A fresh scan can still be all inf or nan, so nearest may be None.
-            reason, detail = hold_reason(fresh, self._nearest)
+            # A fresh scan can still be all inf or nan, which is a blind
+            # vehicle rather than a clear way ahead.
+            reason, detail = hold_reason(
+                fresh, self._scan_has_returns, self._nearest)
             # Latch the reason rather than the fact of holding. A vehicle that
             # stops because the scan went stale and then stays stopped because a
             # wall appeared used to log only the first of those, so the log said
@@ -411,12 +554,25 @@ class SimpleIndoorAutonomy(Node):
                     self.get_parameter("enable_turning").value):
                 # The side is chosen once and latched. A rule that can change
                 # its mind halfway through leaves the vehicle rocking in place.
+                # The reactive choice is still made, and it is still what the
+                # vehicle turns on when there is nothing better. What it is not
+                # any more is the whole decision: with an opening to fly at, the
+                # side with more room is only the direction to go round in when
+                # that opening turns out to be behind something.
                 self._turn_sign = turn_direction(self._left, self._right)
                 towards = "left" if self._turn_sign > 0 else "right"
-                self.get_logger().info(
-                    f"Turning {towards}: "
-                    f"{self._describe(self._left)} off the left wing, "
-                    f"{self._describe(self._right)} off the right")
+                bearing = self._bearing_to_target()
+                if bearing is None:
+                    self.get_logger().info(
+                        f"Turning {towards}: "
+                        f"{self._describe(self._left)} off the left wing, "
+                        f"{self._describe(self._right)} off the right")
+                else:
+                    self.get_logger().info(
+                        f"Turning towards the opening at "
+                        f"({self._target[0]:+.2f}, {self._target[1]:+.2f}), "
+                        f"{math.degrees(bearing):+.0f} deg off the nose; "
+                        f"{towards} if it turns out to be blocked")
                 self._enter(TURN)
                 return
         else:

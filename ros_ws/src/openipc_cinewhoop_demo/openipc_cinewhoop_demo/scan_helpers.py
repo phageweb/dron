@@ -2,6 +2,17 @@ import math
 from typing import Iterable, Optional
 
 
+def wrap_angle(angle_rad: float) -> float:
+    """An angle folded into [-pi, pi], so a difference is the short way round.
+
+    Written out once here because the alternative is what was happening before:
+    the same modulo twice inside nearest_in_sector and again wherever a heading
+    error was wanted. A difference of 350 degrees that is really -10 is the
+    classic way to send a vehicle the long way round its own turn.
+    """
+    return (angle_rad + math.pi) % (2 * math.pi) - math.pi
+
+
 def nearest_valid_range(
     ranges: Iterable[float],
     range_min: float,
@@ -171,8 +182,8 @@ def nearest_in_sector(
         # both work out the same. The same wrap is applied to the offset from
         # the cone's centre, so a cone pointed off the left wing is not split in
         # two by the wrap-around behind the vehicle.
-        angle = (angle + math.pi) % (2 * math.pi) - math.pi
-        offset = (angle - centre_rad + math.pi) % (2 * math.pi) - math.pi
+        angle = wrap_angle(angle)
+        offset = wrap_angle(angle - centre_rad)
         if abs(offset) > half:
             continue
         if is_ground_return(angle, value, roll_rad, pitch_rad,
@@ -202,11 +213,22 @@ def range_reading(
 
 def safe_forward_speed(
     nearest_range: Optional[float],
+    scan_has_returns: bool,
     stop_distance: float,
     forward_speed: float,
     braking_distance: float = 0.0,
 ) -> float:
-    """Return forward speed only when a valid scan clears the stop distance.
+    """Return forward speed only when a scan that saw something clears the stop distance.
+
+    Two different things used to arrive as one None, and while the way ahead was
+    a cone they were nearly the same thing: a 360 degree lidar in a room with no
+    return anywhere in the forward cone is a lidar that has stopped working.
+    Asking about the corridor instead separates them, because an empty corridor
+    is the ordinary case of a clear way ahead - the doorjambs are beside it and
+    the walls are past it - and stopping for that would leave the vehicle unable
+    to fly down anything at all. So the scan is asked separately whether it
+    carried any return at all, and a scan that carried none still stops the
+    vehicle.
 
     The vehicle cannot stop where it decides to. ArduPilot shapes horizontal
     motion with a jerk limit of 5 m/s^3, an acceleration limit of 2.5 m/s^2 and a
@@ -215,12 +237,17 @@ def safe_forward_speed(
     come early rather than the braking get harder, so the threshold is the
     clearance to keep plus the distance it takes to stop.
     """
-    if nearest_range is None or nearest_range < stop_distance + braking_distance:
+    if not scan_has_returns:
+        return 0.0
+    if nearest_range is None:
+        return forward_speed
+    if nearest_range < stop_distance + braking_distance:
         return 0.0
     return forward_speed
 
 
-def hold_reason(fresh: bool, nearest_range: Optional[float]):
+def hold_reason(fresh: bool, scan_has_returns: bool,
+                nearest_range: Optional[float]):
     """Why the vehicle is not moving: a reason, and the detail that goes with it.
 
     The reason is what gets latched in the log, and the detail is what does not.
@@ -229,10 +256,15 @@ def hold_reason(fresh: bool, nearest_range: Optional[float]):
     that recovers into an obstacle is a different reason and has to be said. The
     node used to latch the fact of holding instead, so whichever reason came
     first was the only one ever reported.
+
+    "No valid range" is about the scan and not about the corridor. An empty
+    corridor is a clear way ahead and not a reason to hold at all, so it cannot
+    be one of the answers here; a scan with nothing in it anywhere is a blind
+    vehicle, and that is.
     """
     if not fresh:
         return "no recent scan", ""
-    if nearest_range is None:
+    if not scan_has_returns:
         return "no valid range in the scan", ""
     return "obstacle", f" at {nearest_range:.2f} m"
 
@@ -393,3 +425,168 @@ def turn_direction(
     if right_range is None:
         return -1.0
     return 1.0 if left_range >= right_range else -1.0
+
+
+def relative_bearing(
+    from_x_m: float,
+    from_y_m: float,
+    yaw_rad: float,
+    to_x_m: float,
+    to_y_m: float,
+) -> float:
+    """Where a point in the map frame lies relative to the nose: 0 ahead, + left.
+
+    The same convention as the scan and as the yaw command, which is what lets
+    the sign of this be handed straight to the yaw rate. Positive is left
+    because REP 103 puts yaw positive counter-clockwise seen from above.
+    """
+    return wrap_angle(
+        math.atan2(to_y_m - from_y_m, to_x_m - from_x_m) - yaw_rad)
+
+
+def turn_is_going_round(
+    bearing_rad: Optional[float],
+    clear: bool,
+    tolerance_rad: float,
+    already_going_round: bool,
+) -> bool:
+    """Whether this turn has given up on the target and is hunting for a way.
+
+    Set once the target is on the nose and the way ahead is still blocked,
+    which together mean the thing worth flying at is on the far side of a wall.
+    From then on the turn is the old reactive one - carry on round until
+    something is clear - because pointing at that target is precisely what is
+    not worth doing any more.
+
+    Sticky, and that is the whole point of it. The obvious rule, "steer at the
+    target unless it is already on the nose", has no memory, so the moment the
+    vehicle has turned a hair past the tolerance it steers straight back: it
+    rocks on the spot at the edge of the cone instead of going round. Measured
+    on the real helpers before this existed, a vehicle blocked with its target
+    dead ahead turned 9.2 degrees in 20 seconds and changed its mind 195 times
+    in 200 ticks, and a flight spent 92 of its 130 seconds in one such turn.
+    Committing to go round is what makes "carry on round" a thing that can
+    actually happen rather than an intention in a comment.
+
+    Cleared when a turn begins rather than when it ends, so each turn gets to
+    ask the question again with the map as it now stands.
+    """
+    if already_going_round:
+        return True
+    if bearing_rad is None:
+        return False
+    return not clear and abs(bearing_rad) <= tolerance_rad
+
+
+def turn_sign_towards(
+    bearing_rad: Optional[float],
+    tolerance_rad: float,
+    latched_sign: float,
+    going_round: bool = False,
+) -> float:
+    """Which way to yaw to bring a target onto the nose: +1 left, -1 right.
+
+    While the target is off to one side, towards it by the short way round.
+    Once the turn has committed to going round - the target was on the nose and
+    the wall was still there - the latched sign carries it the rest of the way,
+    and the target stops having a vote until the next turn.
+
+    With no target at all the latched sign is all there is, which is the old
+    reactive turn unchanged.
+    """
+    if going_round or bearing_rad is None or abs(bearing_rad) <= tolerance_rad:
+        return latched_sign
+    return 1.0 if bearing_rad > 0.0 else -1.0
+
+
+def turn_is_finished(
+    bearing_rad: Optional[float],
+    clear: bool,
+    tolerance_rad: float,
+    going_round: bool = False,
+) -> bool:
+    """Whether to stop turning and fly: the way is clear and pointing somewhere.
+
+    Both halves are needed and they fail differently. Clear on its own is the
+    old rule, and it is what keeps the vehicle circling the open middle of a
+    room: the instant a wall slides out of the forward sector it flies off down
+    whatever bearing it happens to be on. Aligned on its own would fly it into
+    the wall the target sits behind.
+
+    Except once the turn has committed to going round, where requiring both is
+    a deadlock rather than a safeguard: the target is behind a wall, so aligned
+    and clear are never true at the same instant, and a turn that insisted on
+    both would rotate for ever. Going round means the target has been set aside
+    for this turn, and the turn ends on the old rule that does terminate.
+
+    No target means no second half to satisfy, so the old rule stands there too.
+    That is deliberate rather than a gap: a vehicle with nothing left to explore
+    should behave the way it did before there was anything to explore towards.
+    """
+    if not clear:
+        return False
+    return going_round or bearing_rad is None or abs(bearing_rad) <= tolerance_rad
+
+
+def nearest_in_corridor(
+    ranges: Iterable[float],
+    angle_min: float,
+    angle_increment: float,
+    range_min: float,
+    range_max: float,
+    half_width_m: float,
+    nose_ahead_m: float = 0.0,
+    roll_rad: float = 0.0,
+    pitch_rad: float = 0.0,
+    height_above_floor_m: Optional[float] = None,
+    ground_margin_m: float = 0.25,
+) -> Optional[float]:
+    """How far ahead the vehicle can fly straight before it hits something.
+
+    The cone this replaces asks a different question, and the difference is not
+    a refinement: a cone mixes together how far away a return is and how far to
+    the side it is, so it cannot tell a wall in the way from a doorjamb the
+    vehicle would fly cleanly past. At the 1.7 m the demo wants clear, a 60
+    degree cone spans 1.7 m across, so no opening narrower than that can ever
+    read clear however well the vehicle is lined up on it. `check_room_coverage`
+    caught this as an explorer that chose the enclosure's 1.6 m door eight times
+    over and turned away from it every time at 1.35 to 1.40 m, on a vehicle
+    0.167 m wide. That is arithmetic rather than bad luck; no amount of better
+    steering gets through a cone.
+
+    So the swath the vehicle actually occupies is what is asked about instead.
+    A return blocks if it lies within `half_width_m` either side of the track,
+    and what is reported for it is the along-track distance - how far the
+    vehicle gets before reaching it - rather than the slant range, which
+    overstates the room by up to the half width at the corridor's edge.
+
+    Only what is ahead of the nose counts, and `nose_ahead_m` is where the nose
+    is. A return abeam and inside the corridor's width - a pillar the vehicle is
+    drawing level with - has an along-track distance of nearly zero while being
+    no obstacle at all, and reporting that would stop the vehicle somewhere
+    stopping cannot help: it is already alongside, and standing still does not
+    make it go away. The airframe's own half-length is the honest boundary,
+    because anything nearer than that is beside the vehicle in the plainest
+    sense. Left at zero, the corridor starts at the vehicle's centre and the
+    abeam case comes back.
+
+    The floor rejection is the sector's, unchanged and for the same reason:
+    leaning, the forward beams find the ground, and ground straight ahead is in
+    the corridor by definition.
+    """
+    nearest = None
+    for index, value in enumerate(ranges):
+        if not math.isfinite(value) or not range_min <= value <= range_max:
+            continue
+        angle = wrap_angle(angle_min + index * angle_increment)
+        ahead = value * math.cos(angle)
+        if ahead <= nose_ahead_m:
+            continue
+        if abs(value * math.sin(angle)) > half_width_m:
+            continue
+        if is_ground_return(angle, value, roll_rad, pitch_rad,
+                            height_above_floor_m, ground_margin_m):
+            continue
+        if nearest is None or ahead < nearest:
+            nearest = ahead
+    return nearest
