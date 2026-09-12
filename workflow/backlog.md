@@ -275,6 +275,16 @@
       the ones there is no way to; the published point is one stopping distance
       along the route. It also retired the timeout that used to guess an opening
       was "probably behind a wall", because the sweep answers that outright
+- [ ] The floor rejection's margin is a fraction of the height it is flown at,
+      and nothing says so. A return is called floor once it works out below
+      `ground_margin_m` of 0.25 m, so at the demo's 1.00 m the lidar has 0.80 m
+      to give away and a return 3 m out survives a 15.5 degree nose-down. Flown
+      at 0.50 m it has 0.30 m, and the same return is discarded at 5.7 degrees -
+      less than the vehicle pitches to get moving. Low flight therefore throws
+      away real obstacles at range, quietly, exactly where flying low is what
+      the job needed. The margin wants to be a fraction of the height, or the
+      rejection wants the return's height rather than its drop; either way it is
+      a number that was chosen at one altitude and is used at all of them
 - [ ] The corridor is the swath of a vehicle going forwards, which is all this
       demo ever does. A sideways or diagonal command would need it pointed along
       the commanded velocity rather than along the nose, and nothing currently

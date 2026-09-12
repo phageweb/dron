@@ -43,9 +43,14 @@ from openipc_cinewhoop_demo.grid_helpers import (
     cluster_centroid,
     frontier_cells,
     frontier_clusters,
-    nearest_reachable_cluster,
     reachability,
+    reachable_clusters,
+    route_cost_m,
     route_to,
+)
+from openipc_cinewhoop_demo.scan_helpers import (
+    relative_bearing,
+    yaw_from_quaternion,
 )
 
 
@@ -82,6 +87,14 @@ class FrontierExplorer(Node):
         # is within this of it; the frontier shifts as the vehicle approaches
         # and this is the leash.
         self.declare_parameter("target_hold_m", 1.0)
+        # What a turn costs, as the distance the vehicle could have flown in
+        # the time it takes: simple_indoor_autonomy yaws at 0.4 rad/s and
+        # cruises at 0.5 m/s, so a radian is worth 1.25 m and turning right
+        # round costs four metres of flying. Without it the vehicle picks the
+        # nearest opening however far round it is, arrives, finds the next
+        # nearest behind it, and spends the flight turning: 133, 143, 146, 171
+        # and 172 degrees in a row on the flight that made this necessary.
+        self.declare_parameter("turn_cost_m_per_rad", 1.25)
 
         self._pose = None
         self._destination = None
@@ -144,7 +157,11 @@ class FrontierExplorer(Node):
                 frontier_cells(grid.data, info.width, info.height))
             if len(cluster) >= min_cells]
 
-        chosen = self._settle(clusters, distance, info, min_cells)
+        yaw = yaw_from_quaternion(
+            self._pose.pose.orientation.x, self._pose.pose.orientation.y,
+            self._pose.pose.orientation.z, self._pose.pose.orientation.w)
+        chosen = self._settle(
+            clusters, distance, parent, start, info, min_cells, x, y, yaw)
         if chosen is None:
             if self._last_reported is not None:
                 self.get_logger().info(
@@ -178,7 +195,20 @@ class FrontierExplorer(Node):
                 f"{(len(route) - 1) * info.resolution:.2f} m of route to it")
             self._last_reported = self._destination
 
-    def _settle(self, clusters, distance, info, min_cells):
+    def _cost(self, goal, parent, start, info, from_x, from_y, yaw):
+        """What flying to this opening costs, in metres, turn included."""
+        route = route_to(goal, parent, start)
+        point_x, point_y = carrot(
+            route, info.resolution,
+            info.origin.position.x, info.origin.position.y,
+            float(self.get_parameter("lookahead_m").value))
+        return route_cost_m(
+            route, info.resolution,
+            relative_bearing(from_x, from_y, yaw, point_x, point_y),
+            float(self.get_parameter("turn_cost_m_per_rad").value))
+
+    def _settle(self, clusters, distance, parent, start, info, min_cells,
+                from_x, from_y, yaw):
         """Keep the opening the vehicle is already flying at, while it lasts.
 
         Re-choosing from scratch on every map update would be correct and
@@ -192,11 +222,21 @@ class FrontierExplorer(Node):
         opening was merely far off or had no way to it at all - and a route
         answers that outright: an opening with no way to it is not in `distance`
         and is never chosen in the first place.
+
+        What replaces the held destination when it is gone is the cheapest
+        opening rather than the nearest, and the difference is the turn: a near
+        thing behind the vehicle is not nearer than a slightly further thing
+        ahead of it.
         """
         held = self._held(clusters, distance, info)
         if held is not None:
             return held
-        return nearest_reachable_cluster(clusters, distance, min_cells)
+        candidates = reachable_clusters(clusters, distance, min_cells)
+        if not candidates:
+            return None
+        return min(candidates,
+                   key=lambda candidate: self._cost(
+                       candidate[1], parent, start, info, from_x, from_y, yaw))
 
     def _held(self, clusters, distance, info):
         """The destination from last time, if it is still an opening and still reachable."""

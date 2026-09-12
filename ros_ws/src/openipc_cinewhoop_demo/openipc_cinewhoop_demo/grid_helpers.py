@@ -465,38 +465,27 @@ def reachability(
     return distance, parent
 
 
-def nearest_reachable_cluster(
+def reachable_clusters(
     clusters: Iterable[Iterable[Tuple[int, int]]],
     distance: dict,
     min_cells: int = 4,
 ):
-    """The opening nearest by flying, and which of its cells to fly to.
+    """Every opening there is a way to, with the cell of each that is nearest.
 
-    Nearest by the route rather than by the straight line, which is the whole
-    reason for the sweep. An opening 2 m away through a wall and 9 m away round
-    it is 9 m away; the straight line calls it the closest thing in the room and
-    sends the vehicle at the wall, over and over, because turning away does not
-    move it.
-
-    An opening no cell of which was reached is not returned at all. Before there
-    was a route to ask, unreachable had to be guessed at from how long the
-    vehicle had been failing to arrive, and a guess is what it was: the timeout
-    could not tell a wall in the way from an opening that was simply far off.
-
-    Returns (cluster, cell) or None.
+    Separate from choosing between them because the two are different
+    questions and only the first is about the map. Which one is worth flying to
+    depends on what the vehicle costs to turn, and the grid does not know that.
     """
-    best = None
-    best_distance = None
+    found = []
     for cluster in clusters:
         cluster = list(cluster)
         if len(cluster) < min_cells:
             continue
-        for cell in cluster:
-            if cell not in distance:
-                continue
-            if best_distance is None or distance[cell] < best_distance:
-                best, best_distance = (cluster, cell), distance[cell]
-    return best
+        reachable = [cell for cell in cluster if cell in distance]
+        if not reachable:
+            continue
+        found.append((cluster, min(reachable, key=lambda cell: distance[cell])))
+    return found
 
 
 def route_to(
@@ -510,6 +499,34 @@ def route_to(
         route.append(parent[route[-1]])
     route.reverse()
     return route
+
+
+def route_cost_m(
+    route: Iterable[Tuple[int, int]],
+    resolution_m: float,
+    bearing_rad: float,
+    turn_cost_m_per_rad: float,
+) -> float:
+    """What a route costs to fly, counting the turn onto it as distance.
+
+    Nearest by distance alone sends the vehicle back and forth. It flies to an
+    opening, the opening is explored and stops being one, and the nearest of
+    what is left is behind it - so it turns round, flies back, and the same
+    thing happens there. Measured on one coverage flight, the second half was
+    nothing else: turns of 133, 143, 146, 171 and 172 degrees, one after
+    another, and the enclosure half explored when the time ran out.
+
+    A turn is not free and the vehicle knows exactly what it costs. Yawing at
+    `turn_yaw_rate_rps` while cruising at `forward_speed_mps`, the demo's 0.4
+    and 0.5 make a radian of turn worth 1.25 m of flying, so turning right round
+    costs what flying four metres costs. Adding that in does not forbid going
+    back - sometimes what is behind really is the thing to do - it just stops a
+    near thing behind from beating a slightly further thing ahead, over and
+    over.
+    """
+    route = list(route)
+    return ((len(route) - 1) * resolution_m
+            + abs(bearing_rad) * turn_cost_m_per_rad)
 
 
 def carrot(

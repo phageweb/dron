@@ -19,7 +19,8 @@ from openipc_cinewhoop_demo.grid_helpers import (
     in_rectangle,
     in_bounds,
     map_extent,
-    nearest_reachable_cluster,
+    reachable_clusters,
+    route_cost_m,
     nearest_wall_distance,
     occupancy_percent,
     reachability,
@@ -27,7 +28,10 @@ from openipc_cinewhoop_demo.grid_helpers import (
     scan_return_offset,
     update_cell,
 )
-from openipc_cinewhoop_demo.scan_helpers import body_point_offset
+from openipc_cinewhoop_demo.scan_helpers import (
+    body_point_offset,
+    relative_bearing,
+)
 
 
 class GridGeometryTest(unittest.TestCase):
@@ -504,21 +508,65 @@ class RouteTest(unittest.TestCase):
         # A square mask would take it and close a door the vehicle fits through.
         self.assertNotIn((0, 0), blocked)
 
+    def cheapest(self, clusters, distance, start, yaw_rad, parent,
+                 min_cells=2, turn_cost=1.25):
+        """The opening a vehicle at `start` facing `yaw_rad` would pick."""
+        candidates = reachable_clusters(clusters, distance, min_cells)
+        if not candidates:
+            return None
+
+        def cost(candidate):
+            route = route_to(candidate[1], parent, start)
+            point = cell_centre(route[-1][0], route[-1][1], 1.0, 0.0, 0.0)
+            here = cell_centre(start[0], start[1], 1.0, 0.0, 0.0)
+            return route_cost_m(
+                route, 1.0,
+                relative_bearing(here[0], here[1], yaw_rad, point[0], point[1]),
+                turn_cost)
+
+        return min(candidates, key=cost)
+
     def test_the_nearest_opening_is_the_one_the_route_is_shortest_to(self):
         # Two openings, and the near one in a straight line is the far one to
         # fly to: it is behind the dividing wall, reached only round through the
         # door, while the other is a couple of cells along the same room.
         values, cols, rows = self.split()
-        distance, _ = reachability(values, cols, rows, (2, 2), 0)
+        distance, parent = reachability(values, cols, rows, (2, 2), 0)
         # Three cells away in a straight line and fifteen by the only route
         # there is, against four cells away along the room the vehicle is in.
         behind_the_wall = [(2, 5), (3, 5)]  # the far side of the dividing wall
         along_the_room = [(6, 2), (7, 2)]
         self.assertLess(math.dist((2, 2), behind_the_wall[0]),
                         math.dist((2, 2), along_the_room[0]))
-        chosen = nearest_reachable_cluster(
-            [behind_the_wall, along_the_room], distance, min_cells=2)
+        chosen = self.cheapest([behind_the_wall, along_the_room], distance,
+                               (2, 2), 0.0, parent, turn_cost=0.0)
         self.assertEqual(chosen[0], along_the_room)
+
+    def test_an_opening_behind_the_vehicle_pays_for_the_turn(self):
+        # The oscillation this exists to stop: arrive somewhere, find the
+        # nearest remaining opening behind, turn round, and do it again. Facing
+        # +x, an opening four cells back costs its distance plus a half turn,
+        # and loses to one five cells straight ahead that costs only its
+        # distance.
+        values, cols, rows = self.split()
+        distance, parent = reachability(values, cols, rows, (6, 2), 0)
+        behind = [(2, 2), (2, 1)]
+        ahead = [(11, 2), (11, 1)]
+        self.assertLess(distance[(2, 2)], distance[(11, 2)])
+        chosen = self.cheapest([behind, ahead], distance, (6, 2), 0.0, parent)
+        self.assertEqual(chosen[0], ahead)
+
+    def test_a_turn_that_is_worth_it_is_still_taken(self):
+        # The penalty is a price, not a prohibition. The same pair with the one
+        # ahead moved far enough away that turning round is the cheaper thing
+        # to do, and the vehicle turns round.
+        values, cols, rows = self.split()
+        distance, parent = reachability(values, cols, rows, (6, 2), 0)
+        behind = [(5, 2), (5, 1)]
+        ahead = [(11, 2), (11, 1)]
+        chosen = self.cheapest([behind, ahead], distance, (6, 2), math.pi,
+                               parent)
+        self.assertEqual(chosen[0], behind)
 
     def test_an_opening_with_no_way_to_it_is_not_chosen(self):
         values, cols, rows = room("""
@@ -530,24 +578,27 @@ class RouteTest(unittest.TestCase):
             ##########
         """)
         distance, _ = reachability(values, cols, rows, (2, 1), 0)
-        self.assertIsNone(nearest_reachable_cluster(
-            [[(2, 3), (3, 3), (4, 3), (5, 3)]], distance, min_cells=4))
+        self.assertEqual(
+            reachable_clusters([[(2, 3), (3, 3), (4, 3), (5, 3)]], distance,
+                               min_cells=4),
+            [])
 
     def test_a_sliver_is_not_an_opening_however_close_it_is(self):
         # Quantisation leaves one and two cell frontiers at the ends of walls,
         # and nearest-first would pick them for ever because they are, quite
         # truthfully, the nearest thing there is.
         values, cols, rows = self.split()
-        distance, _ = reachability(values, cols, rows, (2, 2), 0)
+        distance, parent = reachability(values, cols, rows, (2, 2), 0)
         sliver = [(3, 2)]
         real = [(8, 1), (8, 2), (8, 3), (7, 3)]
-        chosen = nearest_reachable_cluster([sliver, real], distance, min_cells=4)
+        chosen = self.cheapest([sliver, real], distance, (2, 2), 0.0, parent,
+                               min_cells=4)
         self.assertEqual(chosen[0], real)
 
     def test_nothing_reachable_at_all_is_nothing_to_fly_at(self):
         values, cols, rows = self.split()
         distance, _ = reachability(values, cols, rows, (2, 2), 0)
-        self.assertIsNone(nearest_reachable_cluster([], distance))
+        self.assertEqual(reachable_clusters([], distance), [])
 
     def test_the_carrot_is_a_stride_along_the_route_and_not_its_end(self):
         # Ten cells of route at 0.10 m, asked for 0.50 m ahead: the fifth cell,
