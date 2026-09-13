@@ -17,8 +17,19 @@ cd "$project_root"
 sitl_bin="external/ardupilot/build/sitl/bin/arducopter"
 bridge_bin="build/ap_actuator_bridge/ap_actuator_bridge"
 plugin_dir="build/ardupilot_gazebo"
-model_path="ros_ws/src/openipc_cinewhoop_gazebo/models/openipc_cinewhoop/model.sdf"
-sitl_params="ros_ws/src/openipc_cinewhoop_gazebo/config/ardupilot_params.parm"
+# Which airframe to fly. The variants are separate model directories holding a
+# model of the same name, so worlds and the bridge config need no change; see
+# ros_ws/src/openipc_cinewhoop_gazebo/launch/gazebo.launch.py.
+airframe="${OPENIPC_AIRFRAME:-cinewhoop}"
+if [ "$airframe" = "cinewhoop" ]; then
+  models_dir="models"
+  params_name="ardupilot_params.parm"
+else
+  models_dir="models_$airframe"
+  params_name="ardupilot_params_$airframe.parm"
+fi
+model_path="ros_ws/src/openipc_cinewhoop_gazebo/$models_dir/openipc_cinewhoop/model.sdf"
+sitl_params="ros_ws/src/openipc_cinewhoop_gazebo/config/$params_name"
 min_climb="${MIN_CLIMB_M:-2.0}"
 
 for required_path in "$sitl_bin" "$bridge_bin" "$plugin_dir/libArduPilotPlugin.so" \

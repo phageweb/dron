@@ -42,7 +42,12 @@ def generate_launch_description():
         "launch",
         "display.launch.py",
     ])
-    params_file = PathJoinSubstitution([pkg_share, "config", "ardupilot_params.parm"])
+    # Same airframe switch as gazebo.launch.py; see the comment there. The two
+    # files differ in one value, MOT_THST_HOVER, because the rate gains transfer.
+    _airframe = os.environ.get("OPENIPC_AIRFRAME", "cinewhoop")
+    _params_name = ("ardupilot_params.parm" if _airframe == "cinewhoop"
+                    else f"ardupilot_params_{_airframe}.parm")
+    params_file = PathJoinSubstitution([pkg_share, "config", _params_name])
     dds_params_file = PathJoinSubstitution([pkg_share, "config", "dds_smoke.parm"])
 
     ardupilot_dir = LaunchConfiguration("ardupilot_dir")

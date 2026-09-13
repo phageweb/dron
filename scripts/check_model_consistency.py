@@ -21,8 +21,28 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-URDF = ROOT / "ros_ws/src/openipc_cinewhoop_description/urdf/openipc_cinewhoop.urdf.xacro"
-SDF = ROOT / "ros_ws/src/openipc_cinewhoop_gazebo/models/openipc_cinewhoop/model.sdf"
+
+# The airframes the project describes. Each is a URDF/SDF pair that has to agree
+# with itself; only the flown one has to agree with the demo nodes as well,
+# because a node carries exactly one set of defaults and the variant is passed
+# its numbers as parameters instead. Printing those numbers rather than checking
+# them is the point of the `owns_demo_defaults` flag: a variant that silently
+# used the wrong corridor width would be worse than one that fails to start.
+AIRFRAMES = {
+    "cinewhoop": {
+        "urdf": "ros_ws/src/openipc_cinewhoop_description/urdf/openipc_cinewhoop.urdf.xacro",
+        "sdf": "ros_ws/src/openipc_cinewhoop_gazebo/models/openipc_cinewhoop/model.sdf",
+        "owns_demo_defaults": True,
+    },
+    "pavo20": {
+        "urdf": "ros_ws/src/openipc_cinewhoop_description/urdf/openipc_pavo20.urdf.xacro",
+        "sdf": "ros_ws/src/openipc_cinewhoop_gazebo/models_pavo20/openipc_cinewhoop/model.sdf",
+        "owns_demo_defaults": False,
+    },
+}
+
+URDF = ROOT / AIRFRAMES["cinewhoop"]["urdf"]
+SDF = ROOT / AIRFRAMES["cinewhoop"]["sdf"]
 
 BASE = "base_link"
 DEMO = ROOT / "ros_ws/src/openipc_cinewhoop_demo/openipc_cinewhoop_demo"
@@ -212,7 +232,16 @@ def demo_sensor_offsets():
     return found
 
 
-def main():
+def select(airframe):
+    """Point the module at one airframe's pair of files."""
+    global URDF, SDF
+    URDF = ROOT / AIRFRAMES[airframe]["urdf"]
+    SDF = ROOT / AIRFRAMES[airframe]["sdf"]
+
+
+def main(airframe="cinewhoop"):
+    select(airframe)
+    owns_defaults = AIRFRAMES[airframe]["owns_demo_defaults"]
     urdf, urdf_mass = urdf_poses()
     sdf, sdf_mass = sdf_poses()
     problems = []
@@ -252,11 +281,13 @@ def main():
     # The airframe's own half-width, which the demo carries for the same reason
     # and with the same risk as the sensor offsets above.
     tip = sdf_rotor_tip_half_width()
-    declared_tip = demo_declared("rotor_tip_half_width_m")
+    declared_tip = demo_declared("rotor_tip_half_width_m") if owns_defaults else {}
     if tip is None:
         problems.append(
             "the SDF has no rotor with a propeller radius, so how wide the "
             "vehicle is cannot be read out of the model")
+    elif not declared_tip and not owns_defaults:
+        pass
     elif not declared_tip:
         problems.append(
             "no demo node declares rotor_tip_half_width_m; the model still says "
@@ -269,13 +300,15 @@ def main():
                     f"{node} flies a corridor {value:.5f} m either side of the "
                     f"centre and the model's rotor tips reach {tip:.5f} m")
 
-    offsets = demo_sensor_offsets()
-    if not offsets:
+    offsets = demo_sensor_offsets() if owns_defaults else {}
+    if not offsets and not owns_defaults:
+        pass
+    elif not offsets:
         problems.append(
             "no demo node declares where the sensors sit; either the "
             "parameters were renamed or this check is looking in the wrong place")
     declared = {name for _, name in offsets}
-    for name in sorted(set(SENSOR_OFFSETS) - declared):
+    for name in sorted((set(SENSOR_OFFSETS) - declared) if owns_defaults else set()):
         problems.append(
             f"no demo node declares {name}; the model still says what it should "
             "be, so either it was renamed or the node stopped needing it")
@@ -300,24 +333,46 @@ def main():
         # Not only the URDF against the SDF any more: the demo nodes carry a
         # piece of the model too, and naming the wrong pair of files is how a
         # reader is sent to look in the wrong place.
-        print("The drone is described inconsistently across files:", file=sys.stderr)
+        print(f"The {airframe} is described inconsistently across files:",
+              file=sys.stderr)
         for problem in problems:
             print(f"  {problem}", file=sys.stderr)
         return 1
 
+    print(f"{airframe}:")
     print("  no sensor topic names a world, so the model is not pinned to one")
     print(f"  {len(shared)} shared links agree on position, rotation and total mass")
     print(f"  total mass {sdf_mass:.3f} kg")
     print(f"  the rotor tips reach {tip:.5f} m from the centre, which is the "
           "half-width the demo flies a corridor of")
+    who = "the demo nodes put" if owns_defaults else "the model puts"
+    tail = ", as the model does" if owns_defaults else ""
     for name, (link, reference, axis) in SENSOR_OFFSETS.items():
-        print(f"  the demo nodes put {link} {expected[name]:+.3f} m from "
-              f"{reference} along {AXES[axis]}, as the model does")
+        print(f"  {who} {link} {expected[name]:+.3f} m from "
+              f"{reference} along {AXES[axis]}{tail}")
     for name, why in sorted({**URDF_ONLY, **SDF_ONLY}.items()):
         print(f"  {name}: in one file only, {why}")
-    print("Model consistency check passed.")
+    if not owns_defaults:
+        # The demo nodes hold the flown airframe's numbers. Anything flying this
+        # variant has to override them, so the check hands over the exact list
+        # rather than leaving it to be re-derived by hand.
+        print(f"  {airframe} is not the airframe the demo nodes default to, so a "
+              "run of it must pass:")
+        print(f"    rotor_tip_half_width_m:={tip:.5f}")
+        for name in SENSOR_OFFSETS:
+            print(f"    {name}:={expected[name]:.5f}")
+    print(f"Model consistency check passed for {airframe}.")
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # No argument checks every airframe the project describes. Checking only the
+    # flown one would let a variant drift silently, which is the same failure
+    # this script exists to stop.
+    wanted = sys.argv[1:] or list(AIRFRAMES)
+    unknown = [name for name in wanted if name not in AIRFRAMES]
+    if unknown:
+        print(f"unknown airframe(s): {', '.join(unknown)}; "
+              f"known: {', '.join(AIRFRAMES)}", file=sys.stderr)
+        sys.exit(2)
+    sys.exit(max(main(name) for name in wanted))

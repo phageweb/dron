@@ -1,0 +1,379 @@
+<?xml version="1.0"?>
+<sdf version="1.10">
+  <!-- BetaFPV Pavo20 Pro on 4S, the alternative airframe costed in
+       spec/realna_stavba_dronu/10_pavo20.md. Same payload as the CineLog30 V3 -
+       LD06, EMAX Wyvern Link Alpha, MTF-02P - on a 93.7 mm wheelbase with 2.2 in
+       propellers instead of 128 mm and 3 in.
+
+       The model deliberately keeps the NAME openipc_cinewhoop. Every world
+       includes model://openipc_cinewhoop and gz_bridge.yaml addresses sensor
+       topics through that name, so renaming it would fork seven worlds and the
+       bridge config to change four numbers. The variant is selected by which
+       directory reaches GZ_SIM_RESOURCE_PATH first: gazebo.launch.py picks
+       models_pavo20/ over models/ when OPENIPC_AIRFRAME=pavo20. -->
+  <model name="openipc_cinewhoop">
+    <!-- World placement belongs to the including world, not the model. -->
+    <pose>0 0 0 0 0 0</pose>
+    <static>false</static>
+
+    <!-- Publish rotor motion so motor mapping can be verified headlessly. -->
+    <plugin filename="gz-sim-joint-state-publisher-system"
+            name="gz::sim::systems::JointStatePublisher"/>
+
+    <link name="base_link">
+      <inertial>
+        <!-- Total assembled mass is 0.2216 kg, from the itemised budget in
+             spec/realna_stavba_dronu/10_pavo20.md: the 33.3 g Pavo20 Pro frame,
+             four LAVA 1104, an iFlight Beast H7 AIO, the same LD06, Wyvern and
+             MTF-02P the CineLog carries, a 4S LiHV 750 pack, and 22 g of wiring,
+             screws and TPU. That is 84 g less than the CineLog's 0.306 kg, and
+             all of it comes off the frame, motors and propellers - the payload
+             is identical.
+
+             The LD06's 42 g sits on front_lidar_link rather than here, because
+             where it hangs changes the inertia as much as the mass does. Fixed
+             child-link masses are explicit so SDF does not substitute its 1 kg
+             default.
+
+             base_link inertia is the 0.077 x 0.077 x 0.016 box with the same
+             lumped-hardware factors the CineLog used (1.30 on roll, 1.15 on
+             yaw), which is why it is not exactly the box figure. -->
+        <mass>0.1444</mass>
+        <inertia>
+          <ixx>0.000097</ixx>
+          <iyy>0.000097</iyy>
+          <izz>0.000164</izz>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyz>0</iyz>
+        </inertia>
+      </inertial>
+      <collision name="body_collision">
+        <geometry><box><size>0.077 0.077 0.016</size></box></geometry>
+      </collision>
+      <visual name="body_visual">
+        <geometry><box><size>0.077 0.077 0.016</size></box></geometry>
+        <material><diffuse>0.04 0.045 0.05 1</diffuse></material>
+      </visual>
+    </link>
+
+    <!-- The LD06 sits on a mast, same as on the CineLog and for the same reason:
+         its 38.6 mm body overlaps the front propeller discs at any height, so it
+         has to clear them entirely. 36.4 mm forward is where the centre-of-
+         gravity solve puts it - far enough forward that its footprint just stops
+         touching the battery's, which is the binding constraint on this frame
+         and was not on the CineLog. 43.2 mm up leaves 5.5 mm over the rotor
+         plane against the CineLog's 7.2 mm.
+
+         That tightness is real and is recorded as the one thing genuinely worse
+         here: on the CineLog there is 17.7 mm of slack between lidar and
+         battery, and on this frame there is none. -->
+    <link name="front_lidar_link">
+      <pose relative_to="base_link">0.0364 0 0.0432 0 0 0</pose>
+      <!-- 42 g, the LD06's datasheet weight without its cable. Gazebo composes
+           the body inertia from where the links sit, so putting it here rather
+           than in base_link is what makes the mast's effect real: 42 g at
+           46 mm forward and 50 mm up adds about 1.9e-4 to pitch inertia, which
+           is as much again as the whole airframe had before. -->
+      <inertial><mass>0.042</mass><inertia><ixx>0.0000078</ixx><iyy>0.0000078</iyy><izz>0.0000078</izz></inertia></inertial>
+      <visual name="visual">
+        <geometry><box><size>0.0386 0.0386 0.0333</size></box></geometry>
+        <material><diffuse>0.24 0.24 0.26 1</diffuse></material>
+      </visual>
+      <sensor name="front_lidar" type="gpu_lidar">
+        <!-- Without gz_frame_id a Gazebo sensor stamps its messages with its
+             own scoped name, here openipc_cinewhoop/front_lidar_link/front_lidar,
+             which is not a frame in the TF tree robot_state_publisher serves.
+             RViz then refuses to transform the scan and the real drone's driver
+             would publish a different frame than the simulation. -->
+        <gz_frame_id>front_lidar_link</gz_frame_id>
+        <always_on>true</always_on>
+        <!-- LDRobot LD06, to its datasheet: 360 degrees at 1 degree resolution,
+             10 Hz nominal (5 to 13 via PWM), 0.02 to 12 m at 70 % reflectivity.
+             It was a 60 degree, 8 m forward fan before, which stood in for a
+             sensor nobody had chosen yet. -->
+        <update_rate>10</update_rate>
+        <!-- No <topic> here, and none on any other sensor in this model. A
+             sensor that names its own topic names the world in it, and this
+             model then only works in a world called indoor_test: Gazebo keeps
+             publishing under the written name while ArduPilotPlugin looks for
+             the IMU under the real world's name, finds nothing, and never sends
+             SITL a JSON state. SITL then resends servos forever and the only
+             clue is "No JSON sensor message received". Gazebo's default topic
+             is this same name with the actual world in it, so letting it
+             generate them is both correct and identical in indoor_test. -->
+        <ray>
+          <scan>
+            <horizontal>
+              <samples>360</samples>
+              <resolution>1</resolution>
+              <min_angle>-3.141593</min_angle>
+              <max_angle>3.141593</max_angle>
+            </horizontal>
+            <vertical>
+              <samples>1</samples>
+              <resolution>1</resolution>
+              <min_angle>0</min_angle>
+              <max_angle>0</max_angle>
+            </vertical>
+          </scan>
+          <range>
+            <min>0.02</min>
+            <max>12.0</max>
+            <resolution>0.01</resolution>
+          </range>
+        </ray>
+      </sensor>
+    </link>
+    <joint name="front_lidar_joint" type="fixed">
+      <parent>base_link</parent>
+      <child>front_lidar_link</child>
+    </joint>
+
+    <link name="rangefinder_link">
+      <pose relative_to="base_link">0.015 0 -0.014 0 1.57079632679 0</pose>
+      <inertial><mass>0.002</mass><inertia><ixx>0.0000001</ixx><iyy>0.0000001</iyy><izz>0.0000001</izz></inertia></inertial>
+      <sensor name="down_range" type="gpu_lidar">
+        <gz_frame_id>rangefinder_link</gz_frame_id>
+        <always_on>true</always_on>
+        <update_rate>20</update_rate>
+        <ray>
+          <scan>
+            <!-- A time-of-flight rangefinder returns the closest surface inside
+                 its cone, not along one line. MicoAir give the MTF-02P's laser
+                 a 2 degree emitting angle, so the sensor is a narrow fan of that
+                 width and the adapter takes the minimum. A single ray also left
+                 angle_increment NaN in every message. -->
+            <horizontal>
+              <samples>5</samples>
+              <resolution>1</resolution>
+              <min_angle>-0.0175</min_angle>
+              <max_angle>0.0175</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.05</min>
+            <max>5.0</max>
+            <resolution>0.01</resolution>
+          </range>
+        </ray>
+      </sensor>
+    </link>
+    <joint name="rangefinder_joint" type="fixed">
+      <parent>base_link</parent>
+      <child>rangefinder_link</child>
+    </joint>
+
+    <link name="imu_link">
+      <pose relative_to="base_link">0 0 0.016 0 0 0</pose>
+      <inertial><mass>0.002</mass><inertia><ixx>0.0000001</ixx><iyy>0.0000001</iyy><izz>0.0000001</izz></inertia></inertial>
+      <sensor name="imu" type="imu">
+        <!-- ArduPilotPlugin reads this sensor assuming the aircraft convention
+             (x-forward, y-right, z-down), stated in its own source. A Gazebo
+             body frame is x-forward, y-LEFT, z-UP, so without this roll the Y
+             and Z axes of both gyro and accelerometer reach ArduPilot inverted.
+             The Iris reference model carries the same rotation. Note this makes
+             the bridged ROS imu topic FRD rather than the REP-103 FLU that ROS
+             expects; no consumer depends on it today. -->
+        <gz_frame_id>imu_link</gz_frame_id>
+        <pose degrees="true">0 0 0 180 0 0</pose>
+        <always_on>true</always_on>
+        <!-- Iris runs its IMU at 1000 Hz; raising ours is worth doing once the
+             rotor velocity loop is stable enough to benefit from it. -->
+        <update_rate>100</update_rate>
+      </sensor>
+      <!-- The IMU above is rolled into ArduPilot's aircraft convention and so
+           reports z down, while REP 103 and AP_DDS both give ROS z up. Bridging
+           the ArduPilot-facing sensor put a sign flip on every ROS consumer
+           that would appear only on real hardware, so ROS gets its own
+           unrotated sensor instead of a rotation nobody can see. -->
+      <sensor name="imu_ros" type="imu">
+        <gz_frame_id>imu_link</gz_frame_id>
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+      </sensor>
+    </link>
+    <joint name="imu_joint" type="fixed">
+      <parent>base_link</parent>
+      <child>imu_link</child>
+    </joint>
+
+    <link name="camera_link">
+      <pose relative_to="base_link">0.050 0 0.010 0 0 0</pose>
+      <inertial><mass>0.006</mass><inertia><ixx>0.0000005</ixx><iyy>0.0000005</iyy><izz>0.0000005</izz></inertia></inertial>
+      <visual name="visual">
+        <geometry><box><size>0.026 0.022 0.020</size></box></geometry>
+        <material><diffuse>0.08 0.08 0.08 1</diffuse></material>
+      </visual>
+      <sensor name="front_camera" type="camera">
+        <!-- Images are stamped with the optical frame, which is where REP 103
+             puts image data: z forward, x right, y down. The URDF holds the
+             rotation and the 14 mm offset to the lens, so the sensor carries
+             the same offset here. -->
+        <gz_frame_id>camera_optical_frame</gz_frame_id>
+        <pose>0.014 0 0 0 0 0</pose>
+        <always_on>true</always_on>
+        <update_rate>15</update_rate>
+        <camera>
+          <horizontal_fov>1.3962634</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>480</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.05</near>
+            <far>20</far>
+          </clip>
+        </camera>
+      </sensor>
+    </link>
+    <joint name="camera_joint" type="fixed">
+      <parent>base_link</parent>
+      <child>camera_link</child>
+    </joint>
+
+    <link name="motor_1"><pose relative_to="base_link">0.03313 -0.03313 0.010 0 0 0</pose><inertial><mass>0.0053</mass><inertia><ixx>0.0000002</ixx><iyy>0.0000002</iyy><izz>0.0000002</izz></inertia></inertial></link>
+    <joint name="motor_1_joint" type="fixed"><parent>base_link</parent><child>motor_1</child></joint>
+    <link name="motor_2"><pose relative_to="base_link">-0.03313 0.03313 0.010 0 0 0</pose><inertial><mass>0.0053</mass><inertia><ixx>0.0000002</ixx><iyy>0.0000002</iyy><izz>0.0000002</izz></inertia></inertial></link>
+    <joint name="motor_2_joint" type="fixed"><parent>base_link</parent><child>motor_2</child></joint>
+    <link name="motor_3"><pose relative_to="base_link">0.03313 0.03313 0.010 0 0 0</pose><inertial><mass>0.0053</mass><inertia><ixx>0.0000002</ixx><iyy>0.0000002</iyy><izz>0.0000002</izz></inertia></inertial></link>
+    <joint name="motor_3_joint" type="fixed"><parent>base_link</parent><child>motor_3</child></joint>
+    <link name="motor_4"><pose relative_to="base_link">-0.03313 -0.03313 0.010 0 0 0</pose><inertial><mass>0.0053</mass><inertia><ixx>0.0000002</ixx><iyy>0.0000002</iyy><izz>0.0000002</izz></inertia></inertial></link>
+    <joint name="motor_4_joint" type="fixed"><parent>base_link</parent><child>motor_4</child></joint>
+
+    <!-- 2.2 inch propellers, ordered like ArduPilot's Quad X reference model. -->
+    <link name="rotor_0"><pose relative_to="base_link">0.03313 -0.03313 0.021 0 0 0</pose><inertial><mass>0.001</mass><inertia><ixx>0.0000004</ixx><iyy>0.0000004</iyy><izz>0.0000008</izz></inertia></inertial><visual name="prop"><geometry><cylinder><radius>0.02794</radius><length>0.002</length></cylinder></geometry><material><diffuse>0.2 0.7 1 1</diffuse></material></visual></link>
+    <joint name="rotor_0_joint" type="revolute"><parent>base_link</parent><child>rotor_0</child><axis><xyz>0 0 1</xyz><limit><lower>-1e16</lower><upper>1e16</upper></limit><dynamics><damping>0.0002</damping></dynamics></axis></joint>
+    <link name="rotor_1"><pose relative_to="base_link">-0.03313 0.03313 0.021 0 0 0</pose><inertial><mass>0.001</mass><inertia><ixx>0.0000004</ixx><iyy>0.0000004</iyy><izz>0.0000008</izz></inertia></inertial><visual name="prop"><geometry><cylinder><radius>0.02794</radius><length>0.002</length></cylinder></geometry><material><diffuse>0.2 0.7 1 1</diffuse></material></visual></link>
+    <joint name="rotor_1_joint" type="revolute"><parent>base_link</parent><child>rotor_1</child><axis><xyz>0 0 1</xyz><limit><lower>-1e16</lower><upper>1e16</upper></limit><dynamics><damping>0.0002</damping></dynamics></axis></joint>
+    <link name="rotor_2"><pose relative_to="base_link">0.03313 0.03313 0.021 0 0 0</pose><inertial><mass>0.001</mass><inertia><ixx>0.0000004</ixx><iyy>0.0000004</iyy><izz>0.0000008</izz></inertia></inertial><visual name="prop"><geometry><cylinder><radius>0.02794</radius><length>0.002</length></cylinder></geometry><material><diffuse>1 0.45 0.2 1</diffuse></material></visual></link>
+    <joint name="rotor_2_joint" type="revolute"><parent>base_link</parent><child>rotor_2</child><axis><xyz>0 0 1</xyz><limit><lower>-1e16</lower><upper>1e16</upper></limit><dynamics><damping>0.0002</damping></dynamics></axis></joint>
+    <link name="rotor_3"><pose relative_to="base_link">-0.03313 -0.03313 0.021 0 0 0</pose><inertial><mass>0.001</mass><inertia><ixx>0.0000004</ixx><iyy>0.0000004</iyy><izz>0.0000008</izz></inertia></inertial><visual name="prop"><geometry><cylinder><radius>0.02794</radius><length>0.002</length></cylinder></geometry><material><diffuse>1 0.45 0.2 1</diffuse></material></visual></link>
+    <joint name="rotor_3_joint" type="revolute"><parent>base_link</parent><child>rotor_3</child><axis><xyz>0 0 1</xyz><limit><lower>-1e16</lower><upper>1e16</upper></limit><dynamics><damping>0.0002</damping></dynamics></axis></joint>
+
+    <!-- Two blade surfaces per propeller. The paired forward directions give
+         a rotating propeller lift without adding collisions to the ducts. -->
+
+    <!--
+      The ArduPilot Gazebo plugin exchanges IMU and pose state as JSON with
+      SITL and drives the four aerodynamic propeller joints below.
+    -->
+    <!-- Rotor constants derived the same way as the CineLog's, deliberately
+         reusing its Ct so the two airframes differ by geometry and not by an
+         assumption. Target hardware is 4x BetaFPV LAVA 1104 5500 KV on 4S with
+         ducted Gemfan 2218 three-blade propellers (D = 0.05588 m).
+
+         Ct back-solved from the CineLog's own constant: 2.20e-07 * 4*pi^2 /
+         (1.225 * 0.0762^4) = 0.2103. Then
+
+         motorConstant = Ct * rho * D^4 / (4*pi^2)
+                       = 0.2103 * 1.225 * 9.752e-06 / 39.478 = 6.36e-08
+
+         maxRotVelocity 5950 rad/s = 56820 RPM, 61 % of the 92400 RPM that
+         5500 KV reaches unloaded at 16.8 V - the same loaded fraction the
+         CineLog model uses (59 %), which is the point of picking it this way.
+         Full throttle gives 6.36e-08 * 5950^2 = 2.25 N per rotor, or 230 g,
+         which is what BetaFPV publish for this motor on these propellers.
+         Thrust to weight is 4.14 against 0.2216 kg, against the CineLog's 4.6.
+
+         momentConstant = (Cq/Ct) * D = 0.17 * 0.05588 = 0.0095 m.
+
+         rotorDragCoefficient is left at the CineLog's 1.0e-05 rather than
+         scaled. It is a second-order term next to thrust and there is no
+         published figure to scale it against; inventing one would look like
+         precision this model does not have. -->
+    <plugin filename="gz-sim-multicopter-motor-model-system"
+            name="gz::sim::systems::MulticopterMotorModel">
+      <robotNamespace>openipc_cinewhoop</robotNamespace>
+      <commandSubTopic>command/motor_speed</commandSubTopic>
+      <jointName>rotor_0_joint</jointName>
+      <linkName>rotor_0</linkName>
+      <actuator_number>0</actuator_number>
+      <turningDirection>ccw</turningDirection>
+      <motorType>velocity</motorType>
+      <maxRotVelocity>5950</maxRotVelocity>
+      <motorConstant>6.36e-08</motorConstant>
+      <momentConstant>0.0095</momentConstant>
+      <timeConstantUp>0.0125</timeConstantUp>
+      <timeConstantDown>0.025</timeConstantDown>
+      <rotorDragCoefficient>1.0e-05</rotorDragCoefficient>
+      <rollingMomentCoefficient>1.0e-07</rollingMomentCoefficient>
+      <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
+    </plugin>
+    <plugin filename="gz-sim-multicopter-motor-model-system"
+            name="gz::sim::systems::MulticopterMotorModel">
+      <robotNamespace>openipc_cinewhoop</robotNamespace>
+      <commandSubTopic>command/motor_speed</commandSubTopic>
+      <jointName>rotor_1_joint</jointName>
+      <linkName>rotor_1</linkName>
+      <actuator_number>1</actuator_number>
+      <turningDirection>ccw</turningDirection>
+      <motorType>velocity</motorType>
+      <maxRotVelocity>5950</maxRotVelocity>
+      <motorConstant>6.36e-08</motorConstant>
+      <momentConstant>0.0095</momentConstant>
+      <timeConstantUp>0.0125</timeConstantUp>
+      <timeConstantDown>0.025</timeConstantDown>
+      <rotorDragCoefficient>1.0e-05</rotorDragCoefficient>
+      <rollingMomentCoefficient>1.0e-07</rollingMomentCoefficient>
+      <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
+    </plugin>
+    <plugin filename="gz-sim-multicopter-motor-model-system"
+            name="gz::sim::systems::MulticopterMotorModel">
+      <robotNamespace>openipc_cinewhoop</robotNamespace>
+      <commandSubTopic>command/motor_speed</commandSubTopic>
+      <jointName>rotor_2_joint</jointName>
+      <linkName>rotor_2</linkName>
+      <actuator_number>2</actuator_number>
+      <turningDirection>cw</turningDirection>
+      <motorType>velocity</motorType>
+      <maxRotVelocity>5950</maxRotVelocity>
+      <motorConstant>6.36e-08</motorConstant>
+      <momentConstant>0.0095</momentConstant>
+      <timeConstantUp>0.0125</timeConstantUp>
+      <timeConstantDown>0.025</timeConstantDown>
+      <rotorDragCoefficient>1.0e-05</rotorDragCoefficient>
+      <rollingMomentCoefficient>1.0e-07</rollingMomentCoefficient>
+      <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
+    </plugin>
+    <plugin filename="gz-sim-multicopter-motor-model-system"
+            name="gz::sim::systems::MulticopterMotorModel">
+      <robotNamespace>openipc_cinewhoop</robotNamespace>
+      <commandSubTopic>command/motor_speed</commandSubTopic>
+      <jointName>rotor_3_joint</jointName>
+      <linkName>rotor_3</linkName>
+      <actuator_number>3</actuator_number>
+      <turningDirection>cw</turningDirection>
+      <motorType>velocity</motorType>
+      <maxRotVelocity>5950</maxRotVelocity>
+      <motorConstant>6.36e-08</motorConstant>
+      <momentConstant>0.0095</momentConstant>
+      <timeConstantUp>0.0125</timeConstantUp>
+      <timeConstantDown>0.025</timeConstantDown>
+      <rotorDragCoefficient>1.0e-05</rotorDragCoefficient>
+      <rollingMomentCoefficient>1.0e-07</rollingMomentCoefficient>
+      <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
+    </plugin>
+
+    <plugin name="ArduPilotPlugin" filename="ArduPilotPlugin">
+      <fdm_addr>127.0.0.1</fdm_addr>
+      <fdm_port_in>9002</fdm_port_in>
+      <connectionTimeoutMaxCount>5</connectionTimeoutMaxCount>
+      <lock_step>1</lock_step>
+      <no_time_sync>1</no_time_sync>
+
+      <!-- Convert Gazebo ENU / FLU into ArduPilot NED / FRD. -->
+      <modelXYZToAirplaneXForwardZDown degrees="true">0 0 0 180 0 0</modelXYZToAirplaneXForwardZDown>
+      <gazeboXYZToNED degrees="true">0 0 0 180 0 90</gazeboXYZToNED>
+
+      <imuName>imu_link::imu</imuName>
+
+      <!-- Quad X mapping follows the Iris reference model, scaled for 3 in props. -->
+      <control channel="0"><jointName>rotor_0_joint</jointName><multiplier>3980</multiplier><offset>0</offset><servo_min>1100</servo_min><servo_max>1900</servo_max><type>COMMAND</type><cmd_topic>/model/openipc_cinewhoop/joint/rotor_0_joint/cmd</cmd_topic></control>
+      <control channel="1"><jointName>rotor_1_joint</jointName><multiplier>3980</multiplier><offset>0</offset><servo_min>1100</servo_min><servo_max>1900</servo_max><type>COMMAND</type><cmd_topic>/model/openipc_cinewhoop/joint/rotor_1_joint/cmd</cmd_topic></control>
+      <control channel="2"><jointName>rotor_2_joint</jointName><multiplier>3980</multiplier><offset>0</offset><servo_min>1100</servo_min><servo_max>1900</servo_max><type>COMMAND</type><cmd_topic>/model/openipc_cinewhoop/joint/rotor_2_joint/cmd</cmd_topic></control>
+      <control channel="3"><jointName>rotor_3_joint</jointName><multiplier>3980</multiplier><offset>0</offset><servo_min>1100</servo_min><servo_max>1900</servo_max><type>COMMAND</type><cmd_topic>/model/openipc_cinewhoop/joint/rotor_3_joint/cmd</cmd_topic></control>
+    </plugin>
+  </model>
+</sdf>

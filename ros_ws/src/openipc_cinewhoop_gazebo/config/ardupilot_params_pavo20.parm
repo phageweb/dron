@@ -1,0 +1,145 @@
+# Quad X baseline for the BetaFPV Pavo20 Pro 4S variant of the JSON SITL model.
+#
+# Differs from ardupilot_params.parm in exactly one value - MOT_THST_HOVER -
+# and that is the finding, not an oversight. See the rate-gain block below.
+#
+# Nothing is inherited from copter.parm. SITL is launched with --defaults naming
+# only this file and dds_smoke.parm, so everything not set here sits at the
+# firmware default. That is the intended state, not an oversight: copter.parm
+# targets a one to two kilogram vehicle on three cells, and two of its values
+# would be actively wrong here - MOT_BAT_VOLT_MIN/MAX 9.6/12.8 against this
+# airframe's 4S pack. Firmware default for both is 0.0, voltage thrust-limiting
+# off, which is what we want.
+#
+# The 18 INS_ACC* parameters copter.parm carries are supplied instead by
+# sim_defaults[] in libraries/SITL/SIM_JSON.cpp. Arming therefore depends on
+# --model JSON: an exactly zero accel offset counts as uncalibrated, so another
+# model would fail to arm with an INS error that never mentions the model.
+#
+# This airframe is 0.2216 kg with a composite roll inertia of 0.000218 kg m^2,
+# so it reacts far faster than copter.parm's target.
+# Attitude gains are deliberately still at their defaults; see
+# workflow/backlog.md, and workflow/troubleshooting.md for the full audit.
+FRAME_CLASS 1
+FRAME_TYPE 1
+
+# The SDF maps 1100-1900 us onto zero-to-full rotor speed, but ArduPilot's
+# output range defaults to 1000-2000. Below 1100 the plugin computed a negative
+# rotor speed, so a disarmed vehicle sat on the floor turning itself slowly and
+# failed the compass field check ("Check mag field xy diff"). Matching the two
+# ranges also stops throttle above 1900 from exceeding the modelled maximum.
+MOT_PWM_MIN 1100
+MOT_PWM_MAX 1900
+
+# The simulated rotor produces thrust proportional to the square of commanded
+# speed, and speed is linear in throttle, so full expo inverts that curve exactly.
+MOT_THST_EXPO 1.0
+
+# Hover throttle follows from the calibrated rotors rather than being guessed.
+# At 0.2216 kg the airframe needs 0.544 N per rotor against a 2.253 N maximum, a
+# thrust fraction of 0.241, and MOT_THST_EXPO 1.0 makes the actuator output
+# sqrt(0.241) = 0.49. Written down explicitly so the first flight of a test is
+# deterministic instead of waiting for MOT_HOVER_LEARN.
+#
+# Higher than the CineLog's 0.46 even though the airframe is 84 g lighter,
+# because 2.2 in propellers on 1104 motors give up more thrust than the airframe
+# gives up mass: thrust to weight is 4.14 against 4.6.
+MOT_THST_HOVER 0.49
+
+# Attitude rate gains carried over from the CineLog UNCHANGED, and the reason is
+# worth writing down because it looks like laziness and is not.
+#
+# The gains that matter are set by angular acceleration authority: peak roll
+# moment over roll inertia. Both terms fall on this airframe, and they fall by
+# almost exactly the same factor.
+#
+#   CineLog30 V3   2 * 3.485 N * 0.04525 m = 0.3154 N m / 0.000458 = 689 rad/s^2
+#   Pavo20 Pro 4S  2 * 2.253 N * 0.03313 m = 0.1492 N m / 0.000218 = 684 rad/s^2
+#
+# That is a ratio of 0.99. Shorter arm and weaker motors take the moment down by
+# 53 per cent; the lighter frame, the shorter arm the mass sits on and the lower
+# lidar mast take the inertia down by 52 per cent. Scaling the gains for a 1 per
+# cent difference would be false precision of exactly the kind the CineLog file
+# refuses two paragraphs down.
+#
+# Both inertias are composed the same way - every link through the parallel axis
+# theorem, including the LD06 where it actually hangs - so the comparison is not
+# between a measured number and an estimated one.
+#
+# Left at stock, the rate loop saturated: one rotor pinned at the MOT_SPIN_MIN
+# floor of 597 rad/s while the others ran 1500 to 2200, the saturating set
+# rotating between rotors. Copter then gave throttle away to keep attitude
+# authority, so the log showed ThO 0.000 and a commanded descent of -2.5 m/s
+# while the vehicle flung itself to 54 m. Defaults divided by 7.7; ArduPilot's
+# own tuning guide also says smaller propellers need lower rate gains.
+# Measured by scripts/sweep_rate_gains.sh on the CineLog rather than calculated,
+# and measured again there after that airframe gained the LD06. Adding 42 g on a mast 46 mm forward
+# and 50 mm up roughly doubles the pitch inertia, so the gains that suited the
+# 0.240 kg model no longer suit this one: at 0.027 the guided takeoff's worst
+# tilt went from 6.5 to 24.0 degrees, against the check's 25 degree limit.
+#
+# The sweep at 0.306 kg puts the onset between 0.065 and 0.08. Ringing holds at
+# 3 sign changes per run through 0.065, reaches 11 at 0.07, and at 0.08 the loop
+# is gone: 146 sign changes and 62 per cent overshoot.
+#
+# 0.040 is a little under six tenths of that onset, the same margin the previous
+# tuning used, and it beats 0.027 on every metric: overshoot 6.2 against 7.6 per
+# cent, tracking error 1.08 against 1.25 degrees. 0.065 measured best of all and
+# sits at 0.93 of the onset, which is no margin at all.
+#
+# The onset is optimistic. This simulation has no gyro noise, no frame resonance
+# and no ESC lag beyond the motor model, and those are what force real gains
+# lower. Treat 0.040 as an upper bound to approach on hardware, not a value to
+# fly straight away.
+#
+# The transfer is an argument, not a measurement. A sweep on this airframe is
+# the thing that would settle it, and it is the one piece of work this variant
+# leaves undone.
+ATC_RAT_RLL_P 0.040
+ATC_RAT_RLL_I 0.040
+ATC_RAT_RLL_D 0.0005
+ATC_RAT_PIT_P 0.040
+ATC_RAT_PIT_I 0.040
+ATC_RAT_PIT_D 0.0005
+ATC_RAT_YAW_P 0.023
+ATC_RAT_YAW_I 0.0023
+
+# The battery, and what to do when it runs out.
+#
+# Nothing was set here at all, which meant ArduPilot's own failsafe sat at its
+# defaults - and its default is to do nothing. The demo node lands deliberately
+# on a flat pack and says why, but it is a ROS node talking over DDS: if it
+# stops, or the agent does, the vehicle would have gone on hovering until it
+# fell. This is the layer underneath that, and it works whether or not anything
+# is listening.
+#
+# The airframe carries a 4S LiHV pack, so the simulated one is told to be a 4S
+# LiHV pack too. SITL's default is 12.6 V, which is a flat 4S and a full 3S, and
+# against it every threshold below would either trip on the pad or never trip at
+# all. 16.4 V is a 4S LiHV a little way into its charge.
+# And the monitor has to exist before any of the rest of this means anything.
+# AP_DDS publishes /ap/battery only for an instance the battery library calls
+# healthy, and an unconfigured monitor is not healthy, so the topic simply never
+# appeared - which is also how the demo node learned nothing was watching. 4 is
+# the analog voltage-and-current monitor the SITL defaults use, and it is what
+# feeds SIM_BATT_VOLTAGE through.
+#
+# This is the second thing that says the header of this file is optimistic:
+# SITL is started with --defaults naming this file and the DDS one, so
+# copter.parm is not loaded and nothing here is inherited from it.
+BATT_MONITOR 4
+SIM_BATT_VOLTAGE 16.4
+
+# 3.5 V per cell is where a lithium cell has fallen off its plateau and a
+# controlled descent is still a choice; 3.3 V is where it is not. Both act by
+# landing rather than by returning: this vehicle flies indoors, has no idea
+# where home is, and the shortest way to the floor is the only plan it can
+# carry out.
+BATT_LOW_VOLT 14.0
+BATT_CRT_VOLT 13.2
+BATT_FS_LOW_ACT 1
+BATT_FS_CRT_ACT 1
+# Ten seconds under the threshold before it acts, because a pack sags under
+# throttle and recovers, and a failsafe that fires on the sag would land the
+# vehicle every time it accelerated.
+BATT_LOW_TIMER 10

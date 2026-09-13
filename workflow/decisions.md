@@ -87,10 +87,19 @@ Cost:
 - the project has no lightweight fallback platform. A CineLog30 V3 that comes
   out too heavy has nowhere to retreat to without reopening the DDS decision.
 - a BetaFPV Pavo20 Pro would have been about 148 g against 252 to 264 g, and
-  would have stayed inside the 250 g class. Its stock F4 sits on the same
-  25.5x25.5 mm pattern as several ArduPilot-supported H7 AIOs, so the swap is
-  not impossible, but it means a full rebuild and a board that may not clear the
-  frame bay. Recorded in case the mass estimate turns out to be a problem.
+  would have stayed inside the 250 g class. Its stock F4 sits on a 26x26 mm
+  pattern against the 25.5x25.5 mm of several ArduPilot-supported H7 AIOs, close
+  enough to bolt together, so the swap is not impossible, but it means a full
+  rebuild and a board that may not clear the frame bay. Recorded in case the mass
+  estimate turns out to be a problem.
+- the estimate did turn out to be a problem: with the LD06 the build is 294 g.
+  The revision this line anticipated is
+  [Pavo20 as a carrier for the LD06](../spec/realna_stavba_dronu/10_pavo20.md).
+  It comes out the same way for a sharper reason - on 3S the smaller disc gives
+  back almost none of the 89 g saved, so endurance drops to about 2.4 minutes
+  against 3.5, and only a 4S Pavo20 Pro II matches the CineLog's range, at 239 g
+  and the cost of recalibrating the simulation. The pattern figure above is the
+  correction that came out of it.
 
 ## 2026-09-10: Mass Is a Goal, Not a Limit
 
@@ -156,3 +165,49 @@ Availability forced the import, and that is the real cost:
 Open against it: where it mounts. It is a rotating unit that has to see forward
 past the ducts without meeting a propeller, on a frame with 128 mm between motor
 centres. That is a dry-fit question and it can still kill the choice.
+
+## 2026-09-13: The AP_DDS Fork Is Not a Path to SLAM
+
+Decision:
+
+- writing a LaserScan publisher into AP_DDS is ruled out as the way to get the
+  LD06 scan into ROS 2. It stays on the table only as a fallback for the
+  reactive demo, if every other path fails and SLAM is given up
+- the next thing to try instead is forwarding the LD06's UART off the vehicle
+  through the OpenIPC video unit, which is already in the parts list
+- no companion computer is ordered until that attempt fails
+
+Reason:
+
+- checked against `external/ardupilot` at `8b9ea70` (2026-09-09), not against
+  the documentation. The AP_DDS topic table has 19 entries and none of them is a
+  scan, a proximity or a range; the generated IDL types are BatteryState, Imu,
+  Joy, NavSatFix and NavSatStatus, with no LaserScan among them.
+- the fork would have to publish what `AP_Proximity` actually holds, and that is
+  `PROXIMITY_MAX_DIRECTION == 8`: eight distances 45 degrees apart, pinned by a
+  `static_assert(PROXIMITY_NUM_SECTORS == 8)`. Eight numbers out of a 4.5 kHz
+  sensor is enough for today's "is anything closer than 1.40 m" rule and is not
+  SLAM. Going under the proximity layer to the backend means keeping a second
+  driver inside the autopilot, which is not a publisher any more.
+- the LD06 itself is not the problem: `AP_Proximity_LD06.cpp` is already there
+  and the autopilot reads the sensor natively. Only the export is missing.
+- "ROS on the ground" was never a third option on its own - with the autopilot
+  offering only those eight sectors, nothing onboard can send the raw scan down.
+  It needs a forwarder, and the video unit is one that costs no grams.
+
+The mass budget is what makes this urgent rather than academic:
+
+- the build is 227.2 g with the battery and no lidar; the LD06's ~42 g plus
+  mounts and cabling spend the rest of the 294 g the CAD targets. There is no
+  room in that figure for a companion computer.
+- a Pi Zero 2 W is 10 g but has 512 MB of RAM, and the guides that actually run
+  ROS 2 Jazzy with a lidar driver reach for a Pi 4 or 5. A board that genuinely
+  carries it is 20-30 g with cooling - more than the 11 g between the Wyvern and
+  the RunCam, which the parts list treats as a real difference.
+- so a companion computer is not a line item. It is a re-run of thrust-to-weight,
+  endurance on 750 mAh, and the gains that are already tied to 0.306 kg.
+
+Open against this: whether the chosen video unit has a UART broken out and
+reachable in the assembled frame, whether it holds 230400 baud beside the video
+encoder without overheating, and whether its OpenIPC build ships `mavfwd` or
+`msposd` at all. Any of those can send this back to the companion computer.

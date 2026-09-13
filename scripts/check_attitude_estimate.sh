@@ -24,7 +24,18 @@ agent_setup="external/dds_ws/install/setup.bash"
 agent_bin="external/dds_ws/install/lib/micro_ros_agent/micro_ros_agent"
 plugin_dir="build/ardupilot_gazebo"
 world_path="ros_ws/src/openipc_cinewhoop_gazebo/worlds/ramp_test.sdf"
-sitl_params="ros_ws/src/openipc_cinewhoop_gazebo/config/ardupilot_params.parm"
+# Which airframe to fly. The variants are separate model directories holding a
+# model of the same name, so worlds and the bridge config need no change; see
+# ros_ws/src/openipc_cinewhoop_gazebo/launch/gazebo.launch.py.
+airframe="${OPENIPC_AIRFRAME:-cinewhoop}"
+if [ "$airframe" = "cinewhoop" ]; then
+  models_dir="models"
+  params_name="ardupilot_params.parm"
+else
+  models_dir="models_$airframe"
+  params_name="ardupilot_params_$airframe.parm"
+fi
+sitl_params="ros_ws/src/openipc_cinewhoop_gazebo/config/$params_name"
 dds_params="ros_ws/src/openipc_cinewhoop_gazebo/config/dds_smoke.parm"
 
 for required_path in "$sitl_bin" "$bridge_bin" "$agent_setup" "$agent_bin" \
@@ -46,7 +57,7 @@ unset ROS_DOMAIN_ID || true
 export GZ_PARTITION="${GZ_PARTITION:-openipc_cinewhoop}"
 export GZ_IP="${GZ_IP:-127.0.0.1}"
 export GZ_SIM_SYSTEM_PLUGIN_PATH="$project_root/$plugin_dir${GZ_SIM_SYSTEM_PLUGIN_PATH:+:$GZ_SIM_SYSTEM_PLUGIN_PATH}"
-export GZ_SIM_RESOURCE_PATH="$project_root/ros_ws/src/openipc_cinewhoop_gazebo/models:$project_root/ros_ws/src/openipc_cinewhoop_gazebo/worlds${GZ_SIM_RESOURCE_PATH:+:$GZ_SIM_RESOURCE_PATH}"
+export GZ_SIM_RESOURCE_PATH="$project_root/ros_ws/src/openipc_cinewhoop_gazebo/$models_dir:$project_root/ros_ws/src/openipc_cinewhoop_gazebo/worlds${GZ_SIM_RESOURCE_PATH:+:$GZ_SIM_RESOURCE_PATH}"
 
 set +u
 source install/setup.bash

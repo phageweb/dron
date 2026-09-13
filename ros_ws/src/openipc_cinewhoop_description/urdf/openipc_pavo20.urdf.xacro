@@ -1,0 +1,97 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="openipc_cinewhoop">
+  <!-- Pavo20 Pro 4S variant. Same robot name as the CineLog so RViz configs and
+       robot_state_publisher consumers do not have to change; the airframe is
+       chosen by which file display.launch.py is pointed at. -->
+  <!-- Half the 93.7 mm wheelbase BetaFPV publish for the Pavo20 Pro, divided by
+       sqrt(2) for the quad X diagonal. Gemfan 2218 is 2.2 in, so prop_r is
+       0.05588/2. Together these make the machine 122.1 mm across the rotor tips
+       against the CineLog's 166.7 mm, which is the figure
+       rotor_tip_half_width_m carries into the demo nodes. -->
+  <xacro:property name="arm" value="0.03313"/>
+  <xacro:property name="prop_r" value="0.02794"/>
+
+  <material name="carbon"><color rgba="0.04 0.045 0.05 1.0"/></material>
+  <material name="duct"><color rgba="0.02 0.30 0.45 1.0"/></material>
+  <material name="sensor"><color rgba="0.85 0.85 0.78 1.0"/></material>
+  <material name="camera"><color rgba="0.08 0.08 0.08 1.0"/></material>
+
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><box size="0.077 0.077 0.016"/></geometry>
+      <material name="carbon"/>
+    </visual>
+    <collision>
+      <geometry><box size="0.077 0.077 0.016"/></geometry>
+    </collision>
+    <inertial>
+      <!-- The URDF lumps everything here because it only has to look right;
+           the SDF spreads the same 0.2216 kg over the links physics acts on.
+           Only the totals are comparable, and check_model_consistency.py
+           compares them. -->
+      <mass value="0.2216"/>
+      <inertia ixx="0.00022" ixy="0" ixz="0" iyy="0.00022" iyz="0" izz="0.00016"/>
+    </inertial>
+  </link>
+
+  <xacro:macro name="fixed_box_link" params="name xyz size material rpy:='0 0 0'">
+    <link name="${name}">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry><box size="${size}"/></geometry>
+        <material name="${material}"/>
+      </visual>
+    </link>
+    <joint name="${name}_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="${name}"/>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:macro name="motor" params="name x y">
+    <link name="${name}">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry><cylinder radius="0.008" length="0.014"/></geometry>
+        <material name="sensor"/>
+      </visual>
+      <visual>
+        <origin xyz="0 0 0.011" rpy="0 0 0"/>
+        <geometry><cylinder radius="${prop_r}" length="0.003"/></geometry>
+        <material name="duct"/>
+      </visual>
+    </link>
+    <joint name="${name}_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="${name}"/>
+      <origin xyz="${x} ${y} 0.010" rpy="0 0 0"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:fixed_box_link name="camera_link" xyz="0.050 0 0.010" size="0.026 0.022 0.020" material="camera"/>
+  <link name="camera_optical_frame"/>
+  <joint name="camera_optical_frame_joint" type="fixed">
+    <parent link="camera_link"/>
+    <child link="camera_optical_frame"/>
+    <origin xyz="0.014 0 0" rpy="-1.57079632679 0 -1.57079632679"/>
+  </joint>
+
+  <xacro:fixed_box_link name="imu_link" xyz="0 0 0.016" size="0.018 0.018 0.006" material="sensor"/>
+  <!-- Both downward sensors measure along +X of their own frame, so the frames
+       are pitched 90 degrees to point at the floor. The simulated sensor link
+       carries the same rotation; a frame that disagrees with the beam would
+       place the measurement in front of the drone instead of below it. -->
+  <xacro:fixed_box_link name="optical_flow_link" xyz="0 0 -0.014" rpy="0 ${pi/2} 0" size="0.018 0.018 0.006" material="sensor"/>
+  <xacro:fixed_box_link name="rangefinder_link" xyz="0.015 0 -0.014" rpy="0 ${pi/2} 0" size="0.014 0.014 0.008" material="sensor"/>
+  <!-- On a mast above the propeller plane; see the SDF for why, and the CG
+       solve in spec/realna_stavba_dronu/10_pavo20.md for why it sits at 36.4 mm
+       rather than further forward. -->
+  <xacro:fixed_box_link name="front_lidar_link" xyz="0.0364 0 0.0432" size="0.0386 0.0386 0.0333" material="camera"/>
+
+  <xacro:motor name="motor_1" x="${arm}" y="-${arm}"/>
+  <xacro:motor name="motor_2" x="-${arm}" y="${arm}"/>
+  <xacro:motor name="motor_3" x="${arm}" y="${arm}"/>
+  <xacro:motor name="motor_4" x="-${arm}" y="-${arm}"/>
+</robot>

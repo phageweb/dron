@@ -19,3 +19,5 @@ __pycache__/
 
 # ArduPilot SITL auto-downloaded SRTM terrain tiles
 /terrain/
+.artifact_pub/
+cad_pavo20/*.png

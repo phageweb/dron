@@ -51,7 +51,20 @@ def render_bridge_config(context, worlds_path, template):
 def generate_launch_description():
     pkg_share = get_package_share_directory("openipc_cinewhoop_gazebo")
     worlds_path = os.path.join(pkg_share, "worlds")
-    models_path = os.path.join(pkg_share, "models")
+    # Which airframe to fly. The variants are separate model directories holding
+    # a model of the SAME name, so every world's model://openipc_cinewhoop and
+    # every gz_bridge.yaml topic path keep working unchanged; only the directory
+    # that reaches GZ_SIM_RESOURCE_PATH first differs. An environment variable
+    # rather than a launch argument because the callers are bash check scripts,
+    # which would otherwise have to thread an argument through every ros2 launch
+    # line they already carry.
+    airframe = os.environ.get("OPENIPC_AIRFRAME", "cinewhoop")
+    models_dir = "models" if airframe == "cinewhoop" else f"models_{airframe}"
+    models_path = os.path.join(pkg_share, models_dir)
+    if not os.path.isdir(models_path):
+        raise RuntimeError(
+            f"OPENIPC_AIRFRAME={airframe!r} wants {models_path}, which does not "
+            "exist. Known airframes: cinewhoop, pavo20.")
     bridge_config = os.path.join(pkg_share, "config", "gz_bridge.yaml")
 
     use_bridge = LaunchConfiguration("use_bridge")

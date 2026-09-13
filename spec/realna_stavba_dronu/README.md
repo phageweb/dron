@@ -49,6 +49,11 @@ Všechny bench testy flight controlleru, ESC, motorů, ArduPilot konfigurace a R
 - [Bench checklist bez vrtulí](./04_bench_checklist.md) - celé oživení až po první nasazení vrtulí
 - [Díly pro CAD model](./05_cad_dily.md) - geometrie a montáž, na rozdíl od kusovníku
 - [Kde se co koupí](./06_nakup.md) - nákupní seznam, ceny a dostupnost
+- [Alternativy a zkušenosti](./07_alternativy_a_zkusenosti.md) - k čemu se dá u každého dílu sáhnout a co s tím lidé zažili
+- [Kalkulace dopravy](./08_kalkulace_dopravy.md) - co se vyplatí dovézt a co ne, CZ vs AliExpress vs Allegro
+- [Kudy se sken dostane do ROS 2](./09_kudy_do_ros.md) - čtyři cesty a proč dvě z nich padly
+- [Pavo20 jako nosič LD06](./10_pavo20.md) - co by stálo dostat lidar i video pod 250 g
+- [Kusovník Pavo20 Pro](./11_kusovnik_pavo20.md) - co koupit, kde a za kolik, rozdělené na dvě etapy
 
 ## Návaznost na simulaci
 

@@ -4,7 +4,7 @@ project(openipc_cinewhoop_gazebo)
 find_package(ament_cmake REQUIRED)
 
 install(
-  DIRECTORY config launch models worlds
+  DIRECTORY config launch models models_pavo20 worlds
   DESTINATION share/${PROJECT_NAME}
 )
 

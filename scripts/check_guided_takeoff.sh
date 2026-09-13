@@ -16,7 +16,18 @@ sitl_bin="external/ardupilot/build/sitl/bin/arducopter"
 bridge_bin="build/ap_actuator_bridge/ap_actuator_bridge"
 plugin_dir="build/ardupilot_gazebo"
 world_path="ros_ws/src/openipc_cinewhoop_gazebo/worlds/indoor_test.sdf"
-sitl_params="ros_ws/src/openipc_cinewhoop_gazebo/config/ardupilot_params.parm"
+# Which airframe to fly. The variants are separate model directories holding a
+# model of the same name, so worlds and the bridge config need no change; see
+# ros_ws/src/openipc_cinewhoop_gazebo/launch/gazebo.launch.py.
+airframe="${OPENIPC_AIRFRAME:-cinewhoop}"
+if [ "$airframe" = "cinewhoop" ]; then
+  models_dir="models"
+  params_name="ardupilot_params.parm"
+else
+  models_dir="models_$airframe"
+  params_name="ardupilot_params_$airframe.parm"
+fi
+sitl_params="ros_ws/src/openipc_cinewhoop_gazebo/config/$params_name"
 target_alt="${TARGET_ALT_M:-2.0}"
 
 for required_path in "$sitl_bin" "$bridge_bin" "$plugin_dir/libArduPilotPlugin.so" \
@@ -30,7 +41,7 @@ done
 export GZ_PARTITION="${GZ_PARTITION:-openipc_cinewhoop}"
 export GZ_IP="${GZ_IP:-127.0.0.1}"
 export GZ_SIM_SYSTEM_PLUGIN_PATH="$project_root/$plugin_dir${GZ_SIM_SYSTEM_PLUGIN_PATH:+:$GZ_SIM_SYSTEM_PLUGIN_PATH}"
-export GZ_SIM_RESOURCE_PATH="$project_root/ros_ws/src/openipc_cinewhoop_gazebo/models:$project_root/ros_ws/src/openipc_cinewhoop_gazebo/worlds${GZ_SIM_RESOURCE_PATH:+:$GZ_SIM_RESOURCE_PATH}"
+export GZ_SIM_RESOURCE_PATH="$project_root/ros_ws/src/openipc_cinewhoop_gazebo/$models_dir:$project_root/ros_ws/src/openipc_cinewhoop_gazebo/worlds${GZ_SIM_RESOURCE_PATH:+:$GZ_SIM_RESOURCE_PATH}"
 
 test_tmpdir="$(mktemp -d)"
 gazebo_pid=""

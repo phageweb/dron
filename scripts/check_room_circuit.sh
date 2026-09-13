@@ -26,7 +26,18 @@ agent_setup="external/dds_ws/install/setup.bash"
 agent_bin="external/dds_ws/install/lib/micro_ros_agent/micro_ros_agent"
 plugin_dir="build/ardupilot_gazebo"
 world_path="ros_ws/src/openipc_cinewhoop_gazebo/worlds/room_test.sdf"
-sitl_params="ros_ws/src/openipc_cinewhoop_gazebo/config/ardupilot_params.parm"
+# Which airframe to fly. The variants are separate model directories holding a
+# model of the same name, so worlds and the bridge config need no change; see
+# ros_ws/src/openipc_cinewhoop_gazebo/launch/gazebo.launch.py.
+airframe="${OPENIPC_AIRFRAME:-cinewhoop}"
+if [ "$airframe" = "cinewhoop" ]; then
+  models_dir="models"
+  params_name="ardupilot_params.parm"
+else
+  models_dir="models_$airframe"
+  params_name="ardupilot_params_$airframe.parm"
+fi
+sitl_params="ros_ws/src/openipc_cinewhoop_gazebo/config/$params_name"
 dds_params="ros_ws/src/openipc_cinewhoop_gazebo/config/dds_smoke.parm"
 
 for required_path in "$sitl_bin" "$bridge_bin" "$agent_setup" "$agent_bin" \
@@ -49,7 +60,7 @@ unset ROS_DOMAIN_ID || true
 export GZ_PARTITION="${GZ_PARTITION:-openipc_cinewhoop}"
 export GZ_IP="${GZ_IP:-127.0.0.1}"
 export GZ_SIM_SYSTEM_PLUGIN_PATH="$project_root/$plugin_dir${GZ_SIM_SYSTEM_PLUGIN_PATH:+:$GZ_SIM_SYSTEM_PLUGIN_PATH}"
-export GZ_SIM_RESOURCE_PATH="$project_root/ros_ws/src/openipc_cinewhoop_gazebo/models:$project_root/ros_ws/src/openipc_cinewhoop_gazebo/worlds${GZ_SIM_RESOURCE_PATH:+:$GZ_SIM_RESOURCE_PATH}"
+export GZ_SIM_RESOURCE_PATH="$project_root/ros_ws/src/openipc_cinewhoop_gazebo/$models_dir:$project_root/ros_ws/src/openipc_cinewhoop_gazebo/worlds${GZ_SIM_RESOURCE_PATH:+:$GZ_SIM_RESOURCE_PATH}"
 
 set +u
 source install/setup.bash
@@ -168,12 +179,27 @@ fi
 # the floor rejection never switches on and the whole flight runs without the
 # compensation the leaning worlds prove it needs - silently, because a rejection
 # that was never on cannot be seen switching off.
+# The demo nodes default to the flown airframe's geometry; a variant has to be
+# handed its own. check_model_consistency.py prints exactly this list, so the
+# two cannot drift apart without that check failing first.
+airframe_args=()
+if [ "$airframe" != "cinewhoop" ]; then
+  while read -r name value; do
+    [ -n "$name" ] && airframe_args+=(-p "$name:=$value")
+  done < <(python3 scripts/check_model_consistency.py "$airframe" \
+             | sed -n 's/^    \([a-z_]*\):=\(.*\)$/\1 \2/p')
+  if [ "${#airframe_args[@]}" -eq 0 ]; then
+    echo "No airframe parameters for $airframe; the model check changed shape." >&2
+    exit 2
+  fi
+fi
+
 ros2 run openipc_cinewhoop_demo range_adapter \
   >"$test_tmpdir/range_adapter.log" 2>&1 &
 range_adapter_pid=$!
 
 ros2 run openipc_cinewhoop_demo simple_indoor_autonomy \
-  --ros-args -p takeoff_altitude_m:=1.0 -p enable_turning:=true \
+  --ros-args "${airframe_args[@]}" -p takeoff_altitude_m:=1.0 -p enable_turning:=true \
   >"$test_tmpdir/demo.log" 2>&1 &
 demo_pid=$!
 

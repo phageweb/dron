@@ -8,3 +8,18 @@ openipc_cinewhoop:
   demo_altitude_m: 1.0
   demo_forward_speed_mps: 0.5
   obstacle_stop_distance_m: 0.8
+
+# BetaFPV Pavo20 Pro on 4S, the alternative airframe from
+# spec/realna_stavba_dronu/10_pavo20.md. Same payload as above - LD06, Wyvern,
+# MTF-02P - on a smaller frame. Flown with OPENIPC_AIRFRAME=pavo20, which picks
+# models_pavo20/ and ardupilot_params_pavo20.parm.
+pavo20:
+  mass_kg: 0.2216
+  wheelbase_m: 0.0937
+  arm_xy_m: 0.03313
+  propeller_radius_m: 0.02794
+  nominal_voltage_v: 15.2
+  max_voltage_v: 17.4
+  demo_altitude_m: 1.0
+  demo_forward_speed_mps: 0.5
+  obstacle_stop_distance_m: 0.8

@@ -8,10 +8,20 @@ project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ardupilot_dir="$project_root/external/ardupilot"
 plugin_dir="$project_root/build/ardupilot_gazebo"
 world_path="$project_root/ros_ws/src/openipc_cinewhoop_gazebo/worlds/indoor_test.sdf"
-models_path="$project_root/ros_ws/src/openipc_cinewhoop_gazebo/models"
+# Which airframe to fly. The variants are separate model directories holding a
+# model of the same name, so worlds and the bridge config need no change; see
+# ros_ws/src/openipc_cinewhoop_gazebo/launch/gazebo.launch.py.
+airframe="${OPENIPC_AIRFRAME:-cinewhoop}"
+if [ "$airframe" = "cinewhoop" ]; then
+  models_dir="models"
+  params_name="ardupilot_params.parm"
+else
+  models_dir="models_$airframe"
+  params_name="ardupilot_params_$airframe.parm"
+fi
+models_path="$project_root/ros_ws/src/openipc_cinewhoop_gazebo/$models_dir"
 sitl_bin="$ardupilot_dir/build/sitl/bin/arducopter"
-sitl_params="$project_root/ros_ws/src/openipc_cinewhoop_gazebo/config/ardupilot_params.parm"
-
+sitl_params="$project_root/ros_ws/src/openipc_cinewhoop_gazebo/config/$params_name"
 for required_path in "$sitl_bin" "$plugin_dir/libArduPilotPlugin.so" "$world_path" "$sitl_params"; do
   if [ ! -e "$required_path" ]; then
     echo "SITL smoke prerequisites unavailable: $required_path" >&2
