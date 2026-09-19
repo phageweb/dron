@@ -27,13 +27,20 @@ Vedlejší nález, který půjde s sebou do M2: sekvenční běhy potřebují me
 **Proč druhý:** `d_safe` má pět členů a tři z nich nikdo nezná
 ([03 §3](./03_vrstva_roje.md)).
 
-- [ ] Brzdná dráha pro 0,25 / 0,5 / 1,0 m/s, ground truth z Gazeba.
-- [ ] End-to-end latence povel → pohyb, včetně jitteru.
-- [ ] Chyba sledování rychlosti na kroku a rampě.
-- [ ] Drift polohy proti ground truth za 130 s.
-- [ ] Z brzdné dráhy odvodit `GUID_TIMEOUT` místo výchozích 3 s.
+- [x] Brzdná dráha pro 0,25 / 0,5 / 1,0 m/s, ground truth z Gazeba.
+- [x] End-to-end latence povel → pohyb, včetně jitteru.
+- [x] Chyba sledování rychlosti na kroku a rampě.
+- [x] Drift polohy proti ground truth — ve visu i přes celou sortu.
+- [x] Z brzdné dráhy odvodit `GUID_TIMEOUT`: vychází 0,5 s proti výchozím 3 s.
 
-*Hotovo, když:* `d_safe` je spočítané číslo s rozepsanými členy, ne odhad.
+*Hotovo* 20. 9. 2026, `scripts/check_dynamic_limits.sh` a
+`scripts/measure_dynamic_limits.py`. `d_safe` je **1,30 m + rezerva** při
+1 m/s a 0,58 m při 0,5 m/s, s rozepsanými členy v
+[03 §3](./03_vrstva_roje.md).
+
+Přeneseno do M2, protože obojí mění chování existujících kontrol: zapsat
+`GUID_TIMEOUT 0,5` do parametrového souboru a znovu proletět všechny
+kontroly.
 
 ## M2 — dvě instance bez letu
 

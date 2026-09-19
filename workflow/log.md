@@ -468,6 +468,63 @@
   fixed it. Three agents will make this worse, and a check for "is my agent
   already flying" cannot be a question to a cache.
 
+## 2026-09-20
+
+**M1: the three terms of `d_safe` nobody had measured.** Two new files,
+`scripts/check_dynamic_limits.sh` for the stack and
+`scripts/measure_dynamic_limits.py` for the measurement, one sortie in an empty
+`room_test`. Pavo20, two good runs:
+
+| commanded | steady speed | coast | coast time |
+| ---: | ---: | ---: | ---: |
+| 0.25 m/s | 0.255 / 0.256 | 0.144 / 0.143 m | 0.82 s |
+| 0.50 m/s | 0.509 / 0.509 | 0.331 / 0.319 m | 1.09 s |
+| 1.00 m/s | 0.978 / 0.984 | 0.790 / 0.770 m | 1.99 s |
+
+Latency from command to motion 0.340 to 0.392 s over three identical trials in
+each run, ramp tracking 0.095 and 0.097 m/s RMS, drift of the estimate against
+truth 0.010 m horizontally over a 60 s hover. So `d_safe` is **1.30 m plus a
+margin** at 1 m/s and 0.58 m at 0.5 m/s, and the script prints the sum with its
+terms rather than a number on its own.
+
+- Everything is measured against Gazebo ground truth, and every interval is
+  read from that one stream. There are three clocks in this simulation - the
+  pose's ArduPilot UTC, Gazebo's own, and the measuring process's monotonic -
+  so a command's moment is taken as the simulator stamp of the last truth
+  sample that had arrived when it went out. The pipeline delay then sits at
+  both ends of every interval and cancels.
+- **The first run measured a flight of zeros and looked like data.** A GUIDED
+  velocity command replaces the takeoff submode, and the pilot node began
+  publishing zeros from the moment it was constructed, so it cancelled the
+  climb it was about to measure while every service reported success. The
+  repository already knew this mechanism from the other direction - a leftover
+  node from a previous run - and the guard in `check_forward_flight.sh` is
+  exactly about it. Now in `troubleshooting.md` as its own entry, because a
+  braking distance of 0.00 m written into `d_safe` would have meant three
+  machines flying inside each other.
+- The second run's drift figure was wrong too, and wrong the other way: 0.70 m
+  horizontally and 0.957 m vertically. The estimate series was referred to its
+  own first sample, taken after the climb, and the truth to its own, taken on
+  the ground before it - so the whole takeoff was charged to the drift, and
+  0.957 m was the takeoff altitude. Both series now refer to one instant, and
+  the figure is measured over the stationary hover as well as the whole sortie.
+- **The braking distance the project designs against is not the one it has.**
+  `simple_indoor_autonomy` and `check_forward_flight.sh` use 0.60 m at 0.5 m/s,
+  derived from the `PSC` parameters in `troubleshooting.md`; measured, it is
+  0.33 m. The margin is about twice what is needed, which is the safe
+  direction, but it is a margin and not a measurement.
+- The drift number is the weak one and it is weak in the unsafe direction: 1 cm
+  per minute is a property of noiseless SITL sensors, not of an optical flow
+  sensor over a real floor. It enters `d_safe` twice, so on hardware it is the
+  term that will decide the separation. Recorded as a lower bound.
+- `GUID_TIMEOUT` is still at the default 3 s, and the measurement says what
+  that costs: 3 m of travel at 1 m/s before braking even starts, in a room
+  8 x 6 m. The parameter's range is 0.1 to 5 s and the swarm will command at 10
+  to 20 Hz, so 0.5 s tolerates five to ten lost messages and costs 0.5 m.
+  Deliberately not changed yet: every existing check would have to be reflown,
+  because any pause in publishing longer than half a second becomes a stop.
+  It is an M2 item.
+
 ## Log Entry Template
 
 ```text

@@ -46,21 +46,48 @@ autonomie se kvůli tomu nemění.
 | odstup od zdi za letu vpřed | 1,39 m, vůle špičky 0,93 m | `check_forward_flight.sh` |
 | úhlová autorita v rollu | 689 rad/s² (CineLog), 583 (Pavo20) | výpočet z modelu, ověřený sweepem |
 
-## 3. Co roj potřebuje a co změřeno není
+## 3. Co roj potřebuje — změřeno 20. 9. 2026
 
-Tohle je ta část, kterou nelze obejít. Rozestup dvou strojů je součet čísel a
-tři z nich dnes nikdo nezná:
+M1 je hotové. `scripts/check_dynamic_limits.sh` odlétá jednu sortu v prázdném
+`room_test` a měří všechno proti ground truth z Gazeba, ne proti odhadu, který
+je sám předmětem měření. Dva běhy, Pavo20:
 
-| Chybí | Proč to roj potřebuje | Jak to změřit |
-| --- | --- | --- |
-| **brzdná dráha** pro sadu rychlostí | je přímo sčítanec v `d_safe` | rychlostní krok na povel stop, ground truth z Gazeba |
-| **end-to-end latence** povel → pohyb, včetně jitteru | druhý sčítanec v `d_safe` | časová značka povelu proti první reakci pozice |
-| **chyba sledování rychlosti** | říká, jak moc se agent odchýlí od toho, co mu bylo řečeno | step a rampa bez překážek |
-| **drift polohy** z optického toku za 130 s | rozhoduje, jestli jde mapy vůbec složit | ground truth proti `/ap/pose/filtered` |
-| odvozený `GUID_TIMEOUT` | G3 dnes stojí na výchozí hodnotě, ne na výpočtu | z brzdné dráhy: při 1 m/s znamenají 3 s nejméně 3 m doletu |
+| Povel | Ustálená rychlost | Brzdná dráha | Brzdný čas |
+| ---: | ---: | ---: | ---: |
+| 0,25 m/s | 0,255 / 0,256 | 0,144 / 0,143 m | 0,82 s |
+| 0,50 m/s | 0,509 / 0,509 | 0,331 / 0,319 m | 1,09 s |
+| 1,00 m/s | 0,978 / 0,984 | 0,790 / 0,770 m | 1,99 s |
 
-Poslední řádek je konkrétní problém, ne formalita: v místnosti 8 × 6 m je 3 m
-doletu půl místnosti.
+| Veličina | Hodnota |
+| --- | --- |
+| latence povel → pohyb | 0,340–0,392 s přes tři shodné pokusy v obou bězích |
+| RMS chyba na rampě 0 → 0,5 m/s | 0,095 a 0,097 m/s |
+| chyba ustálené rychlosti | do 2 % |
+| drift odhadu ve visu | 0,010 m vodorovně a 0,009 m svisle za 60 s |
+
+Tři poznámky, bez kterých se ta čísla dají snadno použít špatně:
+
+1. **Latence není přenosové zpoždění.** Je to čas do prvního pohybu nad
+   0,05 m/s, takže je v ní i vlastní rozjezd stroje omezený jerkem. Pro
+   `d_safe` je to ta správná veličina — zajímá nás, kdy se stroj začne hýbat —
+   ale jako „zpoždění linky" se citovat nedá.
+2. **Naměřená brzdná dráha při 0,5 m/s je 0,33 m, zatímco projekt počítá s
+   0,60 m.** Ta hodnota v `simple_indoor_autonomy` a `check_forward_flight.sh`
+   je odvozená z `PSC` parametrů, ne změřená. Rezerva je tedy dvojnásobná
+   proti skutečnosti, což je bezpečný směr, ale je to rezerva.
+3. **Drift 1 cm za minutu je výsledek simulace, ne stroje.** EKF tu dostává
+   bezšumové senzory. Skutečný optický tok bude řádově horší a tohle číslo je
+   jediný člen `d_safe`, na který simulace odpovědět neumí. Do rozestupu se
+   bere jako dolní mez, ne jako hodnota.
+
+Zbývá `GUID_TIMEOUT`, který je pořád na výchozích 3 s. Z měření plyne, co to
+stojí: při 1 m/s ujede stroj za 3 s ticha 3 m a teprve pak začne brzdit svých
+0,77 m. Rozsah parametru je 0,1–5 s, roj bude posílat povel 10–20× za sekundu,
+takže **0,5 s** tolerují pět až deset ztracených zpráv a stojí 0,5 + 0,77 m.
+Změna se sem ale nepíše jako hotová věc: přepsat ji v parametrovém souboru
+znamená znovu proletět všechny existující kontroly, protože každá pauza v
+publikování `cmd_vel` delší než půl sekundy se stane zastavením. Patří to do
+M2.
 
 ## 4. Per-agent přejímka
 

@@ -637,6 +637,32 @@ appearing and disappearing in one graph, and the check for "is my agent
 already flying" cannot be a question to a cache. See
 [the swarm task](../spec/roj/README.md).
 
+## A Velocity Command Cancels the Takeoff, and Nothing Says So
+
+Symptom:
+
+- a script arms, commands a guided takeoff, and every call reports success
+- the vehicle stays on the ground at zero throttle, and a whole measurement
+  sortie produces a table of zeros rather than an error
+
+Cause:
+
+In GUIDED, a velocity command replaces the takeoff submode. A node that starts
+publishing `/ap/cmd_vel` the moment it is constructed - even zeros, even a
+timer that has nothing to say yet - therefore cancels the climb it was about to
+measure. `check_forward_flight.sh` already guards against the other shape of
+this, a leftover node from an earlier run; this is the same mechanism arriving
+from the script's own process.
+
+Fix: publish nothing until the climb is confirmed. `measure_dynamic_limits.py`
+keeps its publisher silent until `start()`, and watches Gazebo ground truth for
+80 per cent of the target altitude before calling it, failing loudly if the
+vehicle never climbed.
+
+Worth knowing: the failure is silent in the direction that matters. Zeros look
+like data. The first run of that script measured a braking distance of 0.00 m,
+which in `d_safe` would have meant three machines flying inside each other.
+
 ## Known Risks Before Implementation
 
 ### ROS 2 Packages on NixOS

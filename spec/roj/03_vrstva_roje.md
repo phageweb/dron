@@ -76,19 +76,27 @@ tady dosazený do čísel tohoto repozitáře:
 d_safe = 2 * r_rotor + 2 * e_pozice + v_max * t_latence + s_brzdna + rezerva
 ```
 
-| Člen | CineLog | Pavo20 | Odkud |
-| --- | ---: | ---: | --- |
-| `r_rotor` dosah špičky | 0,08335 m | 0,06107 m | model, `check_room_coverage.sh:431` |
-| `2 * r_rotor`, geometrické minimum | 0,1667 m | 0,1221 m | tamtéž |
-| `e_pozice` chyba odhadu | **neznámá** | **neznámá** | optický tok, nezměřeno |
-| `t_latence` | **neznámá** | **neznámá** | [02 §3](./02_vrstva_drona.md) |
-| `s_brzdna` při 0,5 m/s | **neznámá** | **neznámá** | [02 §3](./02_vrstva_drona.md) |
-| rezerva | volba | volba | zapsat před testem |
+| Člen | Pavo20 | Odkud |
+| --- | ---: | --- |
+| `2 * r_rotor` geometrické minimum | 0,1221 m | model; CineLog by měl 0,1667 m |
+| `2 * e_pozice` chyba odhadu | 0,020 m | drift ve visu, M1 — **v simulaci** |
+| `v_max * t_latence` při 1 m/s | 0,391 m | nejhorší ze tří pokusů, M1 |
+| `s_brzdna` z 1 m/s | 0,770 m | M1 |
+| součet bez rezervy | **1,30 m** | `check_dynamic_limits.sh` to tiskne |
+| rezerva | volba | zapsat před testem |
 
-Tři z pěti členů chybí. To není důvod nezačít — je to důvod, proč M1 v
-[07](./07_plan_a_milniky.md) je měření a ne kód. Do té doby se smí použít
-pracovní `d_safe` s hrubou rezervou, ale musí být v konfiguraci a v logu, ne
-v kódu.
+Změřeno 20. 9. 2026, podrobnosti a výhrady v [02 §3](./02_vrstva_drona.md).
+Při 0,5 m/s, což je rychlost, kterou dnes létá autonomie, vychází součet
+0,58 m.
+
+Dvě věci k tomu patří, jinak se to číslo použije špatně:
+
+- **Člen odhadu je z simulace a je nejslabší.** 1 cm driftu za minutu je
+  vlastnost bezšumových senzorů v SITL. Na železe bude optický tok řádově
+  horší, a protože do součtu vstupuje dvakrát, je to ten člen, který `d_safe`
+  na skutečném stroji určí.
+- **Rezervu nedosazuje měřicí skript.** Je to rozhodnutí, které se zapisuje
+  před testem, ne hodnota, kterou si nástroj vymyslí.
 
 ## 4. Bezpečnostní filtr, verze 1
 
