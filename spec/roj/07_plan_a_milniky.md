@@ -47,8 +47,10 @@ kontroly.
 **Proč dvě a ne rovnou tři:** všechny problémy identity se ukážou už na dvou a
 ladí se o polovinu snáz.
 
-- [ ] P5 z [05](./05_infrastruktura_simulace.md): dvě SITL instance, `MAV_SYSID`
+- [x] P5 z [05](./05_infrastruktura_simulace.md): dvě SITL instance, `MAV_SYSID`
       1 a 2, `DDS_USE_NS 1`, témata `/ap/v1/...` a `/ap/v2/...`.
+      `scripts/check_multi_instance_dds.sh`, hotovo 20. 9. 2026; jeden agent
+      obslouží oba klienty.
 - [ ] P1–P3: dva pojmenované modely v jednom světě, most na agenta.
 - [ ] P4: dva můstky aktuátorů.
 - [ ] TF: `map` → `v1/base_link`, `v2/base_link`.
@@ -60,7 +62,7 @@ ladí se o polovinu snáz.
 - [ ] Arbiter (G9): autonomie publikuje nominální povel, arbiter ho ořezává a
       jako jediný píše `/ap/v<i>/cmd_vel`. Otestovat, že při mlčení omezení
       ořezává konzervativně.
-- [ ] Restart jedné instance nezmění identitu druhé.
+- [x] Restart jedné instance nezmění identitu druhé — součást téže kontroly.
 
 *Hotovo, když:* oba stroje vzlétnou, drží vlastní bod a `check_guided_takeoff.sh`
 projde pro každý zvlášť.

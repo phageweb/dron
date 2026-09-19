@@ -41,17 +41,23 @@ a generování tří konfigurací, nebo jedné se všemi devíti tématy.
 Parametrizovaný už je; potřebuje jen tři instance s různým `--model`.
 `sitl_gazebo.launch.py` ho ale spouští bez argumentů.
 
-### P5 — SITL, DDS a porty
+### P5 — SITL, DDS a porty — **ověřeno 20. 9. 2026**
 
 Launch dnes spouští jednu instanci s `-I0`, `--sim-port-out=9002`,
 `--serial0=udpclient:127.0.0.1:14550` a `--defaults` na jeden parametrový
-soubor. Pro tři je potřeba:
+soubor. Pro tři je potřeba `-I0/-I1/-I2`, z toho plynoucí posun portů a
+`MAV_SYSID` 1/2/3 s `DDS_USE_NS 1` (viz [04 §1](./04_rozhrani.md)).
 
-- `-I0/-I1/-I2` a z toho plynoucí posun portů,
-- `MAV_SYSID` 1/2/3 a `DDS_USE_NS 1` (viz [04 §1](./04_rozhrani.md)),
-- rozhodnout, jestli jeden Micro XRCE-DDS Agent na portu 20199
-  (`config/dds_smoke.parm`) obslouží tři klienty, nebo budou tři agenti na třech
-  portech. **Jeden agent by měl stačit, ale ověřeno to není.**
+`scripts/check_multi_instance_dds.sh` to zkouší bez Gazeba a bez letu, na
+vnitřním modelu `quad`, a odpovídá na otázku, která tu byla otevřená:
+**jeden agent na portu 20199 obslouží oba klienty.** Naměřeno: 18 témat pod
+`/ap/v1/` a 18 pod `/ap/v2/`, žádné nenamespacované `/ap/time` vedle nich, obě
+skutečně publikují, a zabití v2 nechá v1 běžet — v2 se vrátí jako v2 a žádná
+třetí identita nevznikne.
+
+Zbývá z P5 jen jedno a je to důsledek `--wipe`: každá instance potřebuje
+**vlastní pracovní adresář**, protože `eeprom.bin` se zapisuje do aktuálního a
+dva autopiloti nad jedním úložištěm nejsou dva autopiloti.
 
 ### P6 — hodiny
 

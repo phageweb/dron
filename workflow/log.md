@@ -525,6 +525,20 @@ terms rather than a number on its own.
   because any pause in publishing longer than half a second becomes a stop.
   It is an M2 item.
 
+- **M2 started, at the end with no flight in it.**
+  `scripts/check_multi_instance_dds.sh` runs two SITL instances against one
+  Micro XRCE-DDS Agent on SITL's own `quad` model - no Gazebo, no actuator
+  bridge, no propellers - because before three models can share a world, two
+  autopilots have to share a ROS graph without collision.
+- It answers the question `spec/roj/05` left open: **one Agent serves both
+  clients**. 18 topics under `/ap/v1/` and 18 under `/ap/v2/`, nothing
+  un-namespaced beside them, both actually publishing rather than merely
+  existing. Killing v2 leaves v1 publishing, v2 comes back as v2, and no third
+  identity appears - which is an acceptance item of M2 in its own right.
+- One thing fell out of `--wipe`: it writes `eeprom.bin` into the working
+  directory, so each instance needs its own. Two autopilots over one storage
+  file are not two autopilots.
+
 ## Log Entry Template
 
 ```text
