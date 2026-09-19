@@ -37,11 +37,17 @@ Součet bez předního senzoru a bez montážního materiálu, s WiFiLink 2:
 **164.4 g nasucho**, **238.4 g s baterií**. S Wyvern Link Alpha místo něj
 **153.2 g nasucho**, **227.2 g s baterií**.
 
-## Křížová kontrola proti 240 g v simulaci
+## Křížová kontrola proti simulaci
 
-Simulace jede na 0.240 kg jako celkovou hmotnost včetně baterie, což bylo zadané
-číslo, ne měřené. Součet výše na něj sedí skoro přesně, ale je to falešná shoda,
-protože v tabulce chybí montážní materiál.
+> **Aktualizováno.** Tahle sekce se jmenovala „Křížová kontrola proti 240 g
+> v simulaci" a těch 240 g už neplatí ani pro jeden drak. Simulace dnes jede na
+> **0,306 kg** pro CineLog30 V3 s LD06 a na **0,229 kg** pro
+> [variantu Pavo20](./10_pavo20.md). Těch 0,240 kg byl CineLog ještě bez lidaru
+> — a hlavně to bylo zadané číslo, ne měřené. Úvaha pod tím platí dál a vlastně
+> je to přesně ta úvaha, která ke 306 g vedla.
+
+Původních 0.240 kg bylo zadané číslo, ne měřené. Součet výše na něj seděl skoro
+přesně, ale byla to falešná shoda, protože v tabulce chybí montážní materiál.
 
 Reálnější odhad dá stock CineLog30 V3: prodejci ho uvádějí 187-192 g **bez**
 baterie, a to s DJI O4 air unitem a TAKER F722 AIO místo našich dílů, které váží

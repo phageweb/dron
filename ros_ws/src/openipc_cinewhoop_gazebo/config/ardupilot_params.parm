@@ -1,9 +1,22 @@
 # Quad X baseline for the custom ArduPilot JSON SITL model.
 #
-# Everything not set here comes from copter.parm, which targets a vehicle of
-# one to two kilograms. This airframe is 0.240 kg with a roll/pitch inertia of
-# 0.00022 kg m^2 and a yaw inertia of 0.00038, so it reacts far faster. Attitude
-# gains are deliberately still at their defaults; see workflow/backlog.md.
+# Nothing is inherited from copter.parm. SITL is launched with --defaults naming
+# only this file and dds_smoke.parm, so everything not set here sits at the
+# firmware default. That is the intended state, not an oversight: copter.parm
+# targets a one to two kilogram vehicle on three cells, and two of its values
+# would be actively wrong here - MOT_BAT_VOLT_MIN/MAX 9.6/12.8 against this
+# airframe's 4S pack. Firmware default for both is 0.0, voltage thrust-limiting
+# off, which is what we want.
+#
+# The 18 INS_ACC* parameters copter.parm carries are supplied instead by
+# sim_defaults[] in libraries/SITL/SIM_JSON.cpp. Arming therefore depends on
+# --model JSON: an exactly zero accel offset counts as uncalibrated, so another
+# model would fail to arm with an INS error that never mentions the model.
+#
+# This airframe is 0.240 kg with a roll/pitch inertia of 0.00022 kg m^2 and a
+# yaw inertia of 0.00038, so it reacts far faster than copter.parm's target.
+# Attitude gains are deliberately still at their defaults; see
+# workflow/backlog.md, and workflow/troubleshooting.md for the full audit.
 FRAME_CLASS 1
 FRAME_TYPE 1
 

@@ -15,8 +15,16 @@ Tato větev popisuje fyzickou stavbu plánovaného 3" cinewhoopu. Je oddělená 
 - RC: ExpressLRS, SpeedyBee ELRS Nano RX
 - Video: RunCam WiFiLink 2 s OpenIPC
 - Indoor senzory: MicoAir MTF-02P optical flow + downward rangefinder/lidar
-- Volitelný obstacle sensor: přední lidar/depth/range sensor pro ROS 2, konkrétní
-  díl zatím **nevybraný**, viz [varianty](./03_komponenty.md)
+- Přední obstacle senzor: **LDRobot LD06**, 360° 2D lidar, vybraný kvůli SLAM
+  ([rozhodnutí](../../workflow/decisions.md)). Není volitelný a není zadarmo —
+  s ním je sestava 294 g a v ní pak není místo na palubní počítač, který by sken
+  dostal do ROS 2; rozbor je v
+  [Kudy se sken dostane do ROS 2](./09_kudy_do_ros.md)
+
+**Druhý drak.** Ta hmotnost vedla k nacenění alternativního rámu: tentýž náklad
+na **BetaFPV Pavo20 Pro** ve 4S provedení vyjde na 229 g a o 1 503 Kč levněji.
+Létá v simulaci proti stejným checkům. Viz [Pavo20 jako nosič LD06](./10_pavo20.md)
+a [Kusovník Pavo20 Pro](./11_kusovnik_pavo20.md).
 
 ## Cíl reálné větve
 

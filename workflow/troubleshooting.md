@@ -123,6 +123,15 @@ and `FRAME_TYPE`, so every gain comes from `copter.parm`, which targets a
 vehicle of one to two kilograms. This airframe is 0.240 kg with a roll inertia
 of 0.00022 kg m^2. Open item; see the backlog.
 
+> **Two things in that paragraph stopped being true, and both are written up
+> below.** Nothing is inherited from `copter.parm` at all - SITL is launched
+> with `--defaults` naming only our own files, which the audit in
+> [What the Parameter File Only Claims to Inherit](#what-the-parameter-file-only-claims-to-inherit)
+> works through parameter by parameter. And the airframe is no longer 0.240 kg:
+> with the LD06 on its mast the CineLog is **0.306 kg** and the Pavo20 variant
+> **0.229 kg**. The gains were tuned by a measured sweep rather than left at
+> defaults; the parameter files carry the numbers and the reasoning.
+
 ## AP_DDS Topics Never Appear in ros2
 
 Symptom:
@@ -473,6 +482,134 @@ took the measured margin from 0.16 m to 0.82 m.
 Worth knowing when measuring this: the vehicle also drifts about 0.35 m forward
 during the guided takeoff itself, before any velocity command is published, so a
 trajectory read after takeoff does not start at the origin.
+
+## AP_DDS Ignores Gazebo's Clock and Nobody Says Why
+
+Symptom: `/clock` and every bridged sensor topic count seconds from when the
+simulator started, while `/ap/pose/filtered` carries ArduPilot's UTC. Measured
+in the same instant: `/clock` 22.3 s, the front scan 22.3 s, the pose
+1789156172 - a 56 year gap. `AP_DDS_CLOCK_SUB_ENABLED` defaults on for SITL, so
+the subscription looks like it should be happening.
+
+**The `"/clock"` versus `"clock"` asymmetry in `AP_DDS_Topic_Table.h` is not the
+bug.** It is deliberate. `AP_DDS_Client.cpp:1545` special-cases a leading slash:
+
+```cpp
+if (topics[i].topic_name[0] == '/') {
+    snprintf(topic_name_buf, AP_DDS_MAX_NAME_LEN, "rt%s", topics[i].topic_name);
+} else {
+    dds_format_name(topic_name_buf, dds_pubsub_prefix, sysid, topics[i].topic_name, use_sysid_ns);
+}
+```
+
+`dds_format_name` builds `rt/ap/<name>`, so a bare name lands in the vehicle's
+own namespace. The publisher `"clock"` becomes `/ap/clock`; the subscriber
+`"/clock"` skips the namespace and listens on the global `/clock`, which is
+exactly where Gazebo publishes. Both names are right.
+
+The actual gate is a runtime skip in `AP_DDS_Client.cpp:1601`:
+
+```cpp
+SITL::SIM *sitl = AP::sitl();
+if (strcmp(topics[i].topic_name, "/clock") == 0 && !sitl->use_dds_sim_time) {
+    GCS_SEND_TEXT(MAV_SEVERITY_INFO, "%s Skipping subscription to /clock because use_sim_time is false", msg_prefix);
+    continue;
+}
+```
+
+The subscription is never created. `use_dds_sim_time` is **not an AP parameter**
+- it is a plain member defaulting to false (`SITL.h:287`), written only from the
+SITL command line (`SITL_cmdline.cpp:399`, `604`). So it cannot be set in
+`ardupilot_params.parm` or `dds_params`; it has to go on the launch line:
+
+```
+--use_sim_time true
+```
+
+Confirmed against the binary this project actually runs:
+`build/sitl/bin/arducopter --help` lists
+`--use_sim_time <true|false>  use ROS2 simulation clock for DDS topics. Defaults to false`.
+
+Downstream the mechanism is complete, so the one flag is the whole fix.
+`AP_DDS_Client::update_topic(builtin_interfaces_msg_Time&)` is the single stamp
+source for every published message, and it short-circuits to the external clock
+the moment one arrives (`AP_DDS_Client.cpp:275-282`).
+
+How to tell which state you are in: the skip prints a statustext. If the SITL log
+carries "Skipping subscription to /clock because use_sim_time is false", the
+vehicle is stamping UTC and no amount of ROS-side `use_sim_time:=true` changes
+it - that parameter governs the ROS node's own clock, not the autopilot's.
+
+**Not yet applied to this project's scripts.** Every script under `scripts/`
+launches SITL without the flag; `use_sim_time` appears there only as a ROS node
+parameter. Adding it flips every AP_DDS stamp from UTC to simulator seconds
+across the whole baseline, which wants one full CI run to confirm, not a blind
+edit.
+
+## What the Parameter File Only Claims to Inherit
+
+The header of `ardupilot_params.parm` says everything not set there comes from
+`copter.parm`. It does not: SITL is launched with `--defaults` naming only our
+two files, so unset parameters sit at **firmware defaults**, not at autotest's.
+Audited 2026-09-13 against `copter.parm` in the checkout.
+
+Our two files set 22 parameters. `copter.parm` sets 72. Of those, 65 are ones we
+do not set, and they sort into one real trap and a lot of noise:
+
+| Group | Count | What it means here |
+| --- | ---: | --- |
+| `INS_ACC*` | 18 | **Covered, but not by the parm file.** See below |
+| `RC*_MIN/MAX/TRIM` | 25 | No RC in these runs; the vehicle flies GUIDED over DDS |
+| `COMPASS_OFS*` | 9 | Cosmetic in SITL |
+| `FLTMODE1-6` | 6 | RC switch positions; mode comes from DDS, not a switch |
+| `MOT_BAT_VOLT_MIN/MAX` | 2 | **Do not "fix" this one.** See below |
+| `ARSPD_PIN/BUS` | 2 | Airspeed on a copter |
+| `FS_THR_ENABLE` | 1 | Firmware default is already 1 (`ALWAYS_RTL`) - identical, no gap |
+| `FENCE_RADIUS` | 1 | `FENCE_ENABLE` defaults to 0, so the radius is inert either way |
+| `SIM_BARO_RND` | 1 | That literal name has no definition anywhere in this checkout |
+
+Five more we both set, and every difference is deliberate airframe tuning:
+`FRAME_TYPE` 1 not 0, `MOT_THST_EXPO` 1.0 not 0.65, `MOT_THST_HOVER` 0.46 not
+0.39, `ATC_RAT_YAW_P` 0.023 not 0.3, `ATC_RAT_YAW_I` 0.0023 not 0.02.
+
+**`MOT_BAT_VOLT_MIN/MAX` is the one to leave alone.** The firmware default is
+`0.0` for both, which means voltage-based thrust limiting is *disabled*.
+`copter.parm` sets 9.6 and 12.8 - three-cell numbers. This airframe runs four
+cells at `SIM_BATT_VOLTAGE 16.4`. So not inheriting is not an oversight here, it
+is the correct outcome: making `copter.parm` load, as the header implies it
+does, would apply a 3S compensation curve to a 4S pack and quietly change thrust
+across every flight test. If the header is ever made true, these two have to be
+pinned at the same time.
+
+**Why arming works without the INS group.** `copter.parm` carries a comment that
+small accel offsets are needed "so INS is recognised as being calibrated", and
+that is real: `AP_InertialSensor::accel_calibrated_ok_all()` rejects an exactly
+zero offset - "exactly 0.0 offset is extremely unlikely" - and the firmware
+default is zero. We inherit nothing and set none of them, yet the vehicle arms.
+The reason is the model, not the parameters: `libraries/SITL/SIM_JSON.cpp` has a
+`sim_defaults[]` table that sets `INS_ACCOFFS_*` to 0.001, `INS_ACCSCAL_*` to
+1.001, the matching `INS_ACC2*` pair, plus `INS_GYR_CAL 0` and `BRD_OPTIONS 0`.
+We launch with `--model JSON`, so that table applies. **Switching the SITL model
+away from JSON would break arming**, and the error would name the INS, not the
+model.
+
+### Which topics go silent rather than wrong
+
+The battery taught this once: `/ap/battery` was absent for a year because
+`BATT_MONITOR` was unset and AP_DDS skips an instance the battery library does
+not call present. Asked of every other publisher, only one more behaves that way.
+
+- `/ap/battery` - `update_topic()` fills the message, then
+  `if (battery_state_topic.present) write_battery_state_topic();`. No monitor,
+  no topic, no complaint. `BATT_MONITOR 4` is set now, so this one is closed.
+- `/ap/navsat` - `if (update_topic(nav_sat_fix_topic, gps_instance))` guards the
+  write, and `update_topic` returns false when `gps.is_healthy(instance)` is
+  false. Indoors with no GPS that is permanent and expected, but anything that
+  ever waits on `/ap/navsat` waits forever.
+
+Every other AP_DDS publisher writes unconditionally on its timer, so it is
+either there or the whole DDS session is down - which is loud. Those two are the
+only ones that can be quietly missing.
 
 ## Known Risks Before Implementation
 

@@ -98,6 +98,45 @@
 - [ ] Re-measure the onset on hardware. The simulation has no gyro noise, no
       frame resonance and no ESC lag beyond the motor model, so 0.027 is a
       ceiling to approach rather than a value to fly off the bench
+- [x] Fly the Pavo20 variant with the parts that can actually be bought. The
+      model was built from the airframe study in `10_pavo20.md`, which chose
+      LAVA 1104 5500KV, an iFlight Beast H7 and a 750 mAh pack and worked out to
+      0.2216 kg. Costing it found the LAVA is not sold in this country at all,
+      so the bill of materials in `11_kusovnik_pavo20.md` buys Flashhobby A1204
+      5200KV, a MicoAir H743 and an 850 mAh pack, and the machine is 0.22934 kg.
+      The model now follows the bill of materials: `maxRotVelocity` 5950 -> 5580
+      (5200 KV at the same 61 per cent loaded fraction), per-link masses off the
+      itemised budget, and `MOT_THST_HOVER` 0.49 -> 0.53. Every figure the
+      published parts list quotes now comes out of the model too - 202 g per
+      motor, 808 g of thrust, thrust to weight 3.52, hover at 53 per cent.
+      `check_model_consistency.py` passes for both airframes, and
+      `check_guided_takeoff.sh` flies it: peak 2.08 m, settled 2.01 m against a
+      2.00 m target, worst tilt 15.5 degrees. Those are the LAVA model's numbers
+      to a tenth, which is a result rather than a stale run - the altitude
+      controller holds the climb, not the thrust surplus, so this manoeuvre
+      cannot see 15 per cent less authority. A rate sweep would
+- [x] Sweep the Pavo20's rate gains rather than carrying the CineLog's answer
+      across. `sweep_rate_gains.sh` was hardcoded to one airframe - the base
+      parameter file and the model directory both - which is the substitution the
+      parameter file was making an argument for; it now takes `OPENIPC_AIRFRAME`
+      the same way `check_guided_takeoff.sh` does, and writes into
+      `logs/rate_sweep/<airframe>-<stamp>/` so two frames' runs cannot be read as
+      one. Its default gains were also centred on "the current 0.018" long after
+      both files went to 0.040, so the default sweep could not have found an
+      onset above the flown value. Measured on the pavo20: 0.065 is clean
+      (overshoot 4.3 per cent, 4 sign changes), 0.080 is gone (49.6 per cent, 162),
+      so the onset is in the same bracket as the CineLog's and 0.040 keeps the
+      same 0.62 margin. **The prediction this was run to test did not survive:**
+      15 per cent less authority should have moved the onset up by about as much,
+      and it did not measurably - though one step of the grid is 23 per cent,
+      wider than the 18 per cent being looked for, so this is a grid too coarse
+      rather than evidence against. Nothing depends on which it is
+- [x] The Pavo20's rate gains no longer transfer by a matching authority, which
+      is what sent the sweep above looking. Roll authority is 583 rad/s^2 against
+      the CineLog's 689, a ratio of **0.85** where it used to be 0.99: the A1204
+      is 12 per cent weaker than the LAVA and the in-stock parts are heavier, so
+      the moment fell further than the inertia did. The gains stay at 0.040, and
+      the sweep rather than the ratio is now the reason
 - [x] Verify guided arm/takeoff (`scripts/check_guided_takeoff.sh`)
 
 ## Milestone 8: ArduPilot DDS
@@ -115,19 +154,40 @@
       and pitch, and dropped when they work out to be the floor. The height comes
       from the downward rangefinder, and an unknown height discards nothing
 - [ ] Decide where the ROS 2 nodes run, which is now a purchase and not only a
-      question. AP_DDS publishes no LaserScan and no proximity topic at all -
-      checked against the topic table, and no pull request adds one - so on real
-      hardware the scan has no way into ROS. The simulation hides it: there the
-      scan comes from Gazebo straight into ROS through ros_gz_bridge. Three ways
-      out and they cost differently: a companion computer carrying the lidar
-      driver and our nodes (10-20 g, what every ArduPilot indoor-autonomy guide
-      actually does), writing a LaserScan publisher into AP_DDS in C++ (no
-      grams, a fork), or keeping ROS on the ground (no grams, but see below).
-      The bill of materials cannot be finished before this is decided
-- [ ] Decide how lidar data reaches the ground. ELRS telemetry carries hundreds
-      of bytes per second and the scan needs 108 kbit/s raw, so it has to ride
-      the OpenIPC WiFi link beside the video - about 3.6 per cent of an 8 Mbit/s
-      stream. wfb-ng has a data channel; nobody has configured or measured it
+      question. AP_DDS publishes no LaserScan and no proximity topic at all, so
+      on real hardware the scan has no way into ROS. The simulation hides it:
+      there the scan comes from Gazebo straight into ROS through ros_gz_bridge.
+      The four ways out are written up in `spec/realna_stavba_dronu/09_kudy_do_ros.md`;
+      two of them are now closed on evidence rather than open:
+      **the AP_DDS fork cannot reach SLAM** - `AP_Proximity` exposes eight
+      distances 45 degrees apart, under a `static_assert(PROXIMITY_NUM_SECTORS == 8)`,
+      so a publisher over it would carry eight numbers, not a scan; and
+      **ROS on the ground on its own is not a path at all**, because nothing
+      onboard can send the raw scan down once the autopilot only offers those
+      eight sectors. What is left is a companion computer, or the fourth option
+      below. The bill of materials cannot be finished before this is decided
+- [ ] Try forwarding the LD06 UART through the video unit before buying anything.
+      The OpenIPC unit is already a Linux computer in the parts list, it has
+      spare UARTs, `OpenIPC/mavfwd` is a serial-to-UDP forwarder in pure C, and
+      OpenIPC's supported baud rates include the LD06's 230400. Zero grams and
+      zero crowns, which matters because 294 g has no room for a companion
+      computer: the build is 227.2 g with the battery and no lidar, and the
+      LD06's ~42 g plus mounts spends the rest. A board that genuinely runs
+      ROS 2 Jazzy is 20-30 g with cooling - more than the 11 g between the
+      Wyvern and the RunCam. Open: whether the chosen unit has a UART broken
+      out and reachable in the assembled frame, whether it holds 230400 baud
+      beside the video encoder without overheating, and whether its OpenIPC
+      build ships those tools at all
+- [ ] Measure the scan's share of the radio link, now that the arithmetic is
+      tighter than it looked. The LD06 packs 12 points into 47 bytes at 4500
+      measurements per second: 375 packets/s, **141 kbit/s** of payload, not the
+      108 kbit/s this list used to say. wfb-ng at its default MCS1 and 20 MHz
+      carries about 7 Mbit/s for **both directions together**, not 8 Mbit/s
+      down, and 720p video already takes ~4. So the scan is 2.0 per cent of the
+      link and 4.7 per cent of what is left after video - it fits, with less
+      headroom than assumed. It has to ride a raw UDP stream: wfb-ng's own docs
+      say the IPv4 tunnel has a worse coding rate and belongs to SSH, not to
+      data streams. Nobody has configured or measured any of it
 - [x] Lean the vehicle in the simulator and assert the floor is not reported
       (`scripts/check_leaning_scan.sh`, in baseline CI). `leaning_test.sdf` holds
       the model static at 30 degrees nose-down and 0.60 m up, where the forward
@@ -229,10 +289,24 @@
       scan 22.3 s, the pose 1789156172. Nothing compares stamps across the two
       today - every node takes its ages from its own clock at the moment a
       message arrives - so nothing is broken, but anything that did would be
-      wrong by 56 years. `AP_DDS_CLOCK_SUB_ENABLED` is on for SITL and AP_DDS
-      subscribes to `/clock`, so this is meant to work and does not; the topic
-      name in `AP_DDS_Topic_Table.h` is `"/clock"` for the subscriber and
-      `"clock"` for the publisher, which is where to look first
+      wrong by 56 years. **Found, and it is one flag.** The `"/clock"` versus
+      `"clock"` asymmetry this list used to point at is deliberate, not the bug:
+      `AP_DDS_Client.cpp:1545` special-cases a leading slash to mean "skip the
+      `ap` namespace", so the publisher lands on `/ap/clock` and the subscriber
+      listens on the global `/clock` where Gazebo publishes. Both names are
+      right. The real gate is `AP_DDS_Client.cpp:1601`, which skips creating the
+      subscription unless `sitl->use_dds_sim_time`, and that is not an AP
+      parameter - it defaults false in `SITL.h:287` and is written only from the
+      SITL command line (`SITL_cmdline.cpp:399`). It cannot go in
+      `ardupilot_params.parm`; it has to be `--use_sim_time true` on the launch
+      line, which `build/sitl/bin/arducopter --help` confirms the built binary
+      accepts. Downstream is already wired: `update_topic(Time&)` short-circuits
+      to the external clock as soon as one arrives, so the flag is the whole fix.
+      The skip prints a statustext, so the SITL log says which state you are in.
+      Not applied yet - every script under `scripts/` launches without it, and
+      turning it on moves every AP_DDS stamp from UTC to simulator seconds across
+      the baseline, which wants a full CI run rather than a blind edit. Details
+      in `workflow/troubleshooting.md`
 - [ ] Confirm on a screen that RViz draws the occupancy map. The config has the
       display and the transform now exists, but the Fixed Frame is `base_link`
       so the room moves with the vehicle rather than standing still; `map` is
@@ -318,16 +392,34 @@
       case, self-contained on purpose: `spec/05_demo_nody.md` was two nodes
       behind and named parameters the code never used, and the algorithms in
       the helper modules were in no document at all
-- [ ] `/ap/battery` was never being published and nobody noticed, because
+- [x] `/ap/battery` was never being published and nobody noticed, because
       AP_DDS only publishes it for an instance the battery library calls
-      healthy and `BATT_MONITOR` was unset. Worth asking the same question of
-      every other topic the demo assumes: which of them would be silently
-      absent rather than obviously wrong, and what would notice
-- [ ] The header of `ardupilot_params.parm` says everything not set there comes
-      from `copter.parm`, and it does not - SITL is started with `--defaults`
-      naming only our two files, so nothing is inherited. The battery monitor
-      was the first thing that turned up missing because of it; the file wants
-      auditing for anything else that was assumed rather than set
+      healthy and `BATT_MONITOR` was unset. `BATT_MONITOR 4` is set now. Asked
+      of every other publisher: exactly one more can go silent the same way.
+      `/ap/navsat` is guarded by `if (update_topic(nav_sat_fix_topic, instance))`
+      and that returns false whenever `gps.is_healthy(instance)` is false, which
+      indoors is permanent - so anything that ever waits on it waits forever.
+      Every other AP_DDS publisher writes unconditionally on its timer, so it is
+      either present or the whole session is down, which is loud. Details in
+      `workflow/troubleshooting.md`
+- [x] Fix the header of `ardupilot_params.parm`, which said everything not set
+      there comes from `copter.parm`. It does not - SITL is started with
+      `--defaults` naming only our two files, so unset parameters sit at
+      firmware defaults. **Audited: the claim is wrong but almost nothing is
+      missing.** Of the 65 parameters `copter.parm` sets and we do not, the RC,
+      compass, flight-mode and airspeed groups are irrelevant to a vehicle flown
+      GUIDED over DDS; `FS_THR_ENABLE` is already 1 by firmware default;
+      `FENCE_RADIUS` is inert with `FENCE_ENABLE` at 0; and `SIM_BARO_RND` has
+      no definition anywhere in this checkout. Two things are worth knowing:
+      **`MOT_BAT_VOLT_MIN/MAX` must not be inherited** - firmware default is 0.0,
+      meaning voltage thrust-limiting off, while `copter.parm` carries 3S values
+      of 9.6 and 12.8 that would be applied to this 4S pack, so making the header
+      true requires pinning these two in the same commit; and the 18 `INS_ACC*`
+      parameters are supplied by `libraries/SITL/SIM_JSON.cpp`'s `sim_defaults[]`
+      table, not by any parm file, so **arming depends on `--model JSON`** and
+      changing the model would fail with an INS error that does not mention the
+      model. The header now says all of that. Details in
+      `workflow/troubleshooting.md`
 - [ ] Settle the two degrees on hardware. It is the whole error bar at range -
       0.28 m of the 0.38 m at 8 m - and SITL's EKF is fed a noiseless IMU, so
       the simulation would accept a tenth of it and prove nothing. This is the

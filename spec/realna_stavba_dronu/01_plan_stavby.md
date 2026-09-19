@@ -4,6 +4,12 @@ Tenhle soubor drží fáze a jejich cíle. Konkrétní kroky oživení od první
 připojení baterie po nasazení vrtulí, včetně stop podmínek, jsou v
 [bench checklistu](./04_bench_checklist.md).
 
+**Plán je psaný pro CineLog30 V3, ale platí pro oba draky.** Vedle něj stojí
+nacenění [Pavo20 Pro](./10_pavo20.md) s vlastním
+[kusovníkem](./11_kusovnik_pavo20.md), který v simulaci létá proti stejným
+checkům. Liší se jen fáze 1 a 2 — jiný rám, jiné motory, jiné vrtule; napájení,
+firmware, senzory, video i ROS vrstva jsou identické.
+
 ## Fáze 1: Potvrzení komponent
 
 Cíl:
@@ -22,16 +28,24 @@ Checklist:
 - [ ] SpeedyBee ELRS Nano RX
 - [ ] RunCam WiFiLink 2 / OpenIPC
 - [ ] MicoAir MTF-02P
-- [ ] přední obstacle lidar/depth/range sensor
-- [ ] vhodný companion computer pro ROS 2, pokud nemá běžet mimo dron
+- [x] přední obstacle senzor: **LDRobot LD06**, vybraný kvůli SLAM
+      ([rozhodnutí](../../workflow/decisions.md))
+- [ ] palubní počítač — **neobjednávat**, dokud nepadne pokus poslat UART z LD06
+      dolů přes video jednotku. Ta je v kusovníku tak jako tak a stojí nula
+      gramů; a kdyby padl, není to položka do košíku, ale přepočet celé sestavy.
+      Rozbor v [Kudy se sken dostane do ROS 2](./09_kudy_do_ros.md)
 
 Výstup:
 
 - tabulka komponent, hmotností, konektorů, napájecích napětí a datových rozhraní
 
-Hotovo jako [tabulka komponent](./03_komponenty.md), zatím z publikovaných hodnot. Vážení skutečných dílů a potvrzení verzí zůstává otevřené,
-stejně jako volba předního obstacle senzoru, na které závisí, jestli dál platí
-0.240 kg, ze kterých počítá simulace.
+Hotovo jako [tabulka komponent](./03_komponenty.md), zatím z publikovaných
+hodnot. **Vážení skutečných dílů zůstává otevřené** a je to pořád ta samá
+otevřená věc: žádná hmotnost v žádném z obou kusovníků není zvážená.
+
+Volba předního senzoru už otevřená není a hmotnost se s ní posunula. Simulace
+dnes počítá **0,306 kg** pro CineLog s LD06 a **0,229 kg** pro Pavo20; těch
+0,240 kg, o kterých tu stálo dřív, byl CineLog ještě bez lidaru.
 
 ## Fáze 2: Mechanická montáž nasucho
 

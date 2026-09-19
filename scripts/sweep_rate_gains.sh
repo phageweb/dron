@@ -13,6 +13,13 @@
 #   scripts/sweep_rate_gains.sh 0.027 0.05         only these
 #   GUI=1 scripts/sweep_rate_gains.sh 0.05         watch it, one gain at a time
 #   EXTRA_PARAMS="ATC_ACCEL_R_MAX 400000" ...      append parameters to every run
+#   OPENIPC_AIRFRAME=pavo20 scripts/sweep_rate_gains.sh    sweep the other frame
+#
+# The airframe matters here more than anywhere else in the project, because the
+# onset this measures is a property of the frame and not of the parameter file.
+# Sweeping one airframe and carrying the answer to the other is exactly the
+# substitution ardupilot_params_pavo20.parm makes an argument for rather than a
+# measurement; this flag is what lets that argument be settled.
 set -eo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -22,7 +29,18 @@ sitl_bin="external/ardupilot/build/sitl/bin/arducopter"
 bridge_bin="build/ap_actuator_bridge/ap_actuator_bridge"
 plugin_dir="build/ardupilot_gazebo"
 world_path="ros_ws/src/openipc_cinewhoop_gazebo/worlds/indoor_test.sdf"
-base_params="ros_ws/src/openipc_cinewhoop_gazebo/config/ardupilot_params.parm"
+# Which airframe to sweep. The variants are separate model directories holding a
+# model of the same name, so the world needs no change; the same selection as
+# scripts/check_guided_takeoff.sh.
+airframe="${OPENIPC_AIRFRAME:-cinewhoop}"
+if [ "$airframe" = "cinewhoop" ]; then
+  models_dir="models"
+  params_name="ardupilot_params.parm"
+else
+  models_dir="models_$airframe"
+  params_name="ardupilot_params_$airframe.parm"
+fi
+base_params="ros_ws/src/openipc_cinewhoop_gazebo/config/$params_name"
 
 for required_path in "$sitl_bin" "$bridge_bin" "$plugin_dir/libArduPilotPlugin.so" \
   "$world_path" "$base_params"; do
@@ -48,18 +66,24 @@ if command -v ss >/dev/null 2>&1 && ss -lunp 2>/dev/null | grep -q ":14550 "; th
   exit 1
 fi
 
-# Around the current 0.018: half, three quarters, as flown, one and a half, double.
+# Around the 0.040 both parameter files now fly: half, three quarters, as flown,
+# one and a half, double. This used to be centred on 0.018 and said so, which
+# stopped being true when the LD06 went on the mast and the gains were measured
+# again - a sweep centred two and a half times below the flown value cannot find
+# the onset above it.
 gains=("$@")
 if [ ${#gains[@]} -eq 0 ]; then
-  gains=(0.009 0.0135 0.018 0.027 0.036)
+  gains=(0.020 0.030 0.040 0.060 0.080)
 fi
 
 export GZ_PARTITION="${GZ_PARTITION:-openipc_cinewhoop}"
 export GZ_IP="${GZ_IP:-127.0.0.1}"
 export GZ_SIM_SYSTEM_PLUGIN_PATH="$project_root/$plugin_dir${GZ_SIM_SYSTEM_PLUGIN_PATH:+:$GZ_SIM_SYSTEM_PLUGIN_PATH}"
-export GZ_SIM_RESOURCE_PATH="$project_root/ros_ws/src/openipc_cinewhoop_gazebo/models:$project_root/ros_ws/src/openipc_cinewhoop_gazebo/worlds${GZ_SIM_RESOURCE_PATH:+:$GZ_SIM_RESOURCE_PATH}"
+export GZ_SIM_RESOURCE_PATH="$project_root/ros_ws/src/openipc_cinewhoop_gazebo/$models_dir:$project_root/ros_ws/src/openipc_cinewhoop_gazebo/worlds${GZ_SIM_RESOURCE_PATH:+:$GZ_SIM_RESOURCE_PATH}"
 
-run_dir="logs/rate_sweep/$(date +%Y%m%d-%H%M%S)"
+# The airframe is in the path because two sweeps of different frames produce the
+# same filenames otherwise, and the numbers are only comparable within one frame.
+run_dir="logs/rate_sweep/$airframe-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$run_dir"
 results="$run_dir/summary.jsonl"
 : >"$results"

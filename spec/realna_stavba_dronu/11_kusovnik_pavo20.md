@@ -63,8 +63,10 @@ MicoAir MTF-02P 1,50 g · Walksnail WS-M181 GPS 4,30 g · TPU věž a stožár
 | Sunhokey, CN (etapa B) | LDRobot LD06 | 1 580 Kč | 419 Kč | odhad |
 | **Celkem** | 3 zásilky, z toho 2 hned | **10 220 Kč** | **607 Kč** | **10 827 Kč** |
 
-Proti CineLogu, který vychází na 12 330 Kč v šesti zásilkách, je to o
-**1 503 Kč méně** a o tři zásilky.
+Proti CineLogu, který v konsolidované variantě vychází na 12 330 Kč v **pěti**
+zásilkách, je to o **1 503 Kč méně** a o dvě zásilky. Kusovník CineLogu tak, jak
+byl napsaný, stojí 12 548 Kč v šesti — varianty a jejich rozpad jsou
+v [Kalkulaci dopravy](./08_kalkulace_dopravy.md).
 
 ## Co se musí vyrobit
 
@@ -84,6 +86,12 @@ Proti CineLogu, který vychází na 12 330 Kč v šesti zásilkách, je to o
   doletu.
 - **1104 motory s roztečí 8,5 mm.** DarwinFPV Bling 1104 5000KV je skladem a KV
   sedí, ale má díry 8,5 mm M1,6 proti rámovým **9 mm M2**. Nepřišroubuje se.
+- **Díly z Pavo20 Pro *II* k tomuhle rámu.** Je to jiný rám — rozvor 93,9 mm
+  proti našim 93,7 — a BetaFPV sám píše, že s deskou z Pro II *„may cause the
+  propellers to contact the duct during flight"*. Rozteč FC 26 × 26, motory
+  9 mm M2 i slot baterie 20 mm mají oba stejné, takže se to plete snadno;
+  u ductů a horní desky se to ale plést nesmí. Srovnání obou rámů je v
+  [Pavo20 jako nosič LD06](./10_pavo20.md#pro-versus-pro-ii).
 - **Palubní počítač**, dokud nepadne pokus poslat UART z LD06 dolů přes video
   jednotku — ta v kusovníku stejně je a stojí nula gramů.
 - **LD19 ani jiný „ekvivalent"** bez ověření hmotnosti, rozměrů a UART protokolu
@@ -92,14 +100,24 @@ Proti CineLogu, který vychází na 12 330 Kč v šesti zásilkách, je to o
 ## Vybavení mimo letovou hmotnost
 
 Balanční nabíječka s režimem **LiHV 4S** (koncové napětí 17,4 V), smoke stopper,
-multimetr, páječka s tavidlem a tenkými vodiči, ELRS vysílač a WiFi karta pro
-pozemní příjem OpenIPC. Nic z toho není započítané do ceny dronu.
+multimetr, páječka s tavidlem a tenkými vodiči, ELRS vysílač a USB WiFi přijímač
+pro pozemní příjem OpenIPC. Nic z toho není započítané do ceny dronu.
+
+**Ten přijímač není libovolná karta.** wfb-ng jmenuje tři čipy: **RTL8812AU**
+(testováno na ALFA AWUS036ACH), **RTL8812EU** (LB-LINK BL-M8812EU2) a Atheros
+**AR9350**. První dva chtějí záplatovaný ovladač, třetí jede rovnou, ale na
+řízení vysílacího výkonu potřebuje záplaty jádra. Dokumentace sice říká, že
+*„if you want only RX then in theory any card with monitoring mode will be
+suitable"* — jenže pro tuhle stavbu to neplatí: podle
+[Kudy se sken dostane do ROS 2](./09_kudy_do_ros.md) se smyčka vyhýbání uzavírá
+na zemi, takže stanice musí i **vysílat**. A BL-R8812AF1, který se do těchhle
+sestav dává nejčastěji, se podle OpenIPC „extrémně rychle uvaří" a chce chladič.
 
 ## Co je ověřené a co ne
 
 | | |
 | --- | --- |
-| **Ověřeno** | Ceny, skladovost, hmotnosti a rozměry z karet zboží Rotorama CZ a hobbydrone.cz k 13. 9. 2026. Sazba dopravy Rotoramy. Rozteč FC 26 × 26 ze tří nezávislých zdrojů. |
+| **Ověřeno** | Ceny, skladovost, hmotnosti a rozměry z karet zboží Rotorama CZ a hobbydrone.cz k 13. 9. 2026. Sazba dopravy Rotoramy. Rozteč FC 26 × 26 ze tří nezávislých zdrojů. Že tenhle rám je **Pavo20 Pro, ne Pro II**, a v čem se ty dva liší — z katalogu BetaFPV a karty hobbydrone.cz k 14. 9. 2026. |
 | **Publikováno** | Všechny hmotnosti jsou vendorové nebo prodejcovy, žádná zvážená. |
 | **Odvozeno** | Tah 202 g/motor Flashhobby nepublikuje. Dopočítaný stejnou metodou jako v modelu: stejný Ct vrtule 2218, otáčky z KV při 61 % nezatížených. |
 | **Odhad** | Doprava mimo Rotoramu. TPU věž 11 g a kabeláž 13,36 g. |

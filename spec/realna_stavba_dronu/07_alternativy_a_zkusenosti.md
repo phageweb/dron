@@ -34,16 +34,25 @@ ArduPilot umí LD06 přečíst sám (`SERIAL*_PROTOCOL 11` = Lidar360, baud 2304
 `PRX1_TYPE`, `AVOID_ENABLE 7`) [dok] — ale to je **jeho vlastní** vyhýbání se
 překážkám, ne data pro nás.
 
-### Tři cesty ven, a co která stojí
+### Čtyři cesty ven, a co která stojí
 
-| Cesta | Co to znamená | Hmotnost navíc | Riziko |
-| --- | --- | ---: | --- |
-| **LD06 → palubní počítač** (běžná praxe) | Pi/Radxa běží ovladač LD06 i naše uzly, k FC mluví přes DDS/MAVLink | 10–20 g | nejmenší, ale je to další věc na dronu |
-| **LD06 → FC + dopsat AP_DDS téma** | přidat publikaci `LaserScan` do AP_DDS v C++ | 0 g | práce v cizím projektu, vlastní fork ArduPilotu |
-| **LD06 → FC, ROS jen na zemi** | data dolů přes wfb-ng | 0 g | viz níž, tunel na to není stavěný |
+> **Aktualizováno 13. 9. 2026.** Tenhle seznam měl původně tři položky a dvě
+> z nich se po ověření přímo ve zdrojáku ArduPilotu zavřely; přibyla naopak
+> čtvrtá, se kterou backlog nepočítal. Důkazy — čísla řádků, `static_assert`
+> i propočet linky — jsou v [Kudy se sken dostane do ROS 2](./09_kudy_do_ros.md).
+> Tady zůstává jen shrnutí.
+
+| Cesta | Hmotnost navíc | Dá SLAM? | Co ji drží zpátky |
+| --- | ---: | :-: | --- |
+| **LD06 → palubní počítač** (běžná praxe) | 10–30 g | ano | mimo hmotnostní rozpočet, viz níž |
+| **LD06 → FC, sken přes video jednotku dolů** | **0 g** | ano | neověřeno na železe; smyčka vyhýbání jde přes rádio |
+| **LD06 → FC + dopsat AP_DDS téma** | 0 g | **ne** | `AP_Proximity` vrací osm vzdáleností po 45° pod `static_assert`; fork by musel být druhý ovladač uvnitř autopilota |
+| **LD06 → FC, ROS jen na zemi** | 0 g | **ne** | skrytý předpoklad: něco na palubě to musí poslat dolů, a autopilot umí poslat jen těch osm sektorů |
 
 Návody ArduPilotu i cizí projekty na indoor autonomii shodně dělají **první
-variantu**: lidar do palubního počítače, ne do FC. [dok][fórum]
+variantu**: lidar do palubního počítače, ne do FC. [dok][fórum] Druhá varianta
+je ale to, co se má zkusit dřív — video jednotka je Linux, je v kusovníku tak
+jako tak a stojí nula gramů.
 
 ### Proč „ROS na zemi" není zadarmo
 
@@ -52,10 +61,15 @@ wfb-ng, na kterém OpenIPC stojí, má IPv4 tunel — ale jeho vlastní dokument
 protože má vyšší režii a jiné kódování než video a MAVLink proudy. [dok]
 OpenIPC navíc používá jen **podmnožinu** wfb-ng stacku.
 
-Náš sken potřebuje 108 kbit/s. To je řádově víc než ssh a řádově míň než video.
-Nikdo to nezměřil — je to otevřená položka v backlogu a tenhle nález ji
-zpřesňuje: neptej se „projde to", ale „projde to tunelem, o kterém autor říká,
-že na to není".
+Náš sken potřebuje **141 kbit/s** — ne 108, jak tu stálo dřív; skutečné číslo
+vypadlo až z formátu paketu LD06 (12 bodů po 47 B, 375 paketů/s). To je řádově
+víc než ssh a řádově míň než video: 2,0 % celé linky a 4,7 % toho, co po videu
+zbývá. Nikdo to nezměřil.
+
+Odpověď na ten tunel ale existuje a je to právě ta čtvrtá cesta: **nemá se jít
+tunelem, ale syrovým UDP streamem.** `OpenIPC/mavfwd` posílá UDP, což je ta
+správná strana téhle hranice. Otázka tedy není „projde to tunelem", ale jestli
+má zvolená video jednotka volný UART a udrží 230400 baud vedle enkodéru.
 
 ### Co to znamená pro nákup
 

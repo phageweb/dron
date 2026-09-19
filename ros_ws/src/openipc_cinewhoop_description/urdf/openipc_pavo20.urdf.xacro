@@ -27,11 +27,12 @@
     </collision>
     <inertial>
       <!-- The URDF lumps everything here because it only has to look right;
-           the SDF spreads the same 0.2216 kg over the links physics acts on.
+           the SDF spreads the same 0.22934 kg over the links physics acts on.
            Only the totals are comparable, and check_model_consistency.py
-           compares them. -->
-      <mass value="0.2216"/>
-      <inertia ixx="0.00022" ixy="0" ixz="0" iyy="0.00022" iyz="0" izz="0.00016"/>
+           compares them. The figure is the bill of materials' final machine in
+           spec/realna_stavba_dronu/11_kusovnik_pavo20.md, lidar included. -->
+      <mass value="0.22934"/>
+      <inertia ixx="0.000225" ixy="0" ixz="0" iyy="0.000225" iyz="0" izz="0.000314"/>
     </inertial>
   </link>
 

@@ -22,13 +22,22 @@
 
     <link name="base_link">
       <inertial>
-        <!-- Total assembled mass is 0.2216 kg, from the itemised budget in
-             spec/realna_stavba_dronu/10_pavo20.md: the 33.3 g Pavo20 Pro frame,
-             four LAVA 1104, an iFlight Beast H7 AIO, the same LD06, Wyvern and
-             MTF-02P the CineLog carries, a 4S LiHV 750 pack, and 22 g of wiring,
-             screws and TPU. That is 84 g less than the CineLog's 0.306 kg, and
-             all of it comes off the frame, motors and propellers - the payload
-             is identical.
+        <!-- Total assembled mass is 0.22934 kg, the itemised budget in
+             spec/realna_stavba_dronu/11_kusovnik_pavo20.md line by line: the
+             28.7 g Pavo20 Pro frame without its O3 mount, four Flashhobby A1204
+             5200KV, a Gemfan 2218 set, a MicoAir H743 V2 AIO, a Radiomaster XR1,
+             the same LD06, Wyvern and MTF-02P the CineLog carries, a Walksnail
+             WS-M181 GPS, a 4S LiHV 850 pack, and 24.4 g of TPU, wiring and
+             screws. That is 77 g less than the CineLog's 0.306 kg, and all of it
+             comes off the frame, motors and propellers - the payload is
+             identical.
+
+             This used to be 0.2216 kg of the LAVA 1104 and Beast H7 machine
+             10_pavo20.md worked the airframe decision out on. The shopping list
+             then failed to find LAVA 1104 5500KV anywhere in the country and
+             the parts that are actually in stock are heavier, so the model
+             follows the bill of materials rather than the study that preceded
+             it.
 
              The LD06's 42 g sits on front_lidar_link rather than here, because
              where it hangs changes the inertia as much as the mass does. Fixed
@@ -38,11 +47,11 @@
              base_link inertia is the 0.077 x 0.077 x 0.016 box with the same
              lumped-hardware factors the CineLog used (1.30 on roll, 1.15 on
              yaw), which is why it is not exactly the box figure. -->
-        <mass>0.1444</mass>
+        <mass>0.15022</mass>
         <inertia>
-          <ixx>0.000097</ixx>
-          <iyy>0.000097</iyy>
-          <izz>0.000164</izz>
+          <ixx>0.000101</ixx>
+          <iyy>0.000101</iyy>
+          <izz>0.000171</izz>
           <ixy>0</ixy>
           <ixz>0</ixz>
           <iyz>0</iyz>
@@ -233,23 +242,23 @@
       <child>camera_link</child>
     </joint>
 
-    <link name="motor_1"><pose relative_to="base_link">0.03313 -0.03313 0.010 0 0 0</pose><inertial><mass>0.0053</mass><inertia><ixx>0.0000002</ixx><iyy>0.0000002</iyy><izz>0.0000002</izz></inertia></inertial></link>
+    <link name="motor_1"><pose relative_to="base_link">0.03313 -0.03313 0.010 0 0 0</pose><inertial><mass>0.0062</mass><inertia><ixx>0.0000002</ixx><iyy>0.0000002</iyy><izz>0.0000002</izz></inertia></inertial></link>
     <joint name="motor_1_joint" type="fixed"><parent>base_link</parent><child>motor_1</child></joint>
-    <link name="motor_2"><pose relative_to="base_link">-0.03313 0.03313 0.010 0 0 0</pose><inertial><mass>0.0053</mass><inertia><ixx>0.0000002</ixx><iyy>0.0000002</iyy><izz>0.0000002</izz></inertia></inertial></link>
+    <link name="motor_2"><pose relative_to="base_link">-0.03313 0.03313 0.010 0 0 0</pose><inertial><mass>0.0062</mass><inertia><ixx>0.0000002</ixx><iyy>0.0000002</iyy><izz>0.0000002</izz></inertia></inertial></link>
     <joint name="motor_2_joint" type="fixed"><parent>base_link</parent><child>motor_2</child></joint>
-    <link name="motor_3"><pose relative_to="base_link">0.03313 0.03313 0.010 0 0 0</pose><inertial><mass>0.0053</mass><inertia><ixx>0.0000002</ixx><iyy>0.0000002</iyy><izz>0.0000002</izz></inertia></inertial></link>
+    <link name="motor_3"><pose relative_to="base_link">0.03313 0.03313 0.010 0 0 0</pose><inertial><mass>0.0062</mass><inertia><ixx>0.0000002</ixx><iyy>0.0000002</iyy><izz>0.0000002</izz></inertia></inertial></link>
     <joint name="motor_3_joint" type="fixed"><parent>base_link</parent><child>motor_3</child></joint>
-    <link name="motor_4"><pose relative_to="base_link">-0.03313 -0.03313 0.010 0 0 0</pose><inertial><mass>0.0053</mass><inertia><ixx>0.0000002</ixx><iyy>0.0000002</iyy><izz>0.0000002</izz></inertia></inertial></link>
+    <link name="motor_4"><pose relative_to="base_link">-0.03313 -0.03313 0.010 0 0 0</pose><inertial><mass>0.0062</mass><inertia><ixx>0.0000002</ixx><iyy>0.0000002</iyy><izz>0.0000002</izz></inertia></inertial></link>
     <joint name="motor_4_joint" type="fixed"><parent>base_link</parent><child>motor_4</child></joint>
 
     <!-- 2.2 inch propellers, ordered like ArduPilot's Quad X reference model. -->
-    <link name="rotor_0"><pose relative_to="base_link">0.03313 -0.03313 0.021 0 0 0</pose><inertial><mass>0.001</mass><inertia><ixx>0.0000004</ixx><iyy>0.0000004</iyy><izz>0.0000008</izz></inertia></inertial><visual name="prop"><geometry><cylinder><radius>0.02794</radius><length>0.002</length></cylinder></geometry><material><diffuse>0.2 0.7 1 1</diffuse></material></visual></link>
+    <link name="rotor_0"><pose relative_to="base_link">0.03313 -0.03313 0.021 0 0 0</pose><inertial><mass>0.00058</mass><inertia><ixx>0.0000004</ixx><iyy>0.0000004</iyy><izz>0.0000008</izz></inertia></inertial><visual name="prop"><geometry><cylinder><radius>0.02794</radius><length>0.002</length></cylinder></geometry><material><diffuse>0.2 0.7 1 1</diffuse></material></visual></link>
     <joint name="rotor_0_joint" type="revolute"><parent>base_link</parent><child>rotor_0</child><axis><xyz>0 0 1</xyz><limit><lower>-1e16</lower><upper>1e16</upper></limit><dynamics><damping>0.0002</damping></dynamics></axis></joint>
-    <link name="rotor_1"><pose relative_to="base_link">-0.03313 0.03313 0.021 0 0 0</pose><inertial><mass>0.001</mass><inertia><ixx>0.0000004</ixx><iyy>0.0000004</iyy><izz>0.0000008</izz></inertia></inertial><visual name="prop"><geometry><cylinder><radius>0.02794</radius><length>0.002</length></cylinder></geometry><material><diffuse>0.2 0.7 1 1</diffuse></material></visual></link>
+    <link name="rotor_1"><pose relative_to="base_link">-0.03313 0.03313 0.021 0 0 0</pose><inertial><mass>0.00058</mass><inertia><ixx>0.0000004</ixx><iyy>0.0000004</iyy><izz>0.0000008</izz></inertia></inertial><visual name="prop"><geometry><cylinder><radius>0.02794</radius><length>0.002</length></cylinder></geometry><material><diffuse>0.2 0.7 1 1</diffuse></material></visual></link>
     <joint name="rotor_1_joint" type="revolute"><parent>base_link</parent><child>rotor_1</child><axis><xyz>0 0 1</xyz><limit><lower>-1e16</lower><upper>1e16</upper></limit><dynamics><damping>0.0002</damping></dynamics></axis></joint>
-    <link name="rotor_2"><pose relative_to="base_link">0.03313 0.03313 0.021 0 0 0</pose><inertial><mass>0.001</mass><inertia><ixx>0.0000004</ixx><iyy>0.0000004</iyy><izz>0.0000008</izz></inertia></inertial><visual name="prop"><geometry><cylinder><radius>0.02794</radius><length>0.002</length></cylinder></geometry><material><diffuse>1 0.45 0.2 1</diffuse></material></visual></link>
+    <link name="rotor_2"><pose relative_to="base_link">0.03313 0.03313 0.021 0 0 0</pose><inertial><mass>0.00058</mass><inertia><ixx>0.0000004</ixx><iyy>0.0000004</iyy><izz>0.0000008</izz></inertia></inertial><visual name="prop"><geometry><cylinder><radius>0.02794</radius><length>0.002</length></cylinder></geometry><material><diffuse>1 0.45 0.2 1</diffuse></material></visual></link>
     <joint name="rotor_2_joint" type="revolute"><parent>base_link</parent><child>rotor_2</child><axis><xyz>0 0 1</xyz><limit><lower>-1e16</lower><upper>1e16</upper></limit><dynamics><damping>0.0002</damping></dynamics></axis></joint>
-    <link name="rotor_3"><pose relative_to="base_link">-0.03313 -0.03313 0.021 0 0 0</pose><inertial><mass>0.001</mass><inertia><ixx>0.0000004</ixx><iyy>0.0000004</iyy><izz>0.0000008</izz></inertia></inertial><visual name="prop"><geometry><cylinder><radius>0.02794</radius><length>0.002</length></cylinder></geometry><material><diffuse>1 0.45 0.2 1</diffuse></material></visual></link>
+    <link name="rotor_3"><pose relative_to="base_link">-0.03313 -0.03313 0.021 0 0 0</pose><inertial><mass>0.00058</mass><inertia><ixx>0.0000004</ixx><iyy>0.0000004</iyy><izz>0.0000008</izz></inertia></inertial><visual name="prop"><geometry><cylinder><radius>0.02794</radius><length>0.002</length></cylinder></geometry><material><diffuse>1 0.45 0.2 1</diffuse></material></visual></link>
     <joint name="rotor_3_joint" type="revolute"><parent>base_link</parent><child>rotor_3</child><axis><xyz>0 0 1</xyz><limit><lower>-1e16</lower><upper>1e16</upper></limit><dynamics><damping>0.0002</damping></dynamics></axis></joint>
 
     <!-- Two blade surfaces per propeller. The paired forward directions give
@@ -261,7 +270,7 @@
     -->
     <!-- Rotor constants derived the same way as the CineLog's, deliberately
          reusing its Ct so the two airframes differ by geometry and not by an
-         assumption. Target hardware is 4x BetaFPV LAVA 1104 5500 KV on 4S with
+         assumption. Target hardware is 4x Flashhobby A1204 5200 KV on 4S with
          ducted Gemfan 2218 three-blade propellers (D = 0.05588 m).
 
          Ct back-solved from the CineLog's own constant: 2.20e-07 * 4*pi^2 /
@@ -270,12 +279,19 @@
          motorConstant = Ct * rho * D^4 / (4*pi^2)
                        = 0.2103 * 1.225 * 9.752e-06 / 39.478 = 6.36e-08
 
-         maxRotVelocity 5950 rad/s = 56820 RPM, 61 % of the 92400 RPM that
-         5500 KV reaches unloaded at 16.8 V - the same loaded fraction the
+         maxRotVelocity 5580 rad/s = 53290 RPM, 61 % of the 87360 RPM that
+         5200 KV reaches unloaded at 16.8 V - the same loaded fraction the
          CineLog model uses (59 %), which is the point of picking it this way.
-         Full throttle gives 6.36e-08 * 5950^2 = 2.25 N per rotor, or 230 g,
-         which is what BetaFPV publish for this motor on these propellers.
-         Thrust to weight is 4.14 against 0.2216 kg, against the CineLog's 4.6.
+         Full throttle gives 6.36e-08 * 5580^2 = 1.98 N per rotor, or 202 g.
+         Thrust to weight is 3.52 against 0.22934 kg, against the CineLog's 4.6.
+
+         Note what the derivation does NOT have: Flashhobby publish no thrust
+         figure for the A1204 at all. The 202 g is this calculation, not a
+         datasheet, and it is the same calculation the bill of materials quotes.
+         It replaces the LAVA 1104 5500KV, for which BetaFPV do publish 230 g -
+         so the model has moved from a motor with a published number that cannot
+         be bought here to one that can be bought and has none. A thrust stand
+         settles it and nothing else does.
 
          momentConstant = (Cq/Ct) * D = 0.17 * 0.05588 = 0.0095 m.
 
@@ -292,7 +308,7 @@
       <actuator_number>0</actuator_number>
       <turningDirection>ccw</turningDirection>
       <motorType>velocity</motorType>
-      <maxRotVelocity>5950</maxRotVelocity>
+      <maxRotVelocity>5580</maxRotVelocity>
       <motorConstant>6.36e-08</motorConstant>
       <momentConstant>0.0095</momentConstant>
       <timeConstantUp>0.0125</timeConstantUp>
@@ -310,7 +326,7 @@
       <actuator_number>1</actuator_number>
       <turningDirection>ccw</turningDirection>
       <motorType>velocity</motorType>
-      <maxRotVelocity>5950</maxRotVelocity>
+      <maxRotVelocity>5580</maxRotVelocity>
       <motorConstant>6.36e-08</motorConstant>
       <momentConstant>0.0095</momentConstant>
       <timeConstantUp>0.0125</timeConstantUp>
@@ -328,7 +344,7 @@
       <actuator_number>2</actuator_number>
       <turningDirection>cw</turningDirection>
       <motorType>velocity</motorType>
-      <maxRotVelocity>5950</maxRotVelocity>
+      <maxRotVelocity>5580</maxRotVelocity>
       <motorConstant>6.36e-08</motorConstant>
       <momentConstant>0.0095</momentConstant>
       <timeConstantUp>0.0125</timeConstantUp>
@@ -346,7 +362,7 @@
       <actuator_number>3</actuator_number>
       <turningDirection>cw</turningDirection>
       <motorType>velocity</motorType>
-      <maxRotVelocity>5950</maxRotVelocity>
+      <maxRotVelocity>5580</maxRotVelocity>
       <motorConstant>6.36e-08</motorConstant>
       <momentConstant>0.0095</momentConstant>
       <timeConstantUp>0.0125</timeConstantUp>

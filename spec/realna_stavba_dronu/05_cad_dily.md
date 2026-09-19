@@ -11,7 +11,8 @@ Stejné jako v ROS modelu, aby se ty dva nerozešly:
 - počátek v `base_link`, tedy geometrický střed rámu v rovině horní desky
 - **X dopředu**, **Y doleva**, **Z nahoru**
 - motory v quad X na `±45.25 mm` v X i Y, což je půl rozvoru 128 mm děleno
-  odmocninou ze dvou
+  odmocninou ze dvou — to je **CineLog30 V3**; varianta Pavo20 má rozvor 93,7 mm,
+  tedy `±33.13 mm`, a celý tenhle dokument je psaný pro CineLog
 
 ## Jistota
 
@@ -86,10 +87,37 @@ Kvůli tomu se staví, ne kvůli obrázku:
 
 ## Poznámka k rozměrům v simulaci
 
-Bloky v `model.sdf` jsou přibližné: tělo 105 × 105 × 18 mm, kamera 26 × 22 × 20
-na x = 68, lidar 18 × 30 × 14 na x = 73, rangefinder na x = 20, z = -16. Vznikly
-proto, aby model vypadal a choval se jako cinewhoop, ne z výkresu.
+Bloky v `models/openipc_cinewhoop/model.sdf` jsou přibližné: tělo
+105 × 105 × 18 mm, kamera 26 × 22 × 20 na x = 68, rangefinder na x = 20,
+z = -16. Vznikly proto, aby model vypadal a choval se jako cinewhoop, ne
+z výkresu.
+
+**Lidar mezi ně už nepatří.** Stálo tu „18 × 30 × 14 na x = 73", což byl
+placeholder; dnes je to skutečná kostka LD06 **38,6 × 38,6 × 33,3 mm** na
+x = 46, z = 50 — tedy na stožáru, protože tělo senzoru překrývá disky vrtulí
+v jakékoli výšce a musí je minout celé. Ta hmotnost navíc visí na
+`front_lidar_link`, ne v `base_link`, aby Gazebo složilo setrvačnost z místa,
+kde senzor doopravdy je.
 
 Až bude CAD stát na skutečných rozměrech, mají se **hodnoty přenést do simulace**,
 ne naopak. Hlídat to umí `scripts/check_model_consistency.py`, který dnes drží
 shodu URDF a SDF - CAD by byl třetí místo, kde se geometrie může rozejít.
+
+## Kde ty CAD modely jsou
+
+Tenhle dokument vznikl dřív, než nějaký model existoval. Dnes jsou v repu tři
+a je mezi nimi rozdíl v tom, co si smí nárokovat:
+
+| Adresář | Drak | Co to je |
+| --- | --- | --- |
+| `cad_claude/` | CineLog30 V3 | koncepční model |
+| `cad_codex/` | CineLog30 V3 | nezávislý koncept postavený proti stejnému zadání |
+| `cad_pavo20/` | Pavo20 Pro | **obalová studie**, ne výrobní výkres |
+
+`cad_pavo20/drone.scad` stojí jen na rozměrech z kusovníku a barevně odlišuje
+jistotu údaje — co je fialové, se musí změřit na plastu. Přesto chytil dvě věci,
+které tabulky ukázat nemohly: lidar nemůže sedět tam, kam ho posadí výpočet
+těžiště, protože rovina skenu pak míří pod baterii; a baterie se montuje zespodu
+do duktové sestavy, což sráží těžiště **5 mm pod rovinu vrtulí** proti
+CineLogovým 2,3 mm nad ní. Obojí je zapsané jako oprava v
+[Pavo20 jako nosič LD06](./10_pavo20.md), ne vyretušované.

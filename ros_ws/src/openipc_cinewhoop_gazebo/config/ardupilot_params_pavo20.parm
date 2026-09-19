@@ -16,7 +16,7 @@
 # --model JSON: an exactly zero accel offset counts as uncalibrated, so another
 # model would fail to arm with an INS error that never mentions the model.
 #
-# This airframe is 0.2216 kg with a composite roll inertia of 0.000218 kg m^2,
+# This airframe is 0.22934 kg with a composite roll inertia of 0.000225 kg m^2,
 # so it reacts far faster than copter.parm's target.
 # Attitude gains are deliberately still at their defaults; see
 # workflow/backlog.md, and workflow/troubleshooting.md for the full audit.
@@ -36,31 +36,57 @@ MOT_PWM_MAX 1900
 MOT_THST_EXPO 1.0
 
 # Hover throttle follows from the calibrated rotors rather than being guessed.
-# At 0.2216 kg the airframe needs 0.544 N per rotor against a 2.253 N maximum, a
-# thrust fraction of 0.241, and MOT_THST_EXPO 1.0 makes the actuator output
-# sqrt(0.241) = 0.49. Written down explicitly so the first flight of a test is
+# At 0.22934 kg the airframe needs 0.562 N per rotor against a 1.980 N maximum,
+# a thrust fraction of 0.284, and MOT_THST_EXPO 1.0 makes the actuator output
+# sqrt(0.284) = 0.53. Written down explicitly so the first flight of a test is
 # deterministic instead of waiting for MOT_HOVER_LEARN.
 #
-# Higher than the CineLog's 0.46 even though the airframe is 84 g lighter,
-# because 2.2 in propellers on 1104 motors give up more thrust than the airframe
-# gives up mass: thrust to weight is 4.14 against 4.6.
-MOT_THST_HOVER 0.49
+# Higher than the CineLog's 0.46 even though the airframe is 77 g lighter,
+# because 2.2 in propellers on 1204 motors give up more thrust than the airframe
+# gives up mass: thrust to weight is 3.52 against 4.6.
+#
+# It was 0.49 while the model carried LAVA 1104 5500KV and a 750 mAh pack, which
+# is the machine 10_pavo20.md decided the airframe on. Neither part survived the
+# shopping list: the LAVA is not sold in this country, and the pack that is in
+# stock is 850 mAh. The motor that replaced it is weaker (202 g against 230) and
+# the airframe is 7.7 g heavier, so hover throttle rises twice over.
+MOT_THST_HOVER 0.53
 
 # Attitude rate gains carried over from the CineLog UNCHANGED, and the reason is
 # worth writing down because it looks like laziness and is not.
 #
 # The gains that matter are set by angular acceleration authority: peak roll
-# moment over roll inertia. Both terms fall on this airframe, and they fall by
-# almost exactly the same factor.
+# moment over roll inertia. Both terms fall on this airframe, and until the bill
+# of materials was costed they fell by the same factor.
 #
 #   CineLog30 V3   2 * 3.485 N * 0.04525 m = 0.3154 N m / 0.000458 = 689 rad/s^2
-#   Pavo20 Pro 4S  2 * 2.253 N * 0.03313 m = 0.1492 N m / 0.000218 = 684 rad/s^2
+#   Pavo20 Pro 4S  2 * 1.980 N * 0.03313 m = 0.1312 N m / 0.000225 = 583 rad/s^2
 #
-# That is a ratio of 0.99. Shorter arm and weaker motors take the moment down by
-# 53 per cent; the lighter frame, the shorter arm the mass sits on and the lower
-# lidar mast take the inertia down by 52 per cent. Scaling the gains for a 1 per
-# cent difference would be false precision of exactly the kind the CineLog file
-# refuses two paragraphs down.
+# That is a ratio of 0.85, and it used to be 0.99. The A1204 that can be bought
+# here is 12 per cent weaker than the LAVA that cannot, and the parts that are
+# in stock are heavier, so the moment fell further than the inertia did.
+#
+# The gains stay where they are, and that is now measured on this airframe
+# rather than argued from the ratio. `OPENIPC_AIRFRAME=pavo20
+# scripts/sweep_rate_gains.sh 0.040 0.065 0.080 0.095 0.110`:
+#
+#   0.040   overshoot  4.5 %   rms 0.86 deg   ringing   5
+#   0.065   overshoot  4.3 %   rms 0.74 deg   ringing   4
+#   0.080   overshoot 49.6 %   rms 5.33 deg   ringing 162
+#   0.095   overshoot 71.6 %   rms 7.50 deg   ringing  55
+#   0.110   overshoot 82.5 %   rms 7.81 deg   ringing  39
+#
+# The onset is between 0.065 and 0.080 - the same bracket as the CineLog's, and
+# 0.040 sits at 0.62 of the last good point, the same margin that airframe flies.
+#
+# It is worth saying what this did NOT confirm. Fifteen per cent less authority
+# should have moved the onset up by about the same fraction, to somewhere near
+# 0.077 to 0.094. It did not measurably: 0.065 is clean and 0.080 is gone on
+# both airframes. That is not evidence against the loop-gain argument, because
+# the grid cannot see it - one step from 0.065 to 0.080 is 23 per cent, wider
+# than the 18 per cent being looked for. Resolving it needs points between the
+# two, and nothing depends on the answer, because the conclusion is the same
+# either way.
 #
 # Both inertias are composed the same way - every link through the parallel axis
 # theorem, including the LD06 where it actually hangs - so the comparison is not
@@ -92,9 +118,9 @@ MOT_THST_HOVER 0.49
 # lower. Treat 0.040 as an upper bound to approach on hardware, not a value to
 # fly straight away.
 #
-# The transfer is an argument, not a measurement. A sweep on this airframe is
-# the thing that would settle it, and it is the one piece of work this variant
-# leaves undone.
+# What remains undone is hardware, not simulation. This onset is optimistic for
+# the same reason the CineLog's is - no gyro noise, no frame resonance, no ESC
+# lag beyond the motor model.
 ATC_RAT_RLL_P 0.040
 ATC_RAT_RLL_I 0.040
 ATC_RAT_RLL_D 0.0005

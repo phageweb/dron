@@ -9,10 +9,18 @@ tedy **450 bodů na otáčku** s rozlišením 0.8 stupně.
 
 | | |
 | --- | ---: |
-| Syrový protokol LD06 | 13.5 kB/s = **108 kbit/s** |
+| Syrový protokol LD06 | 17.6 kB/s = **141 kbit/s** |
 | Kapacita UART 230400 | 23.0 kB/s |
 | Jako ROS `LaserScan` | 36.0 kB/s = **288 kbit/s** |
-| Podíl na 8 Mbit/s videu | **3.6 %** |
+| Podíl na lince wfb-ng | **2.0 %** |
+| Podíl na tom, co zbývá po videu | **4.7 %** |
+
+> **Oprava.** První dva řádky tu stály jako 13.5 kB/s a 108 kbit/s, a poslední
+> jako 3.6 % z 8 Mbit/s videa. Obojí bylo optimistické. Skutečné číslo vypadlo
+> z formátu paketu LD06 — 12 bodů v paketu po 47 B dává 375 paketů/s a
+> **141 kbit/s** — a linka wfb-ng při výchozím MCS1 a 20 MHz nese ~7 Mbit/s pro
+> **oba směry dohromady**, ne 8 Mbit/s dolů. Pořád to sedí, jen s menší
+> rezervou. Rozpad v [Kudy se sken dostane do ROS 2](./realna_stavba_dronu/09_kudy_do_ros.md).
 
 Výpočetně je 450 bodů na 10 Hz pro SLAM Toolbox na notebooku nic - běžné 2D
 lidary dávají násobně víc bodů rychleji.

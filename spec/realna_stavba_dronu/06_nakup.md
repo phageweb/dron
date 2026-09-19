@@ -4,7 +4,11 @@ Praktický kusovník k [tabulce komponent](./03_komponenty.md). Alternativy ke
 každé položce a rešerše zkušeností uživatelů jsou vedle v
 [Alternativy a zkušenosti](./07_alternativy_a_zkusenosti.md) - **a je tam i
 nález, který tenhle seznam nedokončuje: chybí v něm palubní počítač, protože
-sken z lidaru se do ROS 2 přes DDS nedostane.** Ceny a sklad byly
+sken z lidaru se do ROS 2 přes DDS nedostane.** Čtyři cesty ven a to, co z nich
+zbylo po ověření ve zdrojáku, jsou v
+[Kudy se sken dostane do ROS 2](./09_kudy_do_ros.md); kolik stojí doprava
+u jednotlivých variant košíku, je v
+[Kalkulaci dopravy](./08_kalkulace_dopravy.md). Ceny a sklad byly
 ověřené **11. 9. 2026**; před zaplacením je zkontroluj znovu. Doprava, případné
 clo a DPH u dovozu v součtech nejsou.
 
@@ -68,8 +72,11 @@ Následující věci už jsou přibalené, nebo zatím nejsou rozhodnuté:
   podlouhlou **15,2V LiHV** variantou;
 - LD06-LD, LD19 nebo jiný údajný ekvivalent bez ověření hmotnosti, rozměrů a
   UART protokolu proti původnímu LD06;
-- companion computer, dokud nebude rozhodnuto, zda ROS 2 poběží na palubě,
-  nebo na pozemním notebooku.
+- companion computer. Neobjednávat, dokud nepadne pokus poslat UART z LD06 dolů
+  přes video jednotku - ta je v kusovníku tak jako tak a stojí nula gramů.
+  Podrobnosti a důkazy v [Kudy se sken dostane do ROS 2](./09_kudy_do_ros.md).
+  Pozor: palubní počítač není položka do košíku, ale přepočet hmotnosti -
+  ve 294 g na něj místo není.
 
 Samostatný 5V kondenzátor pro lidar se nekupuje preventivně. AIO má na 5V větvi
 rezervu; filtraci doplň až tehdy, pokud měření při rozběhu LD06 ukáže propad nebo
