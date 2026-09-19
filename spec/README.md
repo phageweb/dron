@@ -66,6 +66,24 @@ Tato větev řeší:
 - bench testy bez vrtulí
 - první bezpečné indoor testy
 
+## Větev C: Roj v simulaci
+
+Začni zde, pokud řešíš víc než jeden stroj současně:
+
+- [Zmapovat prostor třemi drony - zadání](./roj/README.md)
+- [Vrstva jednoho dronu](./roj/02_vrstva_drona.md) a [vrstva roje](./roj/03_vrstva_roje.md)
+- [Plán a milníky M0-M5](./roj/07_plan_a_milniky.md)
+
+Tato větev řeší:
+
+- tři SITL instance, tři modely a jejich identitu
+- kontrakt mezi jedním dronem a koordinátorem
+- přidělení cílů, rozestup `d_safe` a bezpečnostní filtr
+- složení jedné mapy ze tří strojů a měření pokrytí
+
+Teorie, ze které vychází, je v rešerších [reserseRoju](../reserseRoju/README.md)
+a [reserseDronu](../reserseDronu/README.md).
+
 ## Cílový dron
 
 Primární simulační i reálný cíl je 3" OpenIPC cinewhoop:

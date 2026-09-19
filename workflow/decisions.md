@@ -97,9 +97,17 @@ Cost:
   [Pavo20 as a carrier for the LD06](../spec/realna_stavba_dronu/10_pavo20.md).
   It comes out the same way for a sharper reason - on 3S the smaller disc gives
   back almost none of the 89 g saved, so endurance drops to about 2.4 minutes
-  against 3.5, and only a 4S Pavo20 Pro II matches the CineLog's range, at 239 g
+  against 3.5, and only a Pavo20 built on 4S matches the CineLog's range, at 239 g
   and the cost of recalibrating the simulation. The pattern figure above is the
   correction that came out of it.
+- that line said "Pavo20 Pro II" until 2026-09-14, and it was the wrong name.
+  Pro II is the ready-built 4S machine; the build buys a bare frame and throws
+  the electronics away, so 4S is a property of this build and not of the frame.
+  The frame that is bought, modelled and costed is the **Pavo20 Pro** - 93.7 mm
+  wheelbase, in stock in this country. The two frames share the FC pattern,
+  the motor pattern and the battery slot, and differ by 0.2 mm of wheelbase,
+  which BetaFPV say is enough for a Pro II plate to rub propellers on the older
+  duct. Details in [Pro versus Pro II](../spec/realna_stavba_dronu/10_pavo20.md#pro-versus-pro-ii).
 
 ## 2026-09-10: Mass Is a Goal, Not a Limit
 
@@ -211,3 +219,37 @@ Open against this: whether the chosen video unit has a UART broken out and
 reachable in the assembled frame, whether it holds 230400 baud beside the video
 encoder without overheating, and whether its OpenIPC build ships `mavfwd` or
 `msposd` at all. Any of those can send this back to the companion computer.
+
+## 2026-09-19: The Swarm Experiment Flies the Pavo20
+
+Decision:
+
+- the three-drone mapping experiment in `spec/roj/` flies the Pavo20 Pro 4S
+- the CineLog30 V3 stays the reference single machine and keeps its own baseline
+- every airframe-dependent number in `spec/roj/` is the Pavo20's, and says so
+
+Reason:
+
+- the separation between two machines is geometry before it is anything else,
+  and the Pavo20's rotor tip reaches 0.06107 m against the CineLog's 0.08335 m.
+  The geometric minimum for a pair is 0.1221 m against 0.1667 m, and in a room
+  8 x 6 m with three machines in it that difference is spent three times.
+- it is the frame the bill of materials actually buys, so the simulation and the
+  shopping list stay one machine rather than two.
+- it went 7 cm deeper into the coverage enclosure than the CineLog did on the
+  same day, with 17 per cent of its poses inside against 15. That is a single
+  run at a margin that dominates the corridor, so it is not evidence the Pavo20
+  maps better - but it is not evidence against, either.
+
+Cost:
+
+- the baseline has to be measured on this airframe before anything swarm-shaped
+  is built, which is M0 in `spec/roj/07_plan_a_milniky.md`: three runs of
+  `check_room_coverage.sh` with `OPENIPC_AIRFRAME=pavo20`, recording all four
+  numbers and the spread between runs rather than pass or fail.
+- the 2026-09-10 line "the airframe stays GEPRC CineLog30 V3" is about the
+  physical build and is not reopened here. This decision is about which of the
+  two calibrated simulation airframes the swarm work uses.
+- the Pavo20 has 15 per cent less roll authority, 583 rad/s^2 against 689. The
+  rate sweep found no measurable difference in the onset of oscillation, but the
+  grid step is 23 per cent, so that is a grid too coarse rather than a result.
