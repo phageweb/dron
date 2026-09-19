@@ -33,19 +33,24 @@ K nim tenhle úkol přidává tři, které s jedním dronem nemají smysl:
 
 ## 3. Baseline
 
-**Baseline se musí změřit znovu, než se postaví cokoli rojového.** V repozitáři
-je dnes z běhu v tomhle světě zaznamenané jen to, že oba draky do ohrady vlétly
-a že Pavo20 se dostal o 7 cm hlouběji, s 17 % pozic uvnitř proti 15 %
-(`workflow/log.md`). To jsou podíly pozic dráhy, ne pokrytí, a pro srovnání s
-rojem nestačí.
+**Změřeno 19. 9. 2026**, tři běhy `OPENIPC_AIRFRAME=pavo20
+scripts/check_room_coverage.sh`, všechny zelené. Plné znění v `workflow/log.md`.
 
-Před M0 je tedy potřeba:
+| | run 1 | run 2 | run 3 | rozptyl |
+| --- | ---: | ---: | ---: | ---: |
+| podlaha místnosti | 94 % | 93 % | 93 % | 1 bod |
+| vnitřek ohrady | 96 % | 95 % | 94 % | 2 body |
+| stěna x− z dosažitelné části | 93 % | 97 % | 97 % | 4 body |
+| stěna y+ | 92 % | 92 % | 92 % | 0 |
+| pozice uvnitř ohrady | 16 % | 17 % | 16 % | 1 bod |
+| nejhlubší dosažené y uvnitř | +1,04 m | +1,20 m | +1,17 m | 0,16 m |
 
-- [ ] Třikrát spustit `OPENIPC_AIRFRAME=pavo20 scripts/check_room_coverage.sh`
-      a zapsat všechna čtyři čísla z §2, ne jen výsledek prošlo/neprošlo.
-- [ ] Zapsat rozptyl mezi běhy. Bez něj nelze říct, jestli je rozdíl proti roji
-      výsledek, nebo šum; komentář v kontrole už jeden takový případ uvádí —
-      tatáž stěna četla 47, 48 a 73 % na třech bězích.
+**Šum je tedy asi 2 body na ohradě a 4 body na jedné stěně.** Rozdíl menší než
+tohle není výsledek — a to je hlavní produkt M0, ne samotná čísla pokrytí.
+
+Jedna věc z toho plyne pro K2: run 1 má nejlepší ohradu a zároveň nejmenší
+průnik dovnitř, takže pokrytí ohrady není přímočará funkce toho, jak hluboko se
+vletělo. Výsledek roje se musí číst spolu s dráhou, ne sám.
 
 ## 4. Meze přijetí
 

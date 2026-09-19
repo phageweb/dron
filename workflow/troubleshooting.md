@@ -611,6 +611,32 @@ Every other AP_DDS publisher writes unconditionally on its timer, so it is
 either there or the whole DDS session is down - which is loud. Those two are the
 only ones that can be quietly missing.
 
+## A Second Run Refuses to Start Because of a Node That Has Already Died
+
+Symptom:
+
+- `check_room_coverage.sh` runs green, and a second run started 16 s later
+  refuses with "A simple_indoor_autonomy node is already running; it would
+  command /ap/cmd_vel into this run's vehicle and prevent takeoff."
+- `ps` shows no such process, and none of the run's other processes either
+
+Cause:
+
+The guard asks `ros2 node list`, which asks the `ros2` CLI daemon rather than
+the network. That daemon caches the graph and keeps serving names for a while
+after the node behind them is gone, so a back-to-back run reads the corpse of
+the one before it. The guard itself is right and worth keeping: two autonomy
+nodes on one `/ap/cmd_vel` would fight over the vehicle.
+
+Fix: between sequential runs, `ros2 daemon stop` and wait. Measured: with a
+stop and 20 s, three runs of the coverage check went through in a row; without
+it, the second run died in 16 s.
+
+Worth knowing before the swarm work: three agents mean three sets of nodes
+appearing and disappearing in one graph, and the check for "is my agent
+already flying" cannot be a question to a cache. See
+[the swarm task](../spec/roj/README.md).
+
 ## Known Risks Before Implementation
 
 ### ROS 2 Packages on NixOS

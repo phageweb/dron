@@ -12,12 +12,15 @@ konkrétní úkol; fáze F (fyzické stroje) sem nepatří vůbec.
 **Proč první:** bez ní nemá výsledek roje s čím být porovnán.
 
 - [x] Potvrdit drak: **Pavo20 Pro 4S**, rozhodnuto 19. 9. 2026.
-- [ ] Třikrát `OPENIPC_AIRFRAME=pavo20 scripts/check_room_coverage.sh`, zapsat
+- [x] Třikrát `OPENIPC_AIRFRAME=pavo20 scripts/check_room_coverage.sh`, zapsat
       všechna čtyři čísla.
-- [ ] Zapsat rozptyl mezi běhy.
+- [x] Zapsat rozptyl mezi běhy.
 
-*Hotovo, když:* v `workflow/` je tabulka tří běhů a věta, jaký rozdíl je ještě
-šum.
+*Hotovo* 19. 9. 2026. Tabulka je v `workflow/log.md` a v
+[01 §3](./01_zadani_mapovani.md); šum je 2 body na ohradě a 4 na jedné stěně.
+Vedlejší nález, který půjde s sebou do M2: sekvenční běhy potřebují mezi sebou
+`ros2 daemon stop`, jinak druhý běh uvidí uzel prvního, který už neběží —
+`workflow/troubleshooting.md`.
 
 ## M1 — chybějící čísla jednoho dronu
 

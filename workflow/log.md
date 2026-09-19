@@ -404,6 +404,70 @@
 - The pages carry what the documents had and the earlier versions did not: a basket calculator with a switchable source per line that prices the whole cart including the shipment it adds or saves, the ground equipment that is in no total anywhere, and the LD06's Allegro alternative - 636 Kc dearer on goods but only 329 Kc on the bill once the 419 Kc import shipping goes away. The CineLog page got the missing companion computer written out properly as the four paths from `09_kudy_do_ros.md`.
 - Named the OpenIPC ground receiver, which had been "a WiFi card, chip not chosen". wfb-ng names RTL8812AU (tested on the ALFA AWUS036ACH), RTL8812EU (LB-LINK BL-M8812EU2) and Atheros AR9350. The documented shortcut that any monitor-mode card will do for receive-only does not apply to this build: the avoidance loop closes on the ground, so the station transmits too.
 
+## 2026-09-19
+
+- Two literature reviews landed, `reserseRoju` on coordinating a group and
+  `reserseDronu` on the machine underneath it, written the same day and left as
+  two folders because they are two storeys of one building. The second one
+  reviews the first: nine claims they reach independently, six where they part.
+  The sharpest is that the swarm review builds its platform chapter on "smaller
+  is more agile" from the literature while this repository holds a measured
+  counterexample - 583 rad/s^2 against 689 - and that mounting one 42 g sensor
+  on the mast moved the machine ten times further than the whole frame change.
+- Then set an actual task in `spec/roj/`: three drones map `cluttered_room.sdf`
+  in simulation. That world was chosen because the repository already scores it,
+  so the swarm has a number to beat rather than a demonstration to give.
+- The task is stated as a split - one layer that does not know a swarm exists,
+  one coordinator that may assume only what the contract lists - and working
+  through the eighteen open questions moved where that seam is.
+  `simple_indoor_autonomy` already subscribes to `explore/target`, so a
+  coordinator writing `/ap/cmd_vel` directly would bypass wall avoidance, floor
+  rejection and the battery landing. It sends a target and a speed limit
+  instead, and a per-agent arbiter clips the nominal command. The cost is
+  written down with it: a target today only biases which way the machine turns
+  at a wall, so the swarm's authority starts at direction and brake.
+- Two answers came out of source rather than reasoning. `fdm_port_in` is read
+  only from SDF (`ArduPilotPlugin.cc:1272`), so three instances need a generated
+  model and not an `<include>` override. And `occupancy_mapper` centres its grid
+  on the frame origin, which is each agent's own EKF origin - three origins that
+  differ make cell-by-cell merging meaningless, so that is now something M2
+  measures against ground truth rather than something the plan assumes.
+- The airframe for the swarm work is the Pavo20, recorded in `decisions.md`.
+  Separation is geometry before it is anything else: rotor tip 0.06107 m against
+  0.08335 m, so a pair needs 0.1221 m against 0.1667 m, and in a room 8 x 6 m
+  with three machines that is spent three times over.
+
+**M0, the single-drone baseline on the Pavo20.** Three runs of
+`check_room_coverage.sh`, all green:
+
+| | run 1 | run 2 | run 3 | spread |
+| --- | ---: | ---: | ---: | ---: |
+| room floor called free | 94 % | 93 % | 93 % | 1 point |
+| enclosure inside | 96 % | 95 % | 94 % | 2 points |
+| wall x- of the reachable part | 93 % | 97 % | 97 % | 4 points |
+| wall y+ | 92 % | 92 % | 92 % | 0 |
+| wall y- | 98 % | 100 % | 100 % | 2 points |
+| poses inside the enclosure | 592/3661 | 607/3665 | 599/3658 | 16-17 % |
+| deepest y reached inside | +1.04 m | +1.20 m | +1.17 m | 0.16 m |
+| known cells | 4945 | 4926 | 4935 | 19 cells |
+
+- So the noise floor of this measurement is about **2 points on the enclosure
+  figure and 4 on a single wall**, and 16 cm on how deep the vehicle got. A
+  swarm result inside that band is not a result. That is the number M0 existed
+  to produce, and it is worth more than the coverage figures themselves: the
+  earlier comment in the check about one wall reading 47, 48 and 73 per cent
+  across three runs was the warning that this spread can be much wider.
+- Run 1 is the interesting row. It has the best enclosure figure and the
+  shallowest penetration, which says the enclosure number is not a
+  straightforward function of how far in the vehicle went - so K2 for the swarm
+  should be read together with the path, not alone.
+- The second run failed before it flew, and the cause is worth the entry it got
+  in `troubleshooting.md`: the guard against a second autonomy node asks
+  `ros2 node list`, which asks a caching daemon, and 16 s after a green run that
+  cache still held the dead node. `ros2 daemon stop` plus 20 s between runs
+  fixed it. Three agents will make this worse, and a check for "is my agent
+  already flying" cannot be a question to a cache.
+
 ## Log Entry Template
 
 ```text
