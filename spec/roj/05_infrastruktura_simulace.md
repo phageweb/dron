@@ -40,12 +40,19 @@ měl zděděný `multiplier` a nedokázal se zvednout, zatímco každá „funk�
 varianta při hledání byl podstrčený CineLog. Obojí je opravené; rozbor v
 `workflow/troubleshooting.md`. **Revize R14 tedy není potřeba.**
 
-### P3 — most Gazebo→ROS má cesty s názvem modelu
+### P3 — most Gazebo→ROS má cesty s názvem modelu — **hotovo 20. 9. 2026**
 
 `config/gz_bridge.yaml` má v každé položce
-`/world/@world@/model/openipc_cinewhoop/link/.../sensor/...`. Šablona dnes
-nahrazuje jen `@world@` (`launch/gazebo.launch.py:19-40`). Přibude `@model@`
-a generování tří konfigurací, nebo jedné se všemi devíti tématy.
+`/world/@world@/model/openipc_cinewhoop/link/.../sensor/...`.
+
+Řešeno bez zásahu do šablony: `generate_agent_models.py` z ní odvodí jednu
+konfiguraci na agenta — nahradí `@world@`, název modelu i ROS prefix, takže
+`/openipc_cinewhoop/scan/front` se stane `/v1/scan/front`. Čtrnáct
+jednodronových skriptů, které si šablonu renderují samy přes
+`sed s/@world@/…/`, tím zůstává nedotčených.
+
+`/clock` dostane jen první agent. Tři mosty publikující totéž téma jsou tři
+publisheři v jednom grafu, tedy závod o to, kterého si odběratel všimne.
 
 ### P4 — můstek aktuátorů je jeden proces na model
 

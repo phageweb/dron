@@ -811,6 +811,23 @@ terms rather than a number on its own.
   MAVLink; whether `/ap/v<i>/pose/filtered` agrees is a separate check, and
   the coordinator is the thing that will need it.
 
+- **Each agent's sensors now reach ROS under its own namespace**, which was
+  P3 and the last piece of plumbing M2 needed. `generate_agent_models.py`
+  derives one bridge config per agent from the single-drone template rather
+  than the template growing placeholders: it substitutes the world, the model
+  name and the ROS prefix, so `/openipc_cinewhoop/scan/front` becomes
+  `/v1/scan/front` and the fourteen single-drone scripts that render the same
+  template with `sed s/@world@/.../` carry on knowing nothing about agents.
+- `/clock` goes to the first agent only. Three bridges forwarding one topic
+  are three publishers on it, which is a race rather than redundancy.
+- Flown with three: real time factor 1.0000 even with three bridges running,
+  every agent's scan and rangefinder present under its own namespace, EKF
+  origins still shared, closest approach 1.94 m.
+- What is left of M2 is TF prefixes, which nothing consumes yet, and the
+  per-agent acceptance runs. The next real piece is the coordinator node -
+  wiring the arithmetic in `openipc_swarm` to agents that are now, finally,
+  three separately addressable machines with sensors.
+
 ## Log Entry Template
 
 ```text

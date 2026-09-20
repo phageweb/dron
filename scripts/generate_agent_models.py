@@ -136,6 +136,42 @@ def write_world(base_world, out_worlds, names):
     return path
 
 
+
+def write_bridge_config(out_root, world_name, names):
+    """One ros_gz_bridge config per agent, derived from the single-drone one.
+
+    The template in `config/gz_bridge.yaml` is the source, not a second copy:
+    it already carries `@world@` for the world the sensors are scoped to, and
+    the rest of each topic path is the model name, which is exactly what
+    differs per agent. Substituting here rather than adding placeholders to
+    the template keeps the fourteen single-drone check scripts working
+    unchanged - they render the template with `sed s/@world@/.../` and know
+    nothing about agents.
+
+    The ROS side is renamed too: `/openipc_cinewhoop/scan/front` becomes
+    `/v1/scan/front`, which is the namespace `spec/roj/04_rozhrani.md` gives
+    each agent.
+    """
+    template = open("ros_ws/src/openipc_cinewhoop_gazebo/config/gz_bridge.yaml").read()
+    paths = []
+    os.makedirs(out_root, exist_ok=True)
+    for index, name in enumerate(names, start=1):
+        text = template.replace("@world@", world_name)
+        if index > 1:
+            # /clock belongs to the world, not to an agent. Three bridges
+            # forwarding it would be three publishers on one topic, which is
+            # a race to be the one a subscriber happens to hear.
+            text = re.sub(r'- ros_topic_name: "/clock".*?direction: GZ_TO_ROS\n',
+                          "", text, flags=re.S)
+        text = text.replace("/model/openipc_cinewhoop/", f"/model/{name}/")
+        text = text.replace('"/openipc_cinewhoop/', f'"/v{index}/')
+        path = os.path.join(out_root, f"gz_bridge_v{index}.yaml")
+        with open(path, "w") as handle:
+            handle.write(text)
+        paths.append(path)
+    return paths
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--airframe", default=os.environ.get(
@@ -171,8 +207,19 @@ def main():
               f"{START_POSES[index - 1]}")
     world_path = write_world(base_world, os.path.join(out_root, "worlds"), names)
 
+    # The world's own name, read from the file rather than from its filename,
+    # for the same reason gazebo.launch.py does: a file and a world that
+    # disagree should fail loudly instead of bridging nothing.
+    world_name = re.search(r'<world\s+name="([^"]+)"', open(world_path).read())
+    if world_name is None:
+        sys.exit(f"No <world name=...> in {world_path}.")
+    bridges = write_bridge_config(os.path.join(out_root, "bridge"),
+                                  world_name.group(1), names)
+
     print(f"models {os.path.abspath(out_models)}")
     print(f"world {os.path.abspath(world_path)}")
+    for path in bridges:
+        print(f"bridge {os.path.abspath(path)}")
 
 
 if __name__ == "__main__":

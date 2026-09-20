@@ -73,6 +73,7 @@ generated="$(python3 scripts/generate_agent_models.py --airframe "$airframe" --a
 echo "$generated"
 models_path="$(echo "$generated" | sed -n 's/^models //p')"
 world_path="$(echo "$generated" | sed -n 's/^world //p')"
+mapfile -t bridge_configs < <(echo "$generated" | sed -n 's/^bridge //p')
 if [ -z "$models_path" ] || [ -z "$world_path" ]; then
   echo "The generator did not print a models and world path." >&2
   exit 1
@@ -101,16 +102,20 @@ mkdir -p "$run_dir"
 gazebo_pid=""
 agent_pid=""
 bridge_pids=()
+gz_bridge_pids=()
 sitl_pids=()
 
 cleanup() {
-  for pid in "${sitl_pids[@]}" "$agent_pid" "${bridge_pids[@]}" "$gazebo_pid"; do
+  for pid in "${sitl_pids[@]}" "$agent_pid" "${gz_bridge_pids[@]}" \
+             "${bridge_pids[@]}" "$gazebo_pid"; do
     [ -n "$pid" ] && kill -INT "$pid" 2>/dev/null || true
   done
   sleep 1
-  for pid in "${sitl_pids[@]}" "$agent_pid" "${bridge_pids[@]}" "$gazebo_pid"; do
+  for pid in "${sitl_pids[@]}" "$agent_pid" "${gz_bridge_pids[@]}" \
+             "${bridge_pids[@]}" "$gazebo_pid"; do
     [ -n "$pid" ] && kill -9 "$pid" 2>/dev/null || true
   done
+  pkill -9 -f "parameter_bridge --ros-args -p config_file:=$run_dir" 2>/dev/null || true
   pkill -9 -f "$project_root/$sitl_bin" 2>/dev/null || true
   pkill -9 -f "gz topic -e -t /world/.*/dynamic_pose/info" 2>/dev/null || true
 }
@@ -132,7 +137,17 @@ done
 
 "$project_root/$agent_bin" udp4 -p 20199 >"$run_dir/agent.log" 2>&1 &
 agent_pid=$!
-sleep 2
+
+# One ros_gz_bridge per agent, each rendered from the single-drone template
+# with its own model and its own ROS namespace. Without these the agents have
+# no scans and no rangefinder in ROS, so nothing above the autopilot can map.
+for index in $(seq 1 "$agents"); do
+  ros2 run ros_gz_bridge parameter_bridge --ros-args \
+    -p "config_file:=${bridge_configs[$((index - 1))]}" \
+    >"$run_dir/gz_bridge_v$index.log" 2>&1 &
+  gz_bridge_pids+=($!)
+done
+sleep 3
 
 for index in $(seq 1 "$agents"); do
   instance=$((index - 1))
@@ -180,6 +195,22 @@ echo "All $agents autopilots are on the graph:$wanted_topics"
 real_time_factor="$(timeout 10 gz topic -e -t /stats -n 5 2>/dev/null \
   | grep -A2 real_time_factor | grep -oE "[0-9]+\.[0-9]+" | tail -1)"
 echo "  real time factor with $agents agents: ${real_time_factor:-unknown}"
+
+# Each agent's sensors have to arrive in ROS under its own namespace, or the
+# mapper the coordinator merges from has nothing to map.
+missing_sensors=""
+for index in $(seq 1 "$agents"); do
+  for suffix in scan/front range/down_raw; do
+    ros2 topic list 2>/dev/null | grep -Fxq "/v$index/$suffix" \
+      || missing_sensors="$missing_sensors /v$index/$suffix"
+  done
+done
+if [ -n "$missing_sensors" ]; then
+  echo "These bridged sensor topics never appeared:$missing_sensors" >&2
+  tail -10 "$run_dir/gz_bridge_v1.log" >&2 || true
+  exit 1
+fi
+echo "  each agent's scan and rangefinder are bridged under its own namespace"
 
 python3 - "$(sed -n 's/.*<world[[:space:]]\+name="\([^"]*\)".*/\1/p' "$world_path" | head -1)" "$agents" <<'PY'
 import math

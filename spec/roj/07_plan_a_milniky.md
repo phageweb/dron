@@ -51,8 +51,9 @@ ladí se o polovinu snáz.
       1 a 2, `DDS_USE_NS 1`, témata `/ap/v1/...` a `/ap/v2/...`.
       `scripts/check_multi_instance_dds.sh`, hotovo 20. 9. 2026; jeden agent
       obslouží oba klienty.
-- [x] P1–P3: dva pojmenované modely v jednom světě (`generate_agent_models.py`).
-- [x] P4: dva můstky aktuátorů, jeden na model.
+- [x] P1–P3: modely, svět i mosty Gazebo→ROS na agenta
+      (`generate_agent_models.py`); senzory chodí pod `/v<i>/`.
+- [x] P4: můstky aktuátorů, jeden na model.
 - [ ] TF: `map` → `v1/base_link`, `v2/base_link`.
 - [ ] Startovní pozice podle [08 R15](./08_rozhodnuti.md), svět beze změny.
 - [x] Ověřeno proti ground truth: tři instance sdílejí jeden počátek EKF a
