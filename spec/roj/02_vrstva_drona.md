@@ -57,7 +57,13 @@ stojí za přečtení, protože obě jdou proti prvnímu nápadu:
 | odstup od zdi za letu vpřed | 1,39 m, vůle špičky 0,93 m | `check_forward_flight.sh` |
 | úhlová autorita v rollu | 689 rad/s² (CineLog), 583 (Pavo20) | výpočet z modelu, ověřený sweepem |
 
-## 3. Co roj potřebuje — změřeno 20. 9. 2026
+## 3. Co roj potřebuje — změřeno 20. 9. 2026, ale na jiném draku
+
+> **NEPLATNÉ pro Pavo20.** Všechna čísla v téhle kapitole jsou z CineLogu:
+> kontrolní skripty nenastavovaly `SDF_PATH`, takže `OPENIPC_AIRFRAME=pavo20`
+> načetl CineLog model. Viz `workflow/troubleshooting.md`. Skripty jsou
+> opravené, měření se musí zopakovat — a napřed se musí vyřešit, proč
+> Pavo20 model po správném načtení nevzlétne.
 
 M1 je hotové. `scripts/check_dynamic_limits.sh` odlétá jednu sortu v prázdném
 `room_test` a měří všechno proti ground truth z Gazeba, ne proti odhadu, který

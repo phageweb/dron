@@ -663,6 +663,47 @@ Worth knowing: the failure is silent in the direction that matters. Zeros look
 like data. The first run of that script measured a braking distance of 0.00 m,
 which in `d_safe` would have meant three machines flying inside each other.
 
+## The Airframe Switch Did Not Switch the Airframe
+
+Symptom:
+
+- `OPENIPC_AIRFRAME=pavo20 scripts/check_*.sh` runs green and reports Pavo20
+  numbers
+- the numbers keep coming out suspiciously like the CineLog's - "the LAVA
+  model's numbers to a tenth", as one log entry put it, and rate gains that
+  "transfer unchanged"
+
+Cause:
+
+`model://` is resolved by sdformat through **SDF_PATH**, not through
+GZ_SIM_RESOURCE_PATH. The dev shell in `flake.nix` exports both, and its
+SDF_PATH points at `ros_ws/src/openipc_cinewhoop_gazebo/models` - the CineLog.
+`gazebo.launch.py` knows this and sets SDF_PATH to the selected airframe's
+directory; the fourteen shell check scripts set only GZ_SIM_RESOURCE_PATH. So
+every `check_*.sh` run with `OPENIPC_AIRFRAME=pavo20` loaded the CineLog model
+and flew it under the Pavo20's parameter file.
+
+Measured, with exactly the environment those scripts build for pavo20:
+
+```text
+SDF_PATH as inherited: .../dron/models:.../openipc_cinewhoop_gazebo/models:
+model actually loaded:  .../openipc_cinewhoop_gazebo/models/openipc_cinewhoop/model.sdf
+```
+
+Fix: every script that exports GZ_SIM_RESOURCE_PATH now exports SDF_PATH with
+the same airframe directory in front. With that line, the same command loads
+`models_pavo20/openipc_cinewhoop/model.sdf`.
+
+What it invalidates: every pavo20 measurement taken through a shell check
+before 2026-09-20 - the M0 coverage baseline, the M1 dynamic limits and so
+`d_safe`, the rate sweep, guided takeoff and forward flight. Those are CineLog
+numbers with a Pavo20 label. They have to be taken again.
+
+And one thing it reveals: **the Pavo20 model has never actually flown.** Loaded
+properly, with SDF_PATH pointing at it, it ramps throttle to 46 per cent and
+does not leave the ground. That is now the first thing to diagnose, and it is
+a real defect rather than a measurement artefact.
+
 ## A Renamed Model Does Not Turn Its Rotors
 
 Symptom:
@@ -723,12 +764,15 @@ Two methods that measure nothing here, so that nobody repeats them:
   nothing about ours, so any future attempt needs a driving method that is
   demonstrated on that example first.
 
-So what is left is a difference with no visible mechanism: two setups with
-byte-identical model files, the same entity name, the same pose, the same
-plugins, the same topics and the same entity ids, one of which turns its
-rotors and one of which does not. The only thing that differs is how the world
-refers to the model - `model://openipc_cinewhoop` against `model://anything_else`
-or an absolute path.
+**Resolved, 2026-09-20, and it was a misdiagnosis.** There was no mechanism
+because there was no phenomenon: `model://openipc_cinewhoop` was resolving
+through SDF_PATH to the *CineLog* model every time, whatever
+GZ_SIM_RESOURCE_PATH said. So every "flying" variant flew the CineLog, and
+every "renamed" variant was the first time the Pavo20 model was actually
+loaded. Renaming did not stop the rotors; it stopped the substitution. See
+"The Airframe Switch Did Not Switch the Airframe" above, and note that the
+Pavo20 model genuinely does not take off - which is the real defect this
+chase was circling.
 
 Why it matters: three drones in one world need three distinct models, so this
 blocks M2 of the swarm task. Unresolved, and the next step is a minimal

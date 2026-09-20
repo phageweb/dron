@@ -33,8 +33,16 @@ K nim tenhle úkol přidává tři, které s jedním dronem nemají smysl:
 
 ## 3. Baseline
 
-**Změřeno 19. 9. 2026**, tři běhy `OPENIPC_AIRFRAME=pavo20
-scripts/check_room_coverage.sh`, všechny zelené. Plné znění v `workflow/log.md`.
+> **NEPLATNÉ od 20. 9. 2026.** Tabulka níž je změřená na **CineLogu**, ne na
+> Pavo20. `model://` se řeší přes `SDF_PATH`, který kontrolní skripty
+> nenastavovaly, takže běh s `OPENIPC_AIRFRAME=pavo20` načetl CineLog model a
+> odlétal ho s parametry Pavo20. Skripty jsou opravené; baseline se musí
+> změřit znovu. Rozbor v `workflow/troubleshooting.md`, „The Airframe Switch
+> Did Not Switch the Airframe". Čísla nechávám, protože jako **CineLog
+> baseline** platí a rozptyl mezi běhy je použitelný odhad šumu měření.
+
+Změřeno 19. 9. 2026, tři běhy `scripts/check_room_coverage.sh`, všechny
+zelené. Plné znění v `workflow/log.md`.
 
 | | run 1 | run 2 | run 3 | rozptyl |
 | --- | ---: | ---: | ---: | ---: |

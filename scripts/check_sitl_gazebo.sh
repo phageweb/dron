@@ -44,6 +44,12 @@ trap cleanup EXIT
 
 export GZ_SIM_SYSTEM_PLUGIN_PATH="$plugin_dir${GZ_SIM_SYSTEM_PLUGIN_PATH:+:$GZ_SIM_SYSTEM_PLUGIN_PATH}"
 export GZ_SIM_RESOURCE_PATH="$models_path:$project_root/ros_ws/src/openipc_cinewhoop_gazebo/worlds${GZ_SIM_RESOURCE_PATH:+:$GZ_SIM_RESOURCE_PATH}"
+# sdformat resolves model:// through SDF_PATH, not through
+# GZ_SIM_RESOURCE_PATH, and the dev shell points SDF_PATH at the CineLog
+# models. Without this line an OPENIPC_AIRFRAME=pavo20 run loads the
+# CineLog model and reports it as the Pavo20 - which is what every
+# pavo20 measurement before 2026-09-20 actually did.
+export SDF_PATH="$project_root/ros_ws/src/openipc_cinewhoop_gazebo/$models_dir${SDF_PATH:+:$SDF_PATH}"
 
 gz sim -s -r -v 4 "$world_path" >"$test_tmpdir/gazebo.log" 2>&1 &
 gazebo_pid=$!
