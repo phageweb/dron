@@ -386,10 +386,10 @@
       <imuName>imu_link::imu</imuName>
 
       <!-- Quad X mapping follows the Iris reference model, scaled for 3 in props. -->
-      <control channel="0"><jointName>rotor_0_joint</jointName><multiplier>3980</multiplier><offset>0</offset><servo_min>1100</servo_min><servo_max>1900</servo_max><type>COMMAND</type><cmd_topic>/model/openipc_cinewhoop/joint/rotor_0_joint/cmd</cmd_topic></control>
-      <control channel="1"><jointName>rotor_1_joint</jointName><multiplier>3980</multiplier><offset>0</offset><servo_min>1100</servo_min><servo_max>1900</servo_max><type>COMMAND</type><cmd_topic>/model/openipc_cinewhoop/joint/rotor_1_joint/cmd</cmd_topic></control>
-      <control channel="2"><jointName>rotor_2_joint</jointName><multiplier>3980</multiplier><offset>0</offset><servo_min>1100</servo_min><servo_max>1900</servo_max><type>COMMAND</type><cmd_topic>/model/openipc_cinewhoop/joint/rotor_2_joint/cmd</cmd_topic></control>
-      <control channel="3"><jointName>rotor_3_joint</jointName><multiplier>3980</multiplier><offset>0</offset><servo_min>1100</servo_min><servo_max>1900</servo_max><type>COMMAND</type><cmd_topic>/model/openipc_cinewhoop/joint/rotor_3_joint/cmd</cmd_topic></control>
+      <control channel="0"><jointName>rotor_0_joint</jointName><multiplier>5580</multiplier><offset>0</offset><servo_min>1100</servo_min><servo_max>1900</servo_max><type>COMMAND</type><cmd_topic>/model/openipc_cinewhoop/joint/rotor_0_joint/cmd</cmd_topic></control>
+      <control channel="1"><jointName>rotor_1_joint</jointName><multiplier>5580</multiplier><offset>0</offset><servo_min>1100</servo_min><servo_max>1900</servo_max><type>COMMAND</type><cmd_topic>/model/openipc_cinewhoop/joint/rotor_1_joint/cmd</cmd_topic></control>
+      <control channel="2"><jointName>rotor_2_joint</jointName><multiplier>5580</multiplier><offset>0</offset><servo_min>1100</servo_min><servo_max>1900</servo_max><type>COMMAND</type><cmd_topic>/model/openipc_cinewhoop/joint/rotor_2_joint/cmd</cmd_topic></control>
+      <control channel="3"><jointName>rotor_3_joint</jointName><multiplier>5580</multiplier><offset>0</offset><servo_min>1100</servo_min><servo_max>1900</servo_max><type>COMMAND</type><cmd_topic>/model/openipc_cinewhoop/joint/rotor_3_joint/cmd</cmd_topic></control>
     </plugin>
   </model>
 </sdf>

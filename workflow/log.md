@@ -640,6 +640,33 @@ terms rather than a number on its own.
 - **And the real defect underneath: the Pavo20 model has never flown.** Loaded
   properly it ramps throttle to 46 per cent and stays on the ground. Next.
 
+- **The Pavo20 model could not lift because its multiplier was the CineLog's.**
+  The ArduPilot plugin maps full throttle onto `<multiplier>` rad/s and the
+  motor model clamps at `<maxRotVelocity>`. The Pavo20 model carried
+  multiplier 3980 - inherited from the CineLog, where 3980 is also its
+  maxRotVelocity - while its own maxRotVelocity is 5580. So full stick reached
+  3980 rad/s, which with its motor constant is 1.79 times its weight, and
+  hover would have needed 75 per cent throttle against the 53 per cent its
+  parameter file expects.
+- The arithmetic says the multiplier should be 5580, and says it three ways at
+  once: 6.36e-8 * 5580^2 is 1.980 N, which is **202 g per rotor and 807 g of
+  thrust** against the bill of materials' 202 g and 808 g; thrust to weight
+  3.53 against its documented 3.52; and hover at **53 per cent**, which is
+  `MOT_THST_HOVER 0.53` in the parameter file to the digit. The parameter file
+  had been computed for a model that was never built.
+- Changed in all four control blocks, and **the Pavo20 then flew for the first
+  time**: peak 2.09 m, settled 2.01 m against a 2.00 m target.
+- It failed the check anyway, and the failure is the interesting part: worst
+  tilt **33.4 degrees** against the 25 the check allows, where the CineLog
+  does the same manoeuvre at 15.5. The gains it is flying were measured on
+  what turned out to be the CineLog, so this is the first evidence about how
+  the Pavo20 actually behaves - and it says the tuning does not transfer. The
+  repository suspected something like this when it computed 583 against
+  689 rad/s^2 of roll authority and then could not see the difference in a
+  sweep; the sweep was flying the CineLog too.
+- `check_model_consistency.py pavo20` still passes, so the URDF and the SDF
+  agree about geometry; the multiplier is not something it checks.
+
 ## Log Entry Template
 
 ```text
