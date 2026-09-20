@@ -681,13 +681,35 @@ Narrowed to, by four variants of one model file:
 | unchanged, at an offset pose, in a generated world | yes |
 | `<model name>` + model.config + world uri renamed to `openipc_cinewhoop_v1` | no |
 | the same renamed to `alpha` | no, so it is not the chosen name |
-| model file untouched, instance renamed with `<include><name>v1</name>` | no, so it is the entity's name and not where the name came from |
+| model directory and uri renamed, model file untouched, instance renamed with `<include><name>v1</name>` | no, 3 runs |
+| **everything unchanged, only `<include><name>v1</name>` added** | **yes, 2 runs** |
+| unchanged directory, byte-identical files, included by absolute path instead of `model://` | no |
+| two of those, included by absolute path, one commanded | no |
+
+**Correction, 2026-09-20.** An earlier version of this entry concluded "it is
+the entity's name and not where the name came from". That is wrong, and the
+fifth row is why: renaming the instance alone, with the resource untouched,
+flies. The failing variants all renamed the *resource* - the directory, the
+model.config `<name>` and the `model://` uri - or replaced the uri with a
+filesystem path. The claim was made from a variant that changed both at once.
 
 Ruled out, each by measurement rather than by argument: the world edit and the
 offset start pose; `<robotNamespace>` (restored, with the bridge pointed at the
 matching topic); the IMU lookup and the state feed (both variants report level
 attitude on the ground and find `imu_link::imu`); a duplicate model in the
-world; and stray processes from an earlier run.
+world; stray processes from an earlier run; the entity's name (the fifth row);
+and non-determinism (3 runs failing, 2 flying, no crossover).
+
+Also ruled out, 2026-09-20, between a flying setup and a failing one whose
+model directories are byte-identical (`diff -r` clean):
+
+- the model is fully simulated either way - teleported 1.5 m up, both fall
+  back to the floor in the same 1.5 s, so nothing is pinning it;
+- the entity tree is identical, down to the entity ids, so the model is not
+  being nested inside another when it is included differently;
+- four motor plugins load in both and log the same subscription topic at
+  verbosity 4, and neither log contains a single error line;
+- the motor topic has one publisher and four subscribers in both.
 
 Two methods that measure nothing here, so that nobody repeats them:
 
@@ -701,8 +723,17 @@ Two methods that measure nothing here, so that nobody repeats them:
   nothing about ours, so any future attempt needs a driving method that is
   demonstrated on that example first.
 
-Why it matters: three drones in one world need three model names, so this
-blocks M2 of the swarm task. Unresolved.
+So what is left is a difference with no visible mechanism: two setups with
+byte-identical model files, the same entity name, the same pose, the same
+plugins, the same topics and the same entity ids, one of which turns its
+rotors and one of which does not. The only thing that differs is how the world
+refers to the model - `model://openipc_cinewhoop` against `model://anything_else`
+or an absolute path.
+
+Why it matters: three drones in one world need three distinct models, so this
+blocks M2 of the swarm task. Unresolved, and the next step is a minimal
+reproduction - a box with four rotors and one motor plugin - because at this
+size the difference has stopped being findable by comparing logs.
 
 ## Known Risks Before Implementation
 
