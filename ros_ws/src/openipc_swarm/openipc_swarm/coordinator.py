@@ -34,7 +34,11 @@ from std_msgs.msg import Float32, String
 
 from openipc_swarm.assignment import Agent, assign_targets
 from openipc_swarm.merge import GeometryMismatch, conflict_fraction, merge_grids
-from openipc_swarm.safety import AgentMotion, speed_limits
+from openipc_swarm.safety import (
+    AgentMotion,
+    separation_terms,
+    speed_limits,
+)
 from openipc_swarm.tracking import SwarmState
 
 
@@ -63,12 +67,19 @@ class Coordinator(Node):
     def __init__(self):
         super().__init__("swarm_coordinator")
         self.declare_parameter("agents", ["v1", "v2", "v3"])
-        # d_safe and the stopping room come from M1 on the Pavo20; they are
-        # parameters because another airframe measures different ones and
-        # nobody should have to edit this file to fly it.
-        self.declare_parameter("d_safe_m", 1.56)
-        self.declare_parameter("stopping_room_m", 1.409)
+        # The separation is derived from the speed the swarm is allowed to
+        # fly, not carried over from the speed it was measured at. The first
+        # swarm flight ordered 3366 stops and no slowdowns because it held the
+        # 1 m/s numbers - a stop line of 2.96 m - while flying at 0.5 m/s in a
+        # room 8 by 6 m, where nobody is ever 3 m from everybody.
+        #
+        # These four are what M1 measured and what does not depend on speed:
+        # the rotor tip, the estimator's drift, the command latency, and the
+        # braking table inside safety.braking_distance_m.
         self.declare_parameter("max_speed_mps", 0.5)
+        self.declare_parameter("rotor_tip_m", 0.06107)
+        self.declare_parameter("estimate_error_m", 0.012)
+        self.declare_parameter("latency_s", 0.408)
         self.declare_parameter("state_max_age_s", 0.2)
         self.declare_parameter("period_s", 0.2)
         self.declare_parameter("resolution_m", 0.10)
@@ -110,11 +121,19 @@ class Coordinator(Node):
             String, "/swarm/assignment", 10)
         self._safety_log = self.create_publisher(String, "/swarm/safety", 10)
 
+        self._d_safe_m, self._stopping_room_m = separation_terms(
+            float(self.get_parameter("max_speed_mps").value),
+            float(self.get_parameter("rotor_tip_m").value),
+            float(self.get_parameter("estimate_error_m").value),
+            float(self.get_parameter("latency_s").value))
+
         self.create_timer(float(self.get_parameter("period_s").value),
                           self._tick)
         self.get_logger().info(
-            f"Coordinating {', '.join(self._names)} with d_safe "
-            f"{self.get_parameter('d_safe_m').value:.2f} m")
+            f"Coordinating {', '.join(self._names)} at "
+            f"{self.get_parameter('max_speed_mps').value:.2f} m/s: d_safe "
+            f"{self._d_safe_m:.2f} m, stopping at "
+            f"{self._d_safe_m + self._stopping_room_m:.2f} m")
 
     # The clock: pose stamps carry ArduPilot's UTC and Gazebo's /clock does not
     # arrive, so R7 says the swarm reads one clock only. This node uses its own
@@ -153,10 +172,9 @@ class Coordinator(Node):
         motions = [AgentMotion(name, payload[0], payload[1])
                    for name, payload in fresh.items()]
         limits, interventions = speed_limits(
-            motions,
-            float(self.get_parameter("d_safe_m").value),
+            motions, self._d_safe_m,
             float(self.get_parameter("max_speed_mps").value),
-            float(self.get_parameter("stopping_room_m").value))
+            self._stopping_room_m)
 
         for name in self._names:
             message = Float32()

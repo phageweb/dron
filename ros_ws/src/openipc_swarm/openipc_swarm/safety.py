@@ -167,3 +167,45 @@ def deadlock_backoff(
             if separation(first, second) <= stop_at_m:
                 return min(first.name, second.name)
     return None
+
+
+# What M1 measured on the Pavo20, and the only honest source for the braking
+# term: three speeds, three distances, interpolated between and held flat
+# above the fastest measured. A quadratic fit was tried and does not describe
+# these - 0.174, 0.426 and 1.001 m are not v^2 - because most of the stop is
+# the controller deciding rather than the airframe decelerating.
+MEASURED_BRAKING_M = {0.25: 0.174, 0.50: 0.426, 1.00: 1.001}
+
+
+def braking_distance_m(speed_mps: float,
+                       measured=None) -> float:
+    """How far the machine travels after being told to stop, at this speed."""
+    table = sorted((measured or MEASURED_BRAKING_M).items())
+    if speed_mps <= table[0][0]:
+        # Below the slowest measurement, scale the slowest one down with
+        # speed rather than pretending a stop is free.
+        return table[0][1] * speed_mps / table[0][0]
+    for (low_v, low_m), (high_v, high_m) in zip(table, table[1:]):
+        if speed_mps <= high_v:
+            share = (speed_mps - low_v) / (high_v - low_v)
+            return low_m + share * (high_m - low_m)
+    # Above the fastest measurement there is no data, so extrapolating would
+    # be inventing one. The caller is told what the fastest measured stop was.
+    return table[-1][1] * speed_mps / table[-1][0]
+
+
+def separation_terms(speed_mps: float, rotor_tip_m: float,
+                     estimate_error_m: float, latency_s: float):
+    """d_safe at this speed, and the room a stop needs on top of it.
+
+    `spec/roj/03_vrstva_roje.md` writes d_safe as a sum, and every term of it
+    except the geometry depends on how fast the machines are allowed to go.
+    Carrying the 1 m/s numbers into a swarm that flies at 0.5 m/s is what
+    stopped the first swarm flight dead: the stop line came out at 2.96 m, and
+    three machines in a room 8 by 6 m are never that far apart.
+    """
+    braking = braking_distance_m(speed_mps)
+    d_safe = (2 * rotor_tip_m + 2 * estimate_error_m
+              + speed_mps * latency_s + braking)
+    stopping_room = speed_mps * latency_s + braking
+    return d_safe, stopping_room

@@ -84,8 +84,20 @@ offsety dopočítávat a obava z [06 R16](./06_slozena_mapa.md) nenastala.
 
 Mimochodem je z toho vidět i osová transformace: hlášené `x` odpovídá světovému
 `y` a hlášené `y` světovému `x`, což je `gazeboXYZToNED 0 0 0 180 0 90`
-v modelu. Měřeno na MAVLinku; že totéž platí pro `/ap/v<i>/pose/filtered`,
-které je v ENU, se musí ověřit zvlášť, až na něm bude koordinátor stát.
+v modelu.
+
+> **Oprava 20. 9. 2026: pro ROS cestu to neplatí.** Ta výhrada o `/ap/v<i>/pose/filtered`
+> byla oprávněná a ověření dopadlo opačně. Za letu tři agenti vzdálení 2 m
+> hlásí přes AP_DDS `(+0,73; +0,04)`, `(+0,72; +0,04)` a `(+0,77; +0,04)` —
+> tedy **každý svou polohu vůči vlastnímu startu**, ne vůči společnému
+> počátku. MAVLink `LOCAL_POSITION_NED` offsety nese, AP_DDS ne.
+>
+> Důsledky jsou dva a oba zásadní: koordinátor vidí tři stroje na sobě, takže
+> bezpečnostní filtr je trvale zastavuje, a mřížky tří mapperů jsou vystředěné
+> na tři různá fyzická místa, takže slučování buňka po buňce skládá cizí
+> místnosti přes sebe. Oprava je přičíst každému agentovi jeho známý startovní
+> offset — generátor ho zná — a mřížky před sloučením posunout o odpovídající
+> počet buněk.
 
 ## 4. Meze povelů
 

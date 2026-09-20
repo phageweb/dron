@@ -886,6 +886,32 @@ terms rather than a number on its own.
 - The check now asserts traffic on every sensor topic rather than its
   existence, because the difference between those two is where this hour went.
 
+- **The swarm was stopping itself for two separate reasons, and the second
+  one corrects yesterday's R16 answer.**
+- First: the coordinator held the 1 m/s separation numbers while flying at
+  0.5 m/s. d_safe plus the stopping room came to 2.96 m, and three machines in
+  a room 8 by 6 m are never all that far apart, so the filter ordered a stop
+  on every pair on every tick - 3366 stops and not one slowdown. The
+  coordinator now derives both from the speed it is allowed to fly, using the
+  measured braking table rather than a v^2 fit, because 0.174, 0.426 and
+  1.001 m are not v^2: most of a stop is the controller deciding. At 0.5 m/s
+  that is d_safe 0.78 m and a stop line of 1.41 m.
+- Second, and it did not go away with the first: **AP_DDS reports each
+  agent's pose relative to its own origin.** Three machines standing 2 m
+  apart report (+0.73, +0.04), (+0.72, +0.04) and (+0.77, +0.04) - which is
+  how far each has drifted from its own start. Yesterday's R16 check said the
+  origins are shared, and it was right about MAVLink's LOCAL_POSITION_NED and
+  wrong about the topic the coordinator actually reads. The caveat was in the
+  entry; the check that would have caught it was not.
+- So the coordinator sees three machines stacked on one point, which is why
+  it stops them, and the three mappers' grids are centred on three different
+  physical places, which means the merged map has been overlaying different
+  rooms. The 83 to 84 per cent it has been reporting is that overlay, not a
+  map of the room.
+- The fix is the offsets the generator already knows: add each agent's start
+  to its pose, and shift its grid by the matching number of cells before
+  merging. Next.
+
 ## Log Entry Template
 
 ```text

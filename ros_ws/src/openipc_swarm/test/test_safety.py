@@ -179,3 +179,35 @@ class TestK1OnSyntheticTrajectories(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestSpeedDependentTerms(unittest.TestCase):
+    """d_safe has to follow the speed, or it stops a room-sized swarm dead."""
+
+    def test_the_measured_points_come_back_unchanged(self):
+        from openipc_swarm.safety import braking_distance_m
+        self.assertAlmostEqual(braking_distance_m(0.25), 0.174)
+        self.assertAlmostEqual(braking_distance_m(0.50), 0.426)
+        self.assertAlmostEqual(braking_distance_m(1.00), 1.001)
+
+    def test_between_them_it_interpolates(self):
+        from openipc_swarm.safety import braking_distance_m
+        middle = braking_distance_m(0.75)
+        self.assertGreater(middle, 0.426)
+        self.assertLess(middle, 1.001)
+
+    def test_a_crawl_still_costs_something_to_stop(self):
+        from openipc_swarm.safety import braking_distance_m
+        self.assertGreater(braking_distance_m(0.1), 0.0)
+        self.assertLess(braking_distance_m(0.1), 0.174)
+
+    def test_the_stop_line_at_half_a_metre_per_second_fits_the_room(self):
+        # The failure this exists for: at 1 m/s the stop line is about 3 m,
+        # and three machines in a room 8 by 6 m are never that far apart, so
+        # the filter ordered a permanent stop. At the 0.5 m/s they fly it has
+        # to be something a room can hold.
+        from openipc_swarm.safety import separation_terms
+        d_safe, room = separation_terms(0.5, 0.06107, 0.012, 0.408)
+        self.assertLess(d_safe + room, 1.5)
+        fast_safe, fast_room = separation_terms(1.0, 0.06107, 0.012, 0.408)
+        self.assertGreater(fast_safe + fast_room, 2.5)

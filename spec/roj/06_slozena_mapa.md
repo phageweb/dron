@@ -81,6 +81,11 @@ srovnání s baseline, kvůli kterému celý úkol existuje.
 
 Odůvodnění je v [08](./08_rozhodnuti.md).
 
+> **Pozor:** níž stojí, že se obava nepotvrdila. To platí pro MAVLink a
+> **neplatí pro ROS cestu**, na které koordinátor stojí — viz opravu v
+> [04 §3](./04_rozhrani.md). Mřížky se před sloučením musí posunout o startovní
+> offsety.
+
 - **R16 — mřížka 20 × 20 m při 0,10 m zůstává** a obava, která u ní stála, se
   nepotvrdila. Mřížka je vystředěná na počátek frame
   (`occupancy_mapper.py:94-98`), kterým je origin EKF agenta — a **ten je pro

@@ -379,6 +379,20 @@ node.create_subscription(
     QoSProfile(depth=1, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL))
 paths = {i: [] for i in indices}
 agent_maps = {}
+# The coordinator already publishes why it did what it did. Recording both
+# logs turns the flight into a diagnosis rather than a single number: the
+# safety log says how much of the time the swarm was braking itself, and the
+# assignment log says whether the three were ever sent to different places.
+import json as _json
+from std_msgs.msg import String
+safety_log = []
+assignment_log = []
+node.create_subscription(
+    String, "/swarm/safety",
+    lambda m: safety_log.append(_json.loads(m.data)), 50)
+node.create_subscription(
+    String, "/swarm/assignment",
+    lambda m: assignment_log.append(_json.loads(m.data)), 50)
 for index in indices:
     node.create_subscription(
         OccupancyGrid, f"/v{index}/map",
@@ -398,6 +412,20 @@ for index in indices:
 # the first version of this check did - leaves the autonomy cruising on the
 # ground, and then the rangefinder sits 0.021 m up reading inf and the mapper
 # maps nothing. Wait for them rather than telling them.
+# What the coordinator actually sees. The MAVLink check said the three EKFs
+# share an origin, but that was MAVLink; AP_DDS publishes its own pose in ENU
+# and whether it carries the same offsets is a separate question - one the
+# coordinator's whole separation argument rests on.
+deadline = time.time() + 6
+while time.time() < deadline:
+    rclpy.spin_once(node, timeout_sec=0.1)
+for index in indices:
+    if paths[index]:
+        x, y = paths[index][-1]
+        print(f"  /ap/v{index}/pose/filtered reads ({x:+.2f}, {y:+.2f})")
+    else:
+        print(f"  /ap/v{index}/pose/filtered has published nothing")
+
 print("  waiting for the agents to take themselves off", flush=True)
 deadline = time.time() + 90
 while time.time() < deadline:
@@ -453,6 +481,34 @@ print(f"  of the enclosure inside, {100 * inside:.0f} per cent")
 
 with open(os.path.join(run_dir, "coverage.txt"), "w") as handle:
     handle.write(f"room {whole:.4f}\nenclosure {inside:.4f}\n")
+
+# Why it came out that way, from the coordinator's own account of itself.
+ticks = len(assignment_log)
+stops = sum(1 for entry in safety_log
+            for i in entry["interventions"] if i["action"] == "stop")
+slows = sum(1 for entry in safety_log
+            for i in entry["interventions"] if i["action"] == "slow")
+print(f"  coordinator ticks logged: {ticks}; safety messages: "
+      f"{len(safety_log)} ({stops} stops, {slows} slowdowns)")
+if ticks:
+    idle = sum(1 for entry in assignment_log if not entry["assigned"])
+    unassigned = sum(len(entry["unassigned"]) for entry in assignment_log)
+    distinct = {tuple(sorted((n, tuple(t["cell"]))
+                             for n, t in entry["assigned"].items()))
+                for entry in assignment_log}
+    conflicts = [entry["conflict_fraction"] for entry in assignment_log]
+    print(f"  ticks with nobody assigned: {idle} of {ticks}; "
+          f"agent-ticks unassigned: {unassigned}")
+    print(f"  distinct assignments over the flight: {len(distinct)}")
+    print(f"  conflicting cells, worst tick: {max(conflicts):.4f}")
+    limited = [min(entry["limits_mps"].values()) for entry in assignment_log
+               if entry["limits_mps"]]
+    if limited:
+        braked = sum(1 for v in limited if v < 0.5)
+        print(f"  ticks where somebody was held under 0.5 m/s: "
+              f"{braked} of {len(limited)}")
+with open(os.path.join(run_dir, "coordinator_log.json"), "w") as handle:
+    _json.dump({"safety": safety_log, "assignment": assignment_log}, handle)
 
 if min(flown.values()) == 0:
     sys.exit("An agent published no pose at all; it never flew.")
