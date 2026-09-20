@@ -774,10 +774,11 @@ loaded. Renaming did not stop the rotors; it stopped the substitution. See
 Pavo20 model genuinely does not take off - which is the real defect this
 chase was circling.
 
-Why it matters: three drones in one world need three distinct models, so this
-blocks M2 of the swarm task. Unresolved, and the next step is a minimal
-reproduction - a box with four rotors and one motor plugin - because at this
-size the difference has stopped being findable by comparing logs.
+Why it mattered: three drones in one world need three distinct models, so it
+blocked M2. **Cleared on 2026-09-20 and not by anything in this entry.** Once
+the Pavo20 model's throttle multiplier was fixed, `check_two_agents_fly.sh`
+passes: v1 climbs on command, v2 stays on the ground, then v2 climbs too, and
+they hold 1.92 m apart. Nothing about naming had to change.
 
 ## Known Risks Before Implementation
 

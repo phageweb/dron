@@ -725,6 +725,26 @@ terms rather than a number on its own.
   the flight policy and the room, not by which machine flies it, so the swarm
   comparison it exists for stays valid across the correction.
 
+- **Two agents fly in one world, and the blocker was never what it looked
+  like.** `check_two_agents_fly.sh` passes: both autopilots on the graph as
+  /ap/v1 and /ap/v2, both models spawned where the generator put them, v1
+  told to climb and v1 alone climbing - which is the test a crossed
+  `fdm_port_in` would fail - then v2, then both holding 1.92 m apart against
+  a `d_safe` of 1.56.
+- Nothing about naming had to change. Two days of "a renamed Gazebo model
+  does not turn its rotors" were the Pavo20's inherited throttle multiplier,
+  seen only in the renamed variants because those were the only ones that
+  actually loaded the Pavo20. The entry stays in `troubleshooting.md` with a
+  line saying what cleared it, because the eliminations in it are sound and
+  the conclusion was not.
+- One more thing the bulk SDF_PATH fix got wrong and this run caught: in this
+  script it pointed at the airframe directory, when the world includes
+  `model://openipc_cinewhoop_v1` and only the generated directory has those.
+  A mechanical fix applied to fourteen files needed one of them to be
+  different, which is the usual way mechanical fixes fail.
+- **R14 does not need revising.** One simulator per agent was the fallback if
+  three models could not share a world; they can.
+
 ## Log Entry Template
 
 ```text

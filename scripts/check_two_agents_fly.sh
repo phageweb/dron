@@ -11,14 +11,11 @@
 # only one is told to**: a crossed fdm_port_in would show up as the other
 # vehicle climbing, and no amount of both-took-off would have caught it.
 #
-# KNOWN FAILING as of 2026-09-20, and committed failing on purpose: the
-# infrastructure it sets up is right and the flight is not. Both autopilots
-# reach the graph, both models spawn where they should, the autopilot commands
-# its rotors and the bridge relays them - and the vehicle does not lift,
-# because a renamed Gazebo model does not turn its rotors. The reproduction,
-# the four variants it was narrowed with, and the list of things ruled out are
-# in workflow/troubleshooting.md, "A Renamed Model Does Not Turn Its Rotors".
-# Nothing in CI runs this; scripts/ci.sh has an explicit list.
+# Passing since 2026-09-20. It failed for two days for a reason that had
+# nothing to do with two agents: the Pavo20 model carried the CineLog's
+# throttle multiplier and could not lift itself, and every "working" variant
+# in the hunt was the CineLog being substituted through SDF_PATH. Both are
+# fixed; see workflow/troubleshooting.md.
 #
 # Opt-in: needs the ignored local ArduPilot, ardupilot_gazebo and DDS builds
 # plus the actuator bridge from scripts/build_actuator_bridge.sh.
@@ -75,7 +72,11 @@ export GZ_SIM_RESOURCE_PATH="$models_path:$(dirname "$world_path")${GZ_SIM_RESOU
 # models. Without this line an OPENIPC_AIRFRAME=pavo20 run loads the
 # CineLog model and reports it as the Pavo20 - which is what every
 # pavo20 measurement before 2026-09-20 actually did.
-export SDF_PATH="$project_root/ros_ws/src/openipc_cinewhoop_gazebo/$models_dir${SDF_PATH:+:$SDF_PATH}"
+# The generated models, not the airframe directory: the world includes
+# model://openipc_cinewhoop_v1 and only $models_path has those. The dev shell
+# points SDF_PATH at the CineLog, so without this the include resolves to
+# nothing - or worse, to a model that is not the one being flown.
+export SDF_PATH="$models_path${SDF_PATH:+:$SDF_PATH}"
 
 set +u
 source install/setup.bash

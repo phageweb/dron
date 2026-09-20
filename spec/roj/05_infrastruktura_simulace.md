@@ -29,12 +29,16 @@ Doporučení: generovat. Tři ručně udržované kopie modelu se rozejdou a
 Generátor existuje: `scripts/generate_agent_models.py`, a modely se načtou,
 spawnou na správných pozicích a jejich autopiloti naběhnou.
 
-**Narazilo to ale na překážku, která není naše:** přejmenovaný model v Gazebu
-netočí rotory. Ověřeno na čtyřech variantách téhož souboru, včetně
-přejmenování jen instance přes `<include><name>`. Rozbor a seznam vyloučených
-příčin je v `workflow/troubleshooting.md`, „A Renamed Model Does Not Turn Its
-Rotors". Dokud tohle neustoupí, tři modely v jednom světě nepoletí a je
-potřeba buď minimální reprodukce pro upstream, nebo revize R14.
+**Hotovo 20. 9. 2026.** Dva agenti v jednom světě létají:
+`scripts/check_two_agents_fly.sh` prochází — v1 dostane povel a vzlétne, v2
+zůstane na zemi (což je ten test, který by chycenou záměnu portů odhalil),
+pak vzlétne i v2 a oba drží s nejbližším přiblížením 1,92 m proti `d_safe`
+1,56 m.
+
+Dva dny to selhávalo z důvodu, který s více agenty nesouvisel: Pavo20 model
+měl zděděný `multiplier` a nedokázal se zvednout, zatímco každá „funkční"
+varianta při hledání byl podstrčený CineLog. Obojí je opravené; rozbor v
+`workflow/troubleshooting.md`. **Revize R14 tedy není potřeba.**
 
 ### P3 — most Gazebo→ROS má cesty s názvem modelu
 
