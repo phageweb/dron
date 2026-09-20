@@ -667,6 +667,37 @@ terms rather than a number on its own.
 - `check_model_consistency.py pavo20` still passes, so the URDF and the SDF
   agree about geometry; the multiplier is not something it checks.
 
+- **The Pavo20 swept for the first time, and it needs its own gains.** With
+  the throttle scale fixed and `SDF_PATH` no longer substituting the CineLog:
+
+| ATC_RAT_RLL_P | result |
+| --- | --- |
+| 0.020 | never left the ground: 0.01 m of a 3.00 m target |
+| 0.030 | the same |
+| 0.040 | overshoot 8.1 %, rise 0.29 s, settle 0.82 s, rms 2.10 deg, 6 sign changes |
+| 0.060 | overshoot 7.6 %, rise 0.31 s, settle 0.91 s, rms 1.71 deg, 6 sign changes |
+| 0.080 | overshoot 8.4 %, rise 0.38 s, settle 1.08 s, rms 1.50 deg, 17 sign changes |
+
+- At the bottom of the range this machine behaves the opposite way to the
+  CineLog: too soft a rate loop and it does not take off at all, rather than
+  wallowing its way up. At the top, 0.080 rings (17 sign changes) but is
+  nowhere near the CineLog's 0.080, which was gone entirely at 49.6 per cent
+  overshoot and 162 sign changes. Different machine, different curve - which
+  is what the airframe flag was for and what it had never actually delivered.
+- The gains moved to **0.060** in `ardupilot_params_pavo20.parm`, with the
+  sweep written into the file above them. At the inherited 0.040 the Pavo20
+  climbs but reaches 33.4 degrees of tilt, against the 25 the check allows; at
+  0.060 that is 20.4 and `check_guided_takeoff.sh` passes. `check_forward_flight.sh`
+  passes too: held 1.38 m off the wall with 0.82 m of rotor clearance.
+- Also fixed the gap that let this through: `check_model_consistency.py` now
+  compares `<multiplier>` against `<maxRotVelocity>` and the model's implied
+  hover against `MOT_THST_HOVER`. Negative-tested against the old multiplier.
+- **A mistake worth recording.** The first attempt at this sweep was run while
+  the negative test was reverting the model file underneath it, so its first
+  two gains failed for a reason that had nothing to do with tuning. Killed it,
+  checked for stray processes and a clean tree, and swept again. Nothing from
+  the first attempt is used.
+
 ## Log Entry Template
 
 ```text

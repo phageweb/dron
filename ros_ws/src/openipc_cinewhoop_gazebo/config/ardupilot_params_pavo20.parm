@@ -121,11 +121,31 @@ MOT_THST_HOVER 0.53
 # What remains undone is hardware, not simulation. This onset is optimistic for
 # the same reason the CineLog's is - no gyro noise, no frame resonance, no ESC
 # lag beyond the motor model.
-ATC_RAT_RLL_P 0.040
-ATC_RAT_RLL_I 0.040
+#
+# 2026-09-20: everything above this line was measured on the CineLog. The
+# airframe switch resolved model:// through SDF_PATH, which the check scripts
+# did not set, so every "pavo20" sweep flew the other machine - see
+# workflow/troubleshooting.md, "The Airframe Switch Did Not Switch the
+# Airframe". Swept again on the real Pavo20, once its throttle scale was
+# fixed:
+#
+#   0.020  never left the ground, 0.01 m of a 3.00 m target
+#   0.030  the same
+#   0.040  overshoot 8.1 %, rise 0.29 s, settle 0.82 s, rms 2.10 deg,  6 changes
+#   0.060  overshoot 7.6 %, rise 0.31 s, settle 0.91 s, rms 1.71 deg,  6 changes
+#   0.080  overshoot 8.4 %, rise 0.38 s, settle 1.08 s, rms 1.50 deg, 17 changes
+#
+# This machine is the opposite of the CineLog at the bottom of the range: too
+# soft a rate loop and it cannot take off at all, rather than wallowing. At
+# 0.040 it climbs but reaches 33.4 degrees of tilt on the way, against the 25
+# that check_guided_takeoff.sh allows; at 0.060 that is 20.4 and the check
+# passes. Ringing starts between 0.060 and 0.080, so 0.060 is inside the band
+# rather than at its edge.
+ATC_RAT_RLL_P 0.060
+ATC_RAT_RLL_I 0.060
 ATC_RAT_RLL_D 0.0005
-ATC_RAT_PIT_P 0.040
-ATC_RAT_PIT_I 0.040
+ATC_RAT_PIT_P 0.060
+ATC_RAT_PIT_I 0.060
 ATC_RAT_PIT_D 0.0005
 ATC_RAT_YAW_P 0.023
 ATC_RAT_YAW_I 0.0023
