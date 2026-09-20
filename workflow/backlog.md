@@ -488,6 +488,60 @@
       (`scripts/check_unified_launch.sh`)
 - [ ] Confirm on a screen that RViz shows the model, TF and the lidar correctly
 
+## Milestone 12: Swarm in Simulation
+
+The task is `spec/roj/`, the plan is `spec/roj/07_plan_a_milniky.md`, and
+these are the pieces of it that are not done. M0, M1, M3 and M4 are closed;
+M2 is closed except the two items below; M5 is where the work is.
+
+### Open, and blocking M5
+
+- [ ] Add each agent's start offset to the pose the coordinator reads.
+      AP_DDS publishes a pose relative to that vehicle's own origin, so three
+      machines 2 m apart report the same position and the safety filter stops
+      them for ever. The offsets are in `generate_agent_models.py`
+      (`START_POSES`); pass them to the coordinator as a parameter.
+- [ ] Shift each agent's grid by the matching number of cells before merging,
+      for the same reason: three grids centred on three different physical
+      places are being overlaid as if they were one room, so the 83 to 84 per
+      cent coverage reported so far is that overlay and not a measurement.
+- [ ] Re-fly `check_swarm_mapping.sh 3` once both are in, and compare against
+      the baseline honestly: 89 to 93 per cent of the room, 92 to 94 of the
+      enclosure, with a noise floor of 4 points on the room and 14 on one
+      wall.
+- [ ] Work out why no agent is ever assigned a target. It may simply be the
+      frame bug above - three agents at one cell - but it has not been
+      checked separately, and `assign_targets` has tests that pass.
+
+### Open, not blocking
+
+- [ ] Per-agent acceptance runs: fly each of the three through the
+      single-drone checks rather than trusting that three work because one
+      does. `spec/roj/02_vrstva_drona.md` section 4 lists them.
+- [ ] TF prefixes: `map -> v<i>/base_link`, one `pose_tf_broadcaster` per
+      agent. Nothing consumes them yet, which is why this is not blocking.
+- [ ] Contract tests from `spec/roj/04_rozhrani.md` section 6 - swapped
+      identities, a coordinator that goes quiet, a stale state, a restarted
+      instance. These need machines running, which they now are.
+- [ ] Decide the conflict-cell threshold before the first scored swarm run,
+      as R17 asks. The merge already counts conflicts and the log carries the
+      fraction; nobody has said what value is too many.
+- [ ] Re-measure the CineLog's coverage baseline. Everything recorded for it
+      was measured while it was standing in for the Pavo20, so its own
+      numbers are sound, but they were taken with the old guided timeout.
+
+### Follow-ups from what was found on 2026-09-20
+
+- [ ] `check_room_coverage.sh` still derives the room geometry inline, while
+      `scripts/room_geometry.py` now holds the same derivation for the swarm
+      check. Point the older check at the module so the two cannot drift.
+- [ ] `check_model_consistency.py` compares geometry, mass, the throttle
+      scale and the hover throttle. It does not compare the rate gains in the
+      parameter file against anything, and the gains are now per airframe.
+- [ ] The swarm runs leak nothing now, but the leak that was found - one
+      `parameter_bridge` per agent surviving every run, two hours' worth of
+      them - suggests every opt-in check deserves the same audit.
+
 ## Milestone 10: Real Drone Build
 
 - [x] Fill in the exact component table, and do it for three airframes rather than

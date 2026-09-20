@@ -124,7 +124,11 @@ cleanup() {
     pkill -9 -f "openipc_cinewhoop_demo/$node" 2>/dev/null || true
   done
   pkill -9 -f "openipc_swarm/coordinator" 2>/dev/null || true
-  pkill -9 -f "parameter_bridge --ros-args -p config_file:=$run_dir" 2>/dev/null || true
+  # The generated bridge configs live under build/, not in the run
+  # directory, so a pattern built from $run_dir matched nothing and left one
+  # parameter_bridge per agent running after every run - found two hours'
+  # worth of them still publishing.
+  pkill -9 -f "ros_gz_bridge/parameter_bridge" 2>/dev/null || true
   pkill -9 -f "$project_root/$sitl_bin" 2>/dev/null || true
   pkill -9 -f "gz topic -e -t /world/.*/dynamic_pose/info" 2>/dev/null || true
 }
