@@ -32,11 +32,13 @@ AIRFRAMES = {
     "cinewhoop": {
         "urdf": "ros_ws/src/openipc_cinewhoop_description/urdf/openipc_cinewhoop.urdf.xacro",
         "sdf": "ros_ws/src/openipc_cinewhoop_gazebo/models/openipc_cinewhoop/model.sdf",
+        "parm": "ros_ws/src/openipc_cinewhoop_gazebo/config/ardupilot_params.parm",
         "owns_demo_defaults": True,
     },
     "pavo20": {
         "urdf": "ros_ws/src/openipc_cinewhoop_description/urdf/openipc_pavo20.urdf.xacro",
         "sdf": "ros_ws/src/openipc_cinewhoop_gazebo/models_pavo20/openipc_cinewhoop/model.sdf",
+        "parm": "ros_ws/src/openipc_cinewhoop_gazebo/config/ardupilot_params_pavo20.parm",
         "owns_demo_defaults": False,
     },
 }
@@ -239,6 +241,83 @@ def select(airframe):
     SDF = ROOT / AIRFRAMES[airframe]["sdf"]
 
 
+
+# How far the implied hover throttle may sit from the one the parameter file
+# declares. Both airframes currently agree to 0.005, so 0.02 is loose enough
+# to survive rounding and tight enough to have caught the fault it exists for:
+# the Pavo20 model carried the CineLog's multiplier, which put its real hover
+# at 0.75 against a declared 0.53.
+TOLERANCE_HOVER = 0.02
+
+
+def propulsion_problems(airframe):
+    """Check the throttle scale against the motor and the parameter file.
+
+    Three numbers have to agree and nothing in the project made them:
+
+    - `<multiplier>` in each ArduPilot control block is the rotor speed that
+      full throttle asks for, and `<maxRotVelocity>` is the speed the motor
+      model will allow. Below it the airframe can never reach its own rated
+      thrust; above it the top of the throttle range is silently clamped.
+    - the hover throttle that falls out of the model - the speed needed to
+      hold the airframe's own weight, over the multiplier - has to be the
+      `MOT_THST_HOVER` the autopilot is told, or the controller starts every
+      takeoff from the wrong place.
+
+    This is the check that was missing when models_pavo20 inherited the
+    CineLog's multiplier: the geometry agreed, the masses agreed, and the
+    machine could not lift itself.
+    """
+    sdf = (ROOT / AIRFRAMES[airframe]["sdf"]).read_text()
+    problems = []
+
+    multipliers = {float(v) for v in re.findall(
+        r"<multiplier>([\d.eE+-]+)</multiplier>", sdf)}
+    max_speeds = {float(v) for v in re.findall(
+        r"<maxRotVelocity>([\d.eE+-]+)</maxRotVelocity>", sdf)}
+    constants = {float(v) for v in re.findall(
+        r"<motorConstant>([\d.eE+-]+)</motorConstant>", sdf)}
+    masses = [float(v) for v in re.findall(r"<mass>([\d.eE+-]+)</mass>", sdf)]
+
+    if len(multipliers) != 1:
+        problems.append(
+            f"the control blocks ask for {sorted(multipliers)} rad/s at full "
+            "throttle; one airframe has one throttle scale")
+        return problems
+    if len(max_speeds) != 1 or len(constants) != 1:
+        problems.append(
+            f"the motors disagree with each other: maxRotVelocity "
+            f"{sorted(max_speeds)}, motorConstant {sorted(constants)}")
+        return problems
+
+    multiplier = multipliers.pop()
+    max_speed = max_speeds.pop()
+    constant = constants.pop()
+    if abs(multiplier - max_speed) > 1e-6:
+        problems.append(
+            f"full throttle asks for {multiplier:.0f} rad/s while the motors "
+            f"allow {max_speed:.0f}; the airframe "
+            + ("can never reach its rated thrust"
+               if multiplier < max_speed else
+               "is clamped at the top of its throttle range"))
+
+    parm = (ROOT / AIRFRAMES[airframe]["parm"]).read_text()
+    declared = re.search(r"^MOT_THST_HOVER\s+([\d.]+)", parm, re.M)
+    if declared is None:
+        problems.append("the parameter file declares no MOT_THST_HOVER")
+        return problems
+    weight = sum(masses) * 9.81
+    hover_speed = math.sqrt(weight / 4.0 / constant)
+    implied = hover_speed / multiplier
+    if abs(implied - float(declared.group(1))) > TOLERANCE_HOVER:
+        problems.append(
+            f"the model hovers at {implied:.3f} of full throttle "
+            f"({hover_speed:.0f} of {multiplier:.0f} rad/s for {weight:.2f} N) "
+            f"while the parameter file says MOT_THST_HOVER "
+            f"{float(declared.group(1)):.3f}")
+    return problems
+
+
 def main(airframe="cinewhoop"):
     select(airframe)
     owns_defaults = AIRFRAMES[airframe]["owns_demo_defaults"]
@@ -272,6 +351,8 @@ def main(airframe="cinewhoop"):
     if abs(urdf_mass - sdf_mass) > TOLERANCE_KG:
         problems.append(
             f"total mass is {urdf_mass:.6f} kg in the URDF and {sdf_mass:.6f} kg in the SDF")
+
+    problems.extend(propulsion_problems(airframe))
 
     # See SENSOR_OFFSETS: each of these is a distance the model owns and a node
     # keeps a copy of, so the copy is checked rather than trusted.
