@@ -694,7 +694,12 @@ Two methods that measure nothing here, so that nobody repeats them:
 - `joint_state` publishes no velocities at all, flying or not.
 - Driving the motors with a standing Actuators command and no ArduPilot plugin
   lifts **neither** model, so it cannot separate the motor plugin from the
-  autopilot's. The isolation is the thing that fails, not the model.
+  autopilot's. The isolation is the thing that fails, not the model. Confirmed
+  against a control case: gz-sim's own `multicopter_velocity_control.sdf`
+  example does not lift either when its `/X3/gazebo/command/motor_speed` is
+  driven the same way. A method that fails on upstream's own example says
+  nothing about ours, so any future attempt needs a driving method that is
+  demonstrated on that example first.
 
 Why it matters: three drones in one world need three model names, so this
 blocks M2 of the swarm task. Unresolved.
