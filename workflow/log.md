@@ -780,6 +780,22 @@ terms rather than a number on its own.
   cent inside - much tighter. The difference between the airframes is
   therefore not only where they fly but how repeatably.
 
+- **`GUID_TIMEOUT` is 0.5 s on both airframes now, down from the 3 s default.**
+  M1 said what the default cost: a machine that stops hearing commands at
+  1 m/s covers 3 m before it begins the metre it needs to stop, in a room
+  8 x 6 m. The swarm commands at 10 to 20 Hz, so half a second tolerates five
+  to ten lost messages.
+- The worry was that it would end flights early, and it does not, because the
+  autonomy publishes at 10 Hz through cruise and turns and publishes nothing
+  at all while climbing - which is deliberate, and which the timeout does not
+  touch: it covers velocity, attitude and rate control, and a guided takeoff
+  is none of those.
+- Reflown end to end on both machines, six checks, all green and nothing
+  moved. Pavo20: takeoff 2.08 m at 19.7 degrees, forward flight 1.38 m off the
+  wall, coverage 92 and 94 per cent. CineLog: takeoff 2.08 m at 15.5 degrees,
+  forward flight 1.36 m with 0.89 m of clearance, coverage 94 and 95 per cent.
+  Both coverage runs took the outside mode, 16 per cent of poses inside.
+
 ## Log Entry Template
 
 ```text

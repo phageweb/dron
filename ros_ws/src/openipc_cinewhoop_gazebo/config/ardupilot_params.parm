@@ -43,6 +43,12 @@ MOT_THST_EXPO 1.0
 # rather than 5.9.
 MOT_THST_HOVER 0.46
 
+# Same reasoning as ardupilot_params_pavo20.parm, and the same value: the
+# default 3 s lets a machine that has stopped hearing commands travel 3 m at
+# 1 m/s before it starts braking. This airframe stops in 0.77 m rather than
+# 1.00, so if 0.5 s is enough for the Pavo20 it is enough here.
+GUID_TIMEOUT 0.5
+
 # Attitude rate gains scaled for this airframe's control authority, which is
 # what the stock gains get wrong. A full roll demand moves two rotors up and two
 # down by half of max thrust each, so the peak roll moment is
