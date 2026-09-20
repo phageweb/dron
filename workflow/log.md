@@ -863,6 +863,29 @@ terms rather than a number on its own.
 - What is left for M5 is the flight itself: take off, map for 130 s, and
   measure `/swarm/map` against the baseline of 89 to 93 per cent.
 
+- **The first swarm mapping flight, and the swarm does worse than one drone.**
+  Three agents in `cluttered_room`, each with its own mapper, autonomy and
+  arbiter, coordinated: the merged map calls **83 per cent** of the room free
+  and **86 per cent** of the enclosure, against a single-drone baseline of 89
+  to 93 and 92 to 94. Recorded as it stands - `spec/roj/01` named this
+  outcome as a real possibility before the first line of coordinator code.
+- The merge itself is sound and that is worth separating from the result:
+  7105 cells known in the merged map against 4194, 3651 and 3191 in the
+  agents' own, so the union is genuinely more than any single agent saw.
+- Two bugs found by flying, both mine, both the same shape as ones this
+  project has met before. The coordinator published `/swarm/map` volatile
+  while the check subscribed transient local, so the two never matched -
+  R11 already said maps are transient local and the node did not follow it.
+  And the check commanded the takeoff over MAVLink while each agent's
+  autonomy was already cruising, so the velocity command replaced the takeoff
+  submode: the machines never left the ground, the rangefinder sat 0.021 m up
+  reading inf against a 0.05 m minimum, and the mapper refused to map scans
+  it could not place above a floor it could not see. Letting each agent take
+  itself off - the path the single-drone checks fly - fixes it, and in flight
+  the rangefinder reads 290 finite samples of 290 at about 1.12 m.
+- The check now asserts traffic on every sensor topic rather than its
+  existence, because the difference between those two is where this hour went.
+
 ## Log Entry Template
 
 ```text

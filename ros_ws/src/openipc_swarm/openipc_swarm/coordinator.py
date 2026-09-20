@@ -29,7 +29,7 @@ import rclpy
 from geometry_msgs.msg import PointStamped, PoseStamped
 from nav_msgs.msg import OccupancyGrid
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import QoSDurabilityPolicy, QoSProfile, qos_profile_sensor_data
 from std_msgs.msg import Float32, String
 
 from openipc_swarm.assignment import Agent, assign_targets
@@ -92,10 +92,20 @@ class Coordinator(Node):
                 PoseStamped, f"/ap/{name}/pose/filtered",
                 self._pose_handler(name), qos_profile_sensor_data)
             self.create_subscription(
-                OccupancyGrid, f"/{name}/map",
-                self._map_handler(name), 1)
+                OccupancyGrid, f"/{name}/map", self._map_handler(name),
+                QoSProfile(depth=1,
+                           durability=QoSDurabilityPolicy.TRANSIENT_LOCAL))
 
-        self._merged = self.create_publisher(OccupancyGrid, "/swarm/map", 1)
+        # Transient local, for the same reason occupancy_mapper publishes that
+        # way: whoever asks for the map last - a check, an RViz started after
+        # the flight began - gets the newest one rather than nothing. It is
+        # also R11, and the first swarm flight failed on exactly this: the
+        # measuring node subscribed transient local, the coordinator published
+        # volatile, and the two never matched.
+        self._merged = self.create_publisher(
+            OccupancyGrid, "/swarm/map",
+            QoSProfile(depth=1,
+                       durability=QoSDurabilityPolicy.TRANSIENT_LOCAL))
         self._assignment_log = self.create_publisher(
             String, "/swarm/assignment", 10)
         self._safety_log = self.create_publisher(String, "/swarm/safety", 10)

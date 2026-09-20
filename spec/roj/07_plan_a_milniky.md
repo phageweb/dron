@@ -111,7 +111,11 @@ trajektoriích, kde stroje brzdí měřenou dynamikou z M1.
       agenty s mapperem, autonomií a arbitrem, k nim koordinátor, a ověří, že
       se smyčka uzavře — každý agent publikuje mapu, koordinátor `/swarm/map`
       a omezení se vrací agentům. RTF s celým zásobníkem 0,979.
-- [ ] Mapování s přidělováním cílů, 130 s.
+- [x] Mapování s přidělováním cílů, 130 s — `scripts/check_swarm_mapping.sh 3`,
+      první let 20. 9. 2026: **83 % místnosti a 86 % ohrady** proti baseline
+      89–93 % a 92–94 %. Roj tedy zatím pokrývá **méně** než jeden dron.
+      Slučování samo funguje: 7105 známých buněk proti 4194, 3651 a 3191
+      v jednotlivých mapách.
 - [ ] `/swarm/map` a rozšířená kontrola pokrytí z [06 §4](./06_slozena_mapa.md).
 - [ ] Tři běhy se zapsaným seedem.
 - [ ] Vyhodnotit K1–K6 z [01 §4](./01_zadani_mapovani.md).

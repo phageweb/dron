@@ -105,17 +105,25 @@ agent_pid=""
 bridge_pids=()
 gz_bridge_pids=()
 sitl_pids=()
+demo_pids=()
 
 cleanup() {
-  for pid in "${sitl_pids[@]}" "$agent_pid" "${gz_bridge_pids[@]}" \
-             "${bridge_pids[@]}" "$gazebo_pid"; do
+  for pid in "${demo_pids[@]}" "${sitl_pids[@]}" "$agent_pid" \
+             "${gz_bridge_pids[@]}" "${bridge_pids[@]}" "$gazebo_pid"; do
     [ -n "$pid" ] && kill -INT "$pid" 2>/dev/null || true
   done
   sleep 1
-  for pid in "${sitl_pids[@]}" "$agent_pid" "${gz_bridge_pids[@]}" \
-             "${bridge_pids[@]}" "$gazebo_pid"; do
+  for pid in "${demo_pids[@]}" "${sitl_pids[@]}" "$agent_pid" \
+             "${gz_bridge_pids[@]}" "${bridge_pids[@]}" "$gazebo_pid"; do
     [ -n "$pid" ] && kill -9 "$pid" 2>/dev/null || true
   done
+  # `ros2 run` is a wrapper whose child does not die with it, which is how a
+  # failed run left fifteen nodes behind once. Each of these keeps publishing
+  # into the next run's graph if it survives.
+  for node in range_adapter occupancy_mapper simple_indoor_autonomy arbiter; do
+    pkill -9 -f "openipc_cinewhoop_demo/$node" 2>/dev/null || true
+  done
+  pkill -9 -f "openipc_swarm/coordinator" 2>/dev/null || true
   pkill -9 -f "parameter_bridge --ros-args -p config_file:=$run_dir" 2>/dev/null || true
   pkill -9 -f "$project_root/$sitl_bin" 2>/dev/null || true
   pkill -9 -f "gz topic -e -t /world/.*/dynamic_pose/info" 2>/dev/null || true
@@ -200,11 +208,16 @@ echo "  real time factor with $agents agents: ${real_time_factor:-unknown}"
 # Each agent's sensors have to arrive in ROS under its own namespace, or the
 # mapper the coordinator merges from has nothing to map.
 missing_sensors=""
-for index in $(seq 1 "$agents"); do
-  for suffix in scan/front range/down_raw; do
-    ros2 topic list 2>/dev/null | grep -Fxq "/v$index/$suffix" \
-      || missing_sensors="$missing_sensors /v$index/$suffix"
+for _ in $(seq 1 20); do
+  missing_sensors=""
+  for index in $(seq 1 "$agents"); do
+    for suffix in scan/front range/down_raw; do
+      ros2 topic list 2>/dev/null | grep -Fxq "/v$index/$suffix" \
+        || missing_sensors="$missing_sensors /v$index/$suffix"
+    done
   done
+  [ -z "$missing_sensors" ] && break
+  sleep 2
 done
 if [ -n "$missing_sensors" ]; then
   echo "These bridged sensor topics never appeared:$missing_sensors" >&2
@@ -212,6 +225,22 @@ if [ -n "$missing_sensors" ]; then
   exit 1
 fi
 echo "  each agent's scan and rangefinder are bridged under its own namespace"
+
+# Names are not traffic. The first swarm flight mapped nothing because the
+# rangefinder topic existed and carried no usable measurement, and the mapper
+# will not map a scan it cannot place above a floor it cannot see.
+for index in $(seq 1 "$agents"); do
+  for suffix in scan/front range/down_raw; do
+    if ! timeout 20 ros2 topic echo --once "/v$index/$suffix" >/dev/null 2>&1; then
+      echo "/v$index/$suffix exists but published nothing in 20 s." >&2
+      exit 1
+    fi
+  done
+done
+echo "  and every one of them is carrying messages"
+first_range="$(timeout 20 ros2 topic echo --once /v1/range/down_raw 2>/dev/null \
+  | grep -A3 "^ranges:" | tail -2 | tr -d ' -' | tr '\n' ' ')"
+echo "  v1's rangefinder reads: ${first_range:-nothing}"
 
 
 # The demo stack, once per agent. These are the same nodes the single drone
@@ -258,8 +287,12 @@ for index in $(seq 1 "$agents"); do
     -p "target_topic:=/$ns/explore/target" \
     -p "battery_topic:=/ap/$ns/battery" \
     -p "status_topic:=/ap/$ns/status" \
+    -p "prearm_service:=/ap/$ns/prearm_check" \
+    -p "mode_service:=/ap/$ns/mode_switch" \
+    -p "arm_service:=/ap/$ns/arm_motors" \
+    -p "takeoff_service:=/ap/$ns/experimental/takeoff" \
     -p enable_turning:=true -p enable_exploring:=true \
-    -p auto_takeoff:=false \
+    -p auto_takeoff:=true \
     >"$run_dir/autonomy_$ns.log" 2>&1 &
   demo_pids+=($!)
 
@@ -309,4 +342,123 @@ for topic in /swarm/map /v1/swarm/constraint; do
   echo "  $topic is carrying messages"
 done
 
-echo "Swarm graph check passed: $agents agents mapping, one coordinator, loop closed."
+# The flight. Sequential takeoffs, then the same 130 s the single-drone
+# baseline flew, then the merged map measured with the same function over the
+# same rectangles - scripts/room_geometry.py derives them from the world file
+# so the two figures are comparable rather than merely similar.
+python3 - "$world_path" "$agents" "$run_dir" <<'MEASURE'
+import math
+import os
+import sys
+import time
+
+sys.path.insert(0, "scripts")
+import rclpy
+from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import OccupancyGrid
+from rclpy.qos import QoSDurabilityPolicy, QoSProfile, qos_profile_sensor_data
+
+from openipc_cinewhoop_demo.grid_helpers import coverage_fraction
+from room_geometry import room_and_enclosure
+
+world_path, agents, run_dir = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+indices = list(range(1, agents + 1))
+FLIGHT_S = 130.0
+
+room, enclosure, _, obstacles = room_and_enclosure(world_path)
+print(f"  room: x {room[0]:+.2f} to {room[1]:+.2f}, "
+      f"y {room[2]:+.2f} to {room[3]:+.2f}")
+print(f"  enclosure inside: x {enclosure[0]:+.2f} to {enclosure[1]:+.2f}, "
+      f"y {enclosure[2]:+.2f} to {enclosure[3]:+.2f}")
+
+rclpy.init()
+node = rclpy.create_node("swarm_mapping_check")
+merged = {}
+node.create_subscription(
+    OccupancyGrid, "/swarm/map", lambda m: merged.update(map=m),
+    QoSProfile(depth=1, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL))
+paths = {i: [] for i in indices}
+agent_maps = {}
+for index in indices:
+    node.create_subscription(
+        OccupancyGrid, f"/v{index}/map",
+        (lambda i: lambda m: agent_maps.update({i: m}))(index),
+        QoSProfile(depth=1, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL))
+for index in indices:
+    node.create_subscription(
+        PoseStamped, f"/ap/v{index}/pose/filtered",
+        (lambda i: lambda m: paths[i].append(
+            (m.pose.position.x, m.pose.position.y)))(index),
+        qos_profile_sensor_data)
+
+# Each agent takes itself off through its own autonomy, which is the path the
+# single-drone checks fly and the only one that gets the order right: that
+# node publishes nothing at all while climbing, because a velocity command
+# replaces the takeoff submode. Commanding the takeoff from here instead - as
+# the first version of this check did - leaves the autonomy cruising on the
+# ground, and then the rangefinder sits 0.021 m up reading inf and the mapper
+# maps nothing. Wait for them rather than telling them.
+print("  waiting for the agents to take themselves off", flush=True)
+deadline = time.time() + 90
+while time.time() < deadline:
+    rclpy.spin_once(node, timeout_sec=0.2)
+
+# In the air the rangefinder has to see the floor, or the mapper refuses to
+# map at all - it will not paint a scan it cannot place above a floor it
+# cannot see. On the ground it reads inf by design: the sensor's minimum is
+# 0.05 m and it sits 0.021 m up.
+from sensor_msgs.msg import Range
+ranges = []
+node.create_subscription(Range, "/v1/range/down",
+                         lambda m: ranges.append(m.range),
+                         qos_profile_sensor_data)
+deadline = time.time() + 5
+while time.time() < deadline:
+    rclpy.spin_once(node, timeout_sec=0.1)
+finite = [r for r in ranges if math.isfinite(r)]
+print(f"  v1's rangefinder in flight: {len(finite)} finite of {len(ranges)}"
+      + (f", around {sum(finite)/len(finite):.2f} m" if finite else ""))
+
+start = time.time()
+while time.time() - start < FLIGHT_S:
+    rclpy.spin_once(node, timeout_sec=0.2)
+
+if "map" not in merged:
+    sys.exit("The coordinator never published a merged map.")
+grid = merged["map"]
+known = sum(1 for v in grid.data if v != -1)
+print(f"  merged map: {grid.info.width}x{grid.info.height} cells at "
+      f"{grid.info.resolution:.2f} m, origin "
+      f"({grid.info.origin.position.x:+.2f}, {grid.info.origin.position.y:+.2f}), "
+      f"{known} of them known")
+for index in indices:
+    own = agent_maps.get(index)
+    if own is None:
+        print(f"  v{index} published no map to compare with")
+    else:
+        own_known = sum(1 for v in own.data if v != -1)
+        print(f"  v{index}'s own map: {own_known} cells known")
+whole = coverage_fraction(grid.data, grid.info.width, grid.info.resolution,
+                          grid.info.origin.position.x,
+                          grid.info.origin.position.y,
+                          room, list(obstacles.values()))
+inside = coverage_fraction(grid.data, grid.info.width, grid.info.resolution,
+                           grid.info.origin.position.x,
+                           grid.info.origin.position.y,
+                           enclosure, list(obstacles.values()))
+flown = {i: len(p) for i, p in paths.items()}
+print(f"  poses per agent: {flown}")
+print(f"  the merged map calls {100 * whole:.0f} per cent of the room free")
+print(f"  of the enclosure inside, {100 * inside:.0f} per cent")
+
+with open(os.path.join(run_dir, "coverage.txt"), "w") as handle:
+    handle.write(f"room {whole:.4f}\nenclosure {inside:.4f}\n")
+
+if min(flown.values()) == 0:
+    sys.exit("An agent published no pose at all; it never flew.")
+if whole < 0.40:
+    sys.exit(f"Only {100 * whole:.0f} per cent of the room was mapped.")
+print("Swarm mapping flight finished.")
+MEASURE
+
+echo "Swarm mapping check passed: $agents agents mapping, one coordinator, loop closed."
