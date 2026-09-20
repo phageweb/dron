@@ -30,7 +30,7 @@ Generátor existuje: `scripts/generate_agent_models.py`, a modely se načtou,
 spawnou na správných pozicích a jejich autopiloti naběhnou.
 
 **Hotovo 20. 9. 2026.** Dva agenti v jednom světě létají:
-`scripts/check_two_agents_fly.sh` prochází — v1 dostane povel a vzlétne, v2
+`scripts/check_agents_fly.sh` prochází — v1 dostane povel a vzlétne, v2
 zůstane na zemi (což je ten test, který by chycenou záměnu portů odhalil),
 pak vzlétne i v2 a oba drží s nejbližším přiblížením 1,92 m proti `d_safe`
 1,56 m.

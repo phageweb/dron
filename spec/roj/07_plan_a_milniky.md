@@ -69,13 +69,18 @@ projde pro každý zvlášť.
 
 ## M3 — tři instance a rozpočet stroje
 
-- [ ] Třetí instance.
-- [ ] RTF pro 1, 2 a 3 instance, zapsaný i se strojem, na kterém se měřilo.
-- [ ] Rozhodnout, co se vypíná, když se to nevejde (kamera první).
+- [x] Třetí instance. `scripts/check_agents_fly.sh 3`, 20. 9. 2026.
+- [x] RTF pro 1, 2 a 3 instance: **1,0004 / 1,0000 / 0,9991**.
+- [x] Rozhodnout, co se vypíná: **nic**. Při třech agentech je RTF 0,9991,
+      takže kamera ani nic jiného vypínat nemusí.
 - [ ] Per-agent přejímka z [02 §4](./02_vrstva_drona.md), třikrát.
 
-*Hotovo, když:* tři stroje současně visí, RTF je zapsaný a žádná kontrola
-neselhala kvůli tomu, že jich je víc.
+*Skoro hotovo* 20. 9. 2026: tři stroje vzlétnou po jednom a visí, nejbližší
+přiblížení libovolné dvojice je 1,94 m proti `d_safe` 1,56 m. Zbývá projet
+jednotlivé přejímací kontroly pro každého agenta zvlášť.
+
+Rozpočet CPU měřen na tomhle stroji (Linux 6.18, ten, na kterém běží vývoj);
+na slabším se čísla budou lišit a je to první věc, kterou tam přeměřit.
 
 ## M4 — koordinátor bez letu
 

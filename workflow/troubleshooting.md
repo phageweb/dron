@@ -776,7 +776,7 @@ chase was circling.
 
 Why it mattered: three drones in one world need three distinct models, so it
 blocked M2. **Cleared on 2026-09-20 and not by anything in this entry.** Once
-the Pavo20 model's throttle multiplier was fixed, `check_two_agents_fly.sh`
+the Pavo20 model's throttle multiplier was fixed, `check_agents_fly.sh`
 passes: v1 climbs on command, v2 stays on the ground, then v2 climbs too, and
 they hold 1.92 m apart. Nothing about naming had to change.
 

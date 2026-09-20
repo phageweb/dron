@@ -745,6 +745,24 @@ terms rather than a number on its own.
 - **R14 does not need revising.** One simulator per agent was the fallback if
   three models could not share a world; they can.
 
+- **Three agents fly in one world, and the simulator does not notice.** Real
+  time factor 1.0004 with one agent, 1.0000 with two, 0.9991 with three - so
+  the answer to "what gets switched off when it will not fit" is nothing. That
+  was M3's open question and it turned out not to be a constraint on this
+  machine; on a slower one it is the first thing to measure again.
+- `check_two_agents_fly.sh` is now `check_agents_fly.sh` and takes a count,
+  because a script called "two agents" that flies three is a lie. One is
+  allowed too, and is the control case the other figures are read against.
+- Each machine climbs on its own command and the others stay down: v1 to
+  0.88 m with v2 and v3 at 0.00, then v2, then v3. Closest approach between
+  any pair while all three hold: **1.94 m** against a `d_safe` of 1.56.
+- Two bugs of my own in the generalisation, both caught before their numbers
+  were written anywhere. The single-agent run tripped on `truth[2]`, and the
+  three-agent run measured only the v1-v2 pair - so the first 1.96 m figure
+  was the closest approach of two thirds of the swarm. Re-measured over every
+  pair: 1.94 m. Publishing the first number would have been the same mistake
+  the airframe substitution was, on a smaller scale.
+
 ## Log Entry Template
 
 ```text

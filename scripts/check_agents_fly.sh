@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Two drones in one world, and a command that reaches only the one it names.
+# Several drones in one world, and a command that reaches only the one it names.
 #
 # P1 to P4 of spec/roj/05_infrastruktura_simulace.md, and the flying half of
 # M2. scripts/check_multi_instance_dds.sh already showed two autopilots can
@@ -32,6 +32,17 @@ agent_setup="external/dds_ws/install/setup.bash"
 agent_bin="external/dds_ws/install/lib/micro_ros_agent/micro_ros_agent"
 plugin_dir="build/ardupilot_gazebo"
 
+# How many agents to fly. Two is what M2 asks for; three is M3, and the
+# generator's START_POSES is the limit because a start pose is a decision
+# about separation rather than a loop index.
+agents="${1:-${OPENIPC_AGENTS:-2}}"
+# One is allowed and is the control case: the real time factor with a single
+# agent is what the two- and three-agent figures have to be read against.
+if ! [ "$agents" -ge 1 ] 2>/dev/null; then
+  echo "usage: $0 [agent count >= 1]" >&2
+  exit 2
+fi
+
 airframe="${OPENIPC_AIRFRAME:-cinewhoop}"
 params_name="ardupilot_params.parm"
 [ "$airframe" != "cinewhoop" ] && params_name="ardupilot_params_$airframe.parm"
@@ -58,7 +69,7 @@ export GZ_IP="${GZ_IP:-127.0.0.1}"
 export GZ_SIM_SYSTEM_PLUGIN_PATH="$project_root/$plugin_dir${GZ_SIM_SYSTEM_PLUGIN_PATH:+:$GZ_SIM_SYSTEM_PLUGIN_PATH}"
 
 echo "Generating one model per agent from the $airframe airframe:"
-generated="$(python3 scripts/generate_agent_models.py --airframe "$airframe" --agents 2)"
+generated="$(python3 scripts/generate_agent_models.py --airframe "$airframe" --agents "$agents")"
 echo "$generated"
 models_path="$(echo "$generated" | sed -n 's/^models //p')"
 world_path="$(echo "$generated" | sed -n 's/^world //p')"
@@ -113,7 +124,7 @@ sleep 8
 # topics scoped by the model's name and the motor models read one Actuators
 # array, so a single bridge would drive whichever model it was told about and
 # leave the other one's rotors stopped.
-for index in 1 2; do
+for index in $(seq 1 "$agents"); do
   "$project_root/$bridge_bin" --model "openipc_cinewhoop_v$index" \
     >"$run_dir/bridge_v$index.log" 2>&1 &
   bridge_pids+=($!)
@@ -123,7 +134,7 @@ done
 agent_pid=$!
 sleep 2
 
-for index in 1 2; do
+for index in $(seq 1 "$agents"); do
   instance=$((index - 1))
   dir="$run_dir/v$index"
   mkdir -p "$dir"
@@ -144,21 +155,33 @@ EOF
   sitl_pids+=($!)
 done
 
-for _ in $(seq 1 60); do
-  if ros2 topic list 2>/dev/null | grep -Fxq /ap/v1/time \
-     && ros2 topic list 2>/dev/null | grep -Fxq /ap/v2/time; then
-    break
-  fi
+wanted_topics=""
+for index in $(seq 1 "$agents"); do
+  wanted_topics="$wanted_topics /ap/v$index/time"
+done
+for _ in $(seq 1 90); do
+  missing=""
+  for topic in $wanted_topics; do
+    ros2 topic list 2>/dev/null | grep -Fxq "$topic" || missing="$missing $topic"
+  done
+  [ -z "$missing" ] && break
   sleep 1
 done
-if ! ros2 topic list 2>/dev/null | grep -Fxq /ap/v2/time; then
-  echo "Both autopilots did not reach the ROS graph." >&2
+if [ -n "$missing" ]; then
+  echo "These autopilots never reached the ROS graph:$missing" >&2
   tail -20 "$run_dir/agent.log" >&2 || true
   exit 1
 fi
-echo "Both autopilots are on the graph as /ap/v1 and /ap/v2"
+echo "All $agents autopilots are on the graph:$wanted_topics"
 
-python3 - "$(sed -n 's/.*<world[[:space:]]\+name="\([^"]*\)".*/\1/p' "$world_path" | head -1)" <<'PY'
+# What the simulator is costing. Three machines with a 360-point lidar each is
+# the load M3 asks about, and a Gazebo that has quietly stopped keeping up does
+# not announce it - it just makes every measurement above mean something else.
+real_time_factor="$(timeout 10 gz topic -e -t /stats -n 5 2>/dev/null \
+  | grep -A2 real_time_factor | grep -oE "[0-9]+\.[0-9]+" | tail -1)"
+echo "  real time factor with $agents agents: ${real_time_factor:-unknown}"
+
+python3 - "$(sed -n 's/.*<world[[:space:]]\+name="\([^"]*\)".*/\1/p' "$world_path" | head -1)" "$agents" <<'PY'
 import math
 import sys
 import time
@@ -171,8 +194,10 @@ from measure_dynamic_limits import GroundTruth
 from pymavlink import mavutil
 
 world = sys.argv[1]
+agents = int(sys.argv[2])
+indices = list(range(1, agents + 1))
 truth = {}
-for index in (1, 2):
+for index in indices:
     reader = GroundTruth(world, f"openipc_cinewhoop_v{index}")
     reader.start()
     truth[index] = reader
@@ -192,7 +217,7 @@ print("  on the ground at "
 
 # The generator's own start poses, so a silent change there fails here rather
 # than quietly moving the vehicles.
-for index, want_y in ((1, -2.0), (2, 0.0)):
+for index, want_y in list(zip(indices, (-2.0, 0.0, 2.0)))[:agents]:
     if abs(ground[index][1] - want_y) > 0.2:
         sys.exit(f"v{index} spawned at y {ground[index][1]:+.2f}, expected "
                  f"{want_y:+.2f}. The world and the generator disagree.")
@@ -294,7 +319,7 @@ def actuator_path(model):
             f"[{sample(f'/{model}/command/motor_speed')}].")
 
 
-links = {index: connect(index) for index in (1, 2)}
+links = {index: connect(index) for index in indices}
 for link in links.values():
     # Ask for position at 5 Hz; without this the autopilot sends it rarely and
     # the comparison below has nothing to compare.
@@ -324,21 +349,27 @@ while time.time() < deadline and height(1) < 0.8:
               f"{height(1):+.2f} m, autopilot believes {-msg.z:+.2f} m, "
               f"climb {-msg.vz:+.2f} m/s", flush=True)
     time.sleep(0.5)
-print(f"  after v1's takeoff: v1 {height(1):.2f} m, v2 {height(2):.2f} m")
+print("  after v1's takeoff: "
+      + "  ".join(f"v{i} {height(i):.2f} m" for i in indices))
 if height(1) < 0.8:
     sys.exit(f"v1 was told to climb and reached {height(1):.2f} m. "
              + actuator_path("openipc_cinewhoop_v1"))
-if height(2) > 0.2:
-    sys.exit(f"v2 climbed to {height(2):.2f} m without being told to. A "
-             "command reached the wrong vehicle.")
+for other in indices[1:]:
+    if height(other) > 0.2:
+        sys.exit(f"v{other} climbed to {height(other):.2f} m without being "
+                 "told to. A command reached the wrong vehicle.")
 
-take_off(links[2], 2)
-deadline = time.time() + 25
-while time.time() < deadline and height(2) < 0.8:
-    time.sleep(0.2)
-print(f"  after v2's takeoff: v1 {height(1):.2f} m, v2 {height(2):.2f} m")
-if height(2) < 0.8:
-    sys.exit(f"v2 was told to climb and reached {height(2):.2f} m.")
+# The rest climb one at a time, which is R2: a failure to arm has to stop the
+# ones behind it rather than being noticed after they are all airborne.
+for index in indices[1:]:
+    take_off(links[index], index)
+    deadline = time.time() + 25
+    while time.time() < deadline and height(index) < 0.8:
+        time.sleep(0.2)
+    heights = "  ".join(f"v{i} {height(i):.2f} m" for i in indices)
+    print(f"  after v{index}'s takeoff: {heights}")
+    if height(index) < 0.8:
+        sys.exit(f"v{index} was told to climb and reached {height(index):.2f} m.")
 
 # Both are up. Watch them hold for a while and record the closest they came:
 # not a separation test - nothing is commanding them together yet - but the
@@ -346,15 +377,19 @@ if height(2) < 0.8:
 closest = None
 start = time.time()
 while time.time() - start < 15:
-    a, b = truth[1].position(), truth[2].position()
-    gap = math.dist(a, b)
-    closest = gap if closest is None else min(closest, gap)
+    for first in indices:
+        for second in indices[indices.index(first) + 1:]:
+            gap = math.dist(truth[first].position(), truth[second].position())
+            closest = gap if closest is None else min(closest, gap)
     time.sleep(0.2)
-print(f"  both holding; closest approach {closest:.2f} m over 15 s")
-if closest < 1.0:
+print(f"  all {agents} holding; closest approach "
+      + (f"{closest:.2f} m over 15 s" if closest is not None
+         else "not measured, one agent"))
+if closest is not None and closest < 1.0:
     sys.exit(f"They came within {closest:.2f} m while only holding station.")
 
 for reader in truth.values():
     reader.stop()
-print("Two-agent check passed: two models, two autopilots, no crossed wires.")
+print(f"Agent check passed: {agents} models, {agents} autopilots, "
+      "no crossed wires.")
 PY
