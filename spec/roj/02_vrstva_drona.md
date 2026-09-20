@@ -100,14 +100,16 @@ Tři poznámky, bez kterých se ta čísla dají snadno použít špatně:
    jediný člen `d_safe`, na který simulace odpovědět neumí. Do rozestupu se
    bere jako dolní mez, ne jako hodnota.
 
-Zbývá `GUID_TIMEOUT`, který je pořád na výchozích 3 s. Z měření plyne, co to
+**`GUID_TIMEOUT` je od 20. 9. 2026 na 0,5 s** (dřív výchozí 3 s). Z měření plyne, co to
 stojí: při 1 m/s ujede stroj za 3 s ticha 3 m a teprve pak začne brzdit svých
 0,77 m. Rozsah parametru je 0,1–5 s, roj bude posílat povel 10–20× za sekundu,
 takže **0,5 s** tolerují pět až deset ztracených zpráv a stojí 0,5 + 0,77 m.
-Změna se sem ale nepíše jako hotová věc: přepsat ji v parametrovém souboru
-znamená znovu proletět všechny existující kontroly, protože každá pauza v
-publikování `cmd_vel` delší než půl sekundy se stane zastavením. Patří to do
-M2.
+Přeletěno: guided takeoff 2,08 m s náklonem 19,7°, forward flight 1,38 m od
+zdi s vůlí 0,82 m, coverage 92 % místnosti a 94 % ohrady — všechno uvnitř
+naměřeného rozptylu. Krátký timeout tedy nestojí nic, protože autonomie
+publikuje v 10 Hz po celou dobu letu a během stoupání záměrně mlčí, na což
+`GUID_TIMEOUT` nedopadá (platí jen pro rychlostní, úhlové a rate řízení, ne
+pro vzlet).
 
 ## 4. Per-agent přejímka
 

@@ -52,6 +52,19 @@ MOT_THST_EXPO 1.0
 # the airframe is 7.7 g heavier, so hover throttle rises twice over.
 MOT_THST_HOVER 0.53
 
+# How long a velocity command stays valid before the autopilot stops on its
+# own. The default is 3 s, and M1 measured what that costs on this airframe:
+# at 1 m/s the machine travels 3 m of silence before it even begins the 1.00 m
+# it needs to stop, in a room 8 x 6 m. 0.5 s is the derived value - the swarm
+# coordinator commands at 10 to 20 Hz, so it tolerates five to ten lost
+# messages, and it costs 0.5 m.
+#
+# It does not shorten a takeoff: the parameter applies to velocity, attitude
+# and rate control, and a guided takeoff is none of those. simple_indoor_autonomy
+# publishes at 10 Hz throughout cruise and turns, and deliberately publishes
+# nothing while climbing, which is what keeps the takeoff submode alive.
+GUID_TIMEOUT 0.5
+
 # Attitude rate gains carried over from the CineLog UNCHANGED, and the reason is
 # worth writing down because it looks like laziness and is not.
 #

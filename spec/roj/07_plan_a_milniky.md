@@ -38,9 +38,9 @@ Vedlejší nález, který půjde s sebou do M2: sekvenční běhy potřebují me
 1 m/s a 0,58 m při 0,5 m/s, s rozepsanými členy v
 [03 §3](./03_vrstva_roje.md).
 
-Přeneseno do M2, protože obojí mění chování existujících kontrol: zapsat
-`GUID_TIMEOUT 0,5` do parametrového souboru a znovu proletět všechny
-kontroly.
+`GUID_TIMEOUT 0,5` zapsán do `ardupilot_params_pavo20.parm` 20. 9. 2026 a
+kontroly přeletěny: takeoff, forward flight i coverage prochází a jejich čísla
+se nehnula.
 
 ## M2 — dvě instance bez letu
 
