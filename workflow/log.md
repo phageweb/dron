@@ -846,6 +846,23 @@ terms rather than a number on its own.
   clips its own autonomy, so the worst a wrong decision here can do is slow a
   machine down.
 
+- **The whole swarm stack runs and the loop closes.**
+  `scripts/check_swarm_mapping.sh 3` brings up three agents in
+  `cluttered_room` - each with its own bridge, mapper, autonomy and arbiter -
+  plus the coordinator, and asserts that maps come out of the agents and
+  constraints come back. Both directions verified by traffic and not only by
+  a topic existing, which is the failure this project keeps meeting.
+- Three copies of the demo stack is a configuration rather than a fork: every
+  topic in those nodes is a parameter, and the airframe's geometry is passed
+  from `check_model_consistency.py` exactly as `check_forward_flight.sh` does
+  it, so a variant cannot quietly fly the other airframe's corridor width.
+- Real time factor with everything running - three SITLs, three mappers,
+  three autonomies, three arbiters, three bridges and the coordinator - is
+  **0.979**. Still real time to within two per cent, so the M3 answer holds
+  with the full stack rather than only with bare autopilots.
+- What is left for M5 is the flight itself: take off, map for 130 s, and
+  measure `/swarm/map` against the baseline of 89 to 93 per cent.
+
 ## Log Entry Template
 
 ```text
