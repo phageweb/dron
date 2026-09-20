@@ -698,6 +698,33 @@ terms rather than a number on its own.
   checked for stray processes and a clean tree, and swept again. Nothing from
   the first attempt is used.
 
+- **M1 re-measured on the airframe it claims to measure.** With `SDF_PATH`
+  fixed and the throttle scale corrected, the real Pavo20:
+
+| | real Pavo20 | what was recorded (CineLog) |
+| --- | ---: | ---: |
+| coast from 0.25 m/s | 0.174 m | 0.144 m |
+| coast from 0.50 m/s | 0.426 m | 0.331 m |
+| coast from 1.00 m/s | **1.001 m** | 0.770 m |
+| latency, three trials | 0.324-0.408 s | 0.340-0.392 s |
+| drift over a 60 s hover | 0.012 m | 0.010 m |
+| **d_safe at 1 m/s** | **1.56 m** | 1.30 m |
+
+- The braking distance is 30 per cent worse and that is what moves `d_safe`.
+  Latency and drift barely change, which makes sense: one is the command path
+  and the other is the estimator, and neither is about this airframe.
+- `spec/roj/02` and `/03` now carry these instead of the invalidation notices,
+  and `test_safety.py` follows: `D_SAFE_M` 1.56, stopping room 1.409 m,
+  deceleration 0.50 m/s^2. All 40 coordinator tests still pass, including the
+  three stepped trajectories that assert K1 - the filter holds the larger
+  separation with the slower braking, which is the point of having measured
+  both rather than assumed either.
+- M0 re-measured too, two runs so far: room 93 per cent, enclosure 94, 16 per
+  cent of poses inside. **Coverage barely moved** - the CineLog read 93-94 and
+  94-96 on the same trip. That is worth knowing: this metric is dominated by
+  the flight policy and the room, not by which machine flies it, so the swarm
+  comparison it exists for stays valid across the correction.
+
 ## Log Entry Template
 
 ```text

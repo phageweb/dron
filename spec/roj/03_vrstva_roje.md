@@ -76,23 +76,18 @@ tady dosazený do čísel tohoto repozitáře:
 d_safe = 2 * r_rotor + 2 * e_pozice + v_max * t_latence + s_brzdna + rezerva
 ```
 
-> **Pozor, 20. 9. 2026:** členy měřené v M1 pocházejí z letu, který ve
-> skutečnosti proběhl na **CineLogu** — kontrolní skripty nenastavovaly
-> `SDF_PATH` a airframe se nepřepnul (viz [02 §3](./02_vrstva_drona.md)).
-> Geometrický člen pro Pavo20 platí, zbytek ne; součet se po přeměření změní.
-
-| Člen | dosud uváděno jako Pavo20 | Odkud |
+| Člen | Pavo20 | Odkud |
 | --- | ---: | --- |
 | `2 * r_rotor` geometrické minimum | 0,1221 m | model; CineLog by měl 0,1667 m |
-| `2 * e_pozice` chyba odhadu | 0,020 m | drift ve visu, M1 — **v simulaci** |
-| `v_max * t_latence` při 1 m/s | 0,391 m | nejhorší ze tří pokusů, M1 |
-| `s_brzdna` z 1 m/s | 0,770 m | M1 |
-| součet bez rezervy | **1,30 m** | `check_dynamic_limits.sh` to tiskne |
+| `2 * e_pozice` chyba odhadu | 0,024 m | drift ve visu, M1 — **v simulaci** |
+| `v_max * t_latence` při 1 m/s | 0,408 m | nejhorší ze tří pokusů, M1 |
+| `s_brzdna` z 1 m/s | 1,001 m | M1 |
+| součet bez rezervy | **1,56 m** | `check_dynamic_limits.sh` to tiskne |
 | rezerva | volba | zapsat před testem |
 
-Změřeno 20. 9. 2026, podrobnosti a výhrady v [02 §3](./02_vrstva_drona.md).
-Při 0,5 m/s, což je rychlost, kterou dnes létá autonomie, vychází součet
-0,58 m.
+Přeměřeno 20. 9. 2026 na draku, který se konečně skutečně načetl; podrobnosti
+a výhrady v [02 §3](./02_vrstva_drona.md). Dřívější hodnota 1,30 m byla
+z CineLogu.
 
 Dvě věci k tomu patří, jinak se to číslo použije špatně:
 

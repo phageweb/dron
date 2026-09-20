@@ -57,30 +57,33 @@ stojí za přečtení, protože obě jdou proti prvnímu nápadu:
 | odstup od zdi za letu vpřed | 1,39 m, vůle špičky 0,93 m | `check_forward_flight.sh` |
 | úhlová autorita v rollu | 689 rad/s² (CineLog), 583 (Pavo20) | výpočet z modelu, ověřený sweepem |
 
-## 3. Co roj potřebuje — změřeno 20. 9. 2026, ale na jiném draku
+## 3. Co roj potřebuje — přeměřeno 20. 9. 2026 na skutečném Pavo20
 
-> **NEPLATNÉ pro Pavo20.** Všechna čísla v téhle kapitole jsou z CineLogu:
-> kontrolní skripty nenastavovaly `SDF_PATH`, takže `OPENIPC_AIRFRAME=pavo20`
-> načetl CineLog model. Viz `workflow/troubleshooting.md`. Skripty jsou
-> opravené, měření se musí zopakovat — a napřed se musí vyřešit, proč
-> Pavo20 model po správném načtení nevzlétne.
+Původní měření bylo z CineLogu: kontrolní skripty nenastavovaly `SDF_PATH`,
+takže `OPENIPC_AIRFRAME=pavo20` načetl cizí model (viz
+`workflow/troubleshooting.md`). Skripty jsou opravené, model taky — měl
+zděděný `multiplier`, kvůli kterému se nemohl zvednout — a tabulky níž jsou
+z prvního běhu, který skutečně letěl tenhle drak.
 
 M1 je hotové. `scripts/check_dynamic_limits.sh` odlétá jednu sortu v prázdném
 `room_test` a měří všechno proti ground truth z Gazeba, ne proti odhadu, který
 je sám předmětem měření. Dva běhy, Pavo20:
 
-| Povel | Ustálená rychlost | Brzdná dráha | Brzdný čas |
-| ---: | ---: | ---: | ---: |
-| 0,25 m/s | 0,255 / 0,256 | 0,144 / 0,143 m | 0,82 s |
-| 0,50 m/s | 0,509 / 0,509 | 0,331 / 0,319 m | 1,09 s |
-| 1,00 m/s | 0,978 / 0,984 | 0,790 / 0,770 m | 1,99 s |
+| Povel | Ustálená rychlost | Brzdná dráha | Brzdný čas | CineLog pro srovnání |
+| ---: | ---: | ---: | ---: | ---: |
+| 0,25 m/s | 0,266 | 0,174 m | 1,18 s | 0,144 m |
+| 0,50 m/s | 0,532 | 0,426 m | 1,92 s | 0,331 m |
+| 1,00 m/s | 0,990 | **1,001 m** | 2,35 s | 0,770 m |
 
 | Veličina | Hodnota |
 | --- | --- |
-| latence povel → pohyb | 0,340–0,392 s přes tři shodné pokusy v obou bězích |
-| RMS chyba na rampě 0 → 0,5 m/s | 0,095 a 0,097 m/s |
-| chyba ustálené rychlosti | do 2 % |
-| drift odhadu ve visu | 0,010 m vodorovně a 0,009 m svisle za 60 s |
+| latence povel → pohyb | 0,324–0,408 s přes tři shodné pokusy |
+| chyba ustálené rychlosti | do 6 % (na 0,25 m/s), do 1 % na 1 m/s |
+| drift odhadu ve visu | 0,012 m vodorovně, 0,000 m svisle za 60 s |
+
+**Pavo20 brzdí výrazně hůř než CineLog** — z 1 m/s potřebuje 1,00 m proti
+0,77 m, tedy o 30 % víc. To jde přímo do `d_safe` a je to hlavní důvod, proč
+rozestup vyšel větší.
 
 Tři poznámky, bez kterých se ta čísla dají snadno použít špatně:
 

@@ -17,13 +17,15 @@ from openipc_swarm.safety import (
     speed_limits,
 )
 
-# From M1, on the Pavo20: d_safe 1.30 m at 1 m/s, and the room a stop takes is
-# the latency plus the braking distance, 1.00 * 0.391 + 0.770.
-D_SAFE_M = 1.30
-STOPPING_ROOM_M = 0.391 + 0.770
+# From M1 re-measured on 2026-09-20, on the Pavo20 that actually loads: d_safe
+# 1.56 m at 1 m/s, and the room a stop takes is the latency plus the braking
+# distance, 1.00 * 0.408 + 1.001. The earlier 1.30 m and 0.77 m were the
+# CineLog's, flown under a Pavo20 label - see workflow/troubleshooting.md.
+D_SAFE_M = 1.56
+STOPPING_ROOM_M = 0.408 + 1.001
 MAX_SPEED_MPS = 1.0
-# Deceleration implied by M1: 0.770 m from 1.0 m/s is v^2 / 2s = 0.65 m/s^2.
-DECELERATION_MPS2 = 0.65
+# Deceleration implied by M1: 1.001 m from 1.0 m/s is v^2 / 2s = 0.50 m/s^2.
+DECELERATION_MPS2 = 0.50
 
 
 class TestSeparation(unittest.TestCase):
