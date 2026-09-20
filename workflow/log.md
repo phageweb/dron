@@ -539,6 +539,36 @@ terms rather than a number on its own.
   directory, so each instance needs its own. Two autopilots over one storage
   file are not two autopilots.
 
+- **M2, second half: the generator works and the flight does not.**
+  `scripts/generate_agent_models.py` writes one model and one world per agent
+  into `build/`, renaming the model, its four `<robotNamespace>` entries and
+  its four rotor `<cmd_topic>` entries, and setting `fdm_port_in` to
+  9002 + 10*index. That last part is why generation is needed at all: the port
+  is read only from SDF. Both autopilots then reach the graph as `/ap/v1` and
+  `/ap/v2`, both models spawn at the poses `spec/roj/08` R15 chose, and the
+  identity-to-position mapping is right.
+- **Then nothing takes off, and the reason is not in this repository.** A
+  renamed Gazebo model does not turn its rotors. Four variants of the same file
+  narrow it: unchanged flies; renamed to `openipc_cinewhoop_v1` does not;
+  renamed to `alpha` does not, so it is not the name chosen; and renaming only
+  the instance with `<include><name>` does not either, so it is the entity's
+  name rather than where the name came from. In the failing case the autopilot
+  ramps to 99 per cent throttle, all four rotor command topics carry healthy
+  values, the motor topic has one publisher and four subscribers - and
+  `rotor_0`'s orientation is identical across 0.6 s.
+- Ruled out by measurement: the world edit, the offset start pose,
+  `<robotNamespace>`, the IMU lookup and the state feed, a duplicate model, and
+  stray processes. Written up in `troubleshooting.md`.
+- Two of my own measurements turned out to measure nothing and are recorded as
+  such: `joint_state` publishes no velocities even when the vehicle is flying,
+  and driving the motors with a standing command and no ArduPilot plugin lifts
+  neither model - so that isolation cannot separate the two plugins. A method
+  that fails on the control case is not evidence about the test case.
+- `check_two_agents_fly.sh` is committed **failing**, with the reason in its
+  header. Nothing in CI runs it; `ci.sh` has an explicit list. The alternative
+  was to leave 400 lines of working infrastructure untracked, which hides the
+  state rather than recording it.
+
 ## Log Entry Template
 
 ```text

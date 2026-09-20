@@ -663,6 +663,42 @@ Worth knowing: the failure is silent in the direction that matters. Zeros look
 like data. The first run of that script measured a braking distance of 0.00 m,
 which in `d_safe` would have meant three machines flying inside each other.
 
+## A Renamed Model Does Not Turn Its Rotors
+
+Symptom:
+
+- a Gazebo model that flies is copied, renamed, and stops flying
+- it arms, accepts a guided takeoff, and the autopilot ramps throttle to 99 per
+  cent while ground truth altitude never changes and climb rate stays 0.00 m/s
+- all four rotor command topics carry healthy values, the motor topic has one
+  publisher and four subscribers, and the model's rotor links do not rotate:
+  `rotor_0`'s orientation is identical across 0.6 s
+
+Narrowed to, by four variants of one model file:
+
+| variant | flies |
+| --- | --- |
+| unchanged, at an offset pose, in a generated world | yes |
+| `<model name>` + model.config + world uri renamed to `openipc_cinewhoop_v1` | no |
+| the same renamed to `alpha` | no, so it is not the chosen name |
+| model file untouched, instance renamed with `<include><name>v1</name>` | no, so it is the entity's name and not where the name came from |
+
+Ruled out, each by measurement rather than by argument: the world edit and the
+offset start pose; `<robotNamespace>` (restored, with the bridge pointed at the
+matching topic); the IMU lookup and the state feed (both variants report level
+attitude on the ground and find `imu_link::imu`); a duplicate model in the
+world; and stray processes from an earlier run.
+
+Two methods that measure nothing here, so that nobody repeats them:
+
+- `joint_state` publishes no velocities at all, flying or not.
+- Driving the motors with a standing Actuators command and no ArduPilot plugin
+  lifts **neither** model, so it cannot separate the motor plugin from the
+  autopilot's. The isolation is the thing that fails, not the model.
+
+Why it matters: three drones in one world need three model names, so this
+blocks M2 of the swarm task. Unresolved.
+
 ## Known Risks Before Implementation
 
 ### ROS 2 Packages on NixOS

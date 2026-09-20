@@ -26,6 +26,15 @@ tři adresáře, jak se to dnes dělá pro draky (`models_pavo20`).
 
 Doporučení: generovat. Tři ručně udržované kopie modelu se rozejdou a
 `check_model_consistency.py` dnes hlídá shodu s URDF, ne mezi kopiemi.
+Generátor existuje: `scripts/generate_agent_models.py`, a modely se načtou,
+spawnou na správných pozicích a jejich autopiloti naběhnou.
+
+**Narazilo to ale na překážku, která není naše:** přejmenovaný model v Gazebu
+netočí rotory. Ověřeno na čtyřech variantách téhož souboru, včetně
+přejmenování jen instance přes `<include><name>`. Rozbor a seznam vyloučených
+příčin je v `workflow/troubleshooting.md`, „A Renamed Model Does Not Turn Its
+Rotors". Dokud tohle neustoupí, tři modely v jednom světě nepoletí a je
+potřeba buď minimální reprodukce pro upstream, nebo revize R14.
 
 ### P3 — most Gazebo→ROS má cesty s názvem modelu
 
