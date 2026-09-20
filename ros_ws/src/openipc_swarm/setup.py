@@ -16,4 +16,9 @@ setup(
     maintainer_email="phage@example.invalid",
     description="Coordinator layer for the three-drone mapping task in spec/roj.",
     license="MIT",
+    entry_points={
+        "console_scripts": [
+            "coordinator = openipc_swarm.coordinator:main",
+        ],
+    },
 )

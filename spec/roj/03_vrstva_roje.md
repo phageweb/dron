@@ -39,6 +39,10 @@ Koordinátor nepíše `cmd_vel`. Posílá cíl a omezení; povel skládá agent.
 tak, je v [08 R19](./08_rozhodnuti.md) — jinak by roj obešel vyhýbání zdi a
 podlaze, které jsou garance agenta.
 
+Implementováno 20. 9. 2026 jako `ros2 run openipc_swarm coordinator`. Uzel je
+záměrně tenký: rozhoduje `merge`, `assignment`, `safety` a `tracking`, které
+ROS neobsahují a testují se bez simulátoru; v uzlu zůstalo jen zapojení.
+
 | Část | Odpovědnost | Testuje se |
 | --- | --- | --- |
 | sledování roje | stáří stavu každého agenta, jeho režim, epocha mise | vstříknutým zpožděním a výpadkem |

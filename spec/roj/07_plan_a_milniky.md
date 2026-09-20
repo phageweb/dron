@@ -102,7 +102,11 @@ trajektoriích, kde stroje brzdí měřenou dynamikou z M1.
 
 ## M5 — mapování třemi drony
 
-- [ ] Sekvenční vzlet tří strojů.
+- [x] Koordinátor jako uzel (`openipc_swarm coordinator`), 20. 9. 2026:
+      odebírá pózy a mapy agentů, publikuje cíle, omezení, složenou mapu a
+      oba logy. Graf ověřen; s běžícími agenty ještě nespojen.
+- [x] Sekvenční vzlet tří strojů — `check_agents_fly.sh 3` to dělá po jednom
+      a ověřuje, že ostatní zůstanou na zemi.
 - [ ] Mapování s přidělováním cílů, 130 s.
 - [ ] `/swarm/map` a rozšířená kontrola pokrytí z [06 §4](./06_slozena_mapa.md).
 - [ ] Tři běhy se zapsaným seedem.

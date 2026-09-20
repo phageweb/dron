@@ -828,6 +828,24 @@ terms rather than a number on its own.
   wiring the arithmetic in `openipc_swarm` to agents that are now, finally,
   three separately addressable machines with sensors.
 
+- **The coordinator exists as a node.** `ros2 run openipc_swarm coordinator`
+  subscribes to each agent's pose and map and publishes targets, speed
+  constraints, the merged map and the two logs. Smoke-tested: the graph comes
+  up with `/swarm/map`, `/swarm/assignment`, `/swarm/safety` and a
+  target-and-constraint pair per agent.
+- It is deliberately thin. Everything it decides is decided by `merge`,
+  `assignment`, `safety` and `tracking`, which have no ROS in them and 45
+  tests between them; what is left in the node is wiring, and wiring is
+  exactly what those tests cannot cover, so there is as little of it as the
+  job allows.
+- One piece of arithmetic did end up here and is tested: velocity by
+  differencing consecutive poses, because the filter needs a velocity and
+  AP_DDS gives a filtered pose. A one-sample-stale velocity makes the filter
+  slightly conservative, which is the direction to be wrong in.
+- It never publishes `/ap/v<i>/cmd_vel`. R19 again: the arbiter on each agent
+  clips its own autonomy, so the worst a wrong decision here can do is slow a
+  machine down.
+
 ## Log Entry Template
 
 ```text
