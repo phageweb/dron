@@ -320,6 +320,35 @@ def actuator_path(model):
 
 
 links = {index: connect(index) for index in indices}
+
+# R16 in spec/roj/08: do the three EKFs share an origin? The agents stand at
+# different places, so their own reported positions answer it without anyone
+# having to move. If each EKF is anchored at its own spawn, all three read
+# about zero; if they share the world's origin, they read their spawn offsets
+# and the merged map has one frame rather than three.
+for index in indices:
+    links[index].mav.command_long_send(
+        links[index].target_system, links[index].target_component,
+        mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL, 0,
+        mavutil.mavlink.MAVLINK_MSG_ID_LOCAL_POSITION_NED, 200000, 0, 0, 0, 0, 0)
+time.sleep(2)
+origins = {}
+for index in indices:
+    msg = links[index].recv_match(type="LOCAL_POSITION_NED", blocking=True,
+                                  timeout=5)
+    if msg is None:
+        print(f"  v{index}: no LOCAL_POSITION_NED, origin not checked")
+        continue
+    origins[index] = (msg.x, msg.y)
+    truth_here = truth[index].position()
+    print(f"  v{index} thinks it is at ({msg.x:+.2f}, {msg.y:+.2f}) while "
+          f"ground truth puts it at ({truth_here[0]:+.2f}, {truth_here[1]:+.2f})")
+if len(origins) == len(indices):
+    spread = max(abs(v) for pair in origins.values() for v in pair)
+    print("  EKF origins: "
+          + ("each agent's own spawn point - a merged map needs the offsets "
+             "adding back" if spread < 0.5 else
+             "shared, the reported positions carry the spawn offsets"))
 for link in links.values():
     # Ask for position at 5 Hz; without this the autopilot sends it rarely and
     # the comparison below has nothing to compare.

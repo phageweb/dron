@@ -217,7 +217,6 @@ schovat nestabilita.
 
 | # | Otázka | Čím se zavře |
 | --- | --- | --- |
-| R16 | shodují se originy EKF tří instancí? | měřením proti ground truth v M2 |
 | — | `d_safe` jako číslo | měřením v M1 ([02 §3](./02_vrstva_drona.md)) |
 | — | práh konfliktních buněk | zápisem před M5 |
 | — | vejde se tři instance do reálného času | měřením RTF v M3 |

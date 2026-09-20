@@ -69,12 +69,23 @@ map
 (`pose_tf_broadcaster.py:38-40`), takže tři instance s prefixem jsou změna
 konfigurace, ne kódu. URDF prefix je práce navíc a je v [05](./05_infrastruktura_simulace.md).
 
-**Nevyřešený předpoklad:** že ten `map` je pro všechny tři týž. Každá SITL
-instance má vlastní EKF a vlastní origin, zatímco v Gazebu má každý model svou
-`<pose>` ve světě. Pokud se home pozice instance a spawn pozice modelu
-neshodnou, agent si myslí, že je jinde, než je — a složená mapa bude mít stěny
-dvakrát. Tohle je první věc, kterou má M2 změřit proti ground truth, ne
-předpokládat.
+**Ověřeno 20. 9. 2026: ten `map` je pro všechny tři týž.** Agenti stojí na
+různých místech, takže stačilo přečíst, kde si každý myslí, že je:
+
+| | hlásí (MAVLink NED) | ground truth |
+| --- | ---: | ---: |
+| v1 | (−1,98; +0,49) | (+0,50; −2,00) |
+| v2 | (+0,00; +0,49) | (+0,50; +0,00) |
+| v3 | (+2,00; +0,49) | (+0,50; +2,00) |
+
+Každý hlásí svůj **spawn offset**, ne nulu — takže počátek EKF je společný a
+je to počátek světa, ne místo, kde stroj stojí. Složená mapa tedy nepotřebuje
+offsety dopočítávat a obava z [06 R16](./06_slozena_mapa.md) nenastala.
+
+Mimochodem je z toho vidět i osová transformace: hlášené `x` odpovídá světovému
+`y` a hlášené `y` světovému `x`, což je `gazeboXYZToNED 0 0 0 180 0 90`
+v modelu. Měřeno na MAVLinku; že totéž platí pro `/ap/v<i>/pose/filtered`,
+které je v ENU, se musí ověřit zvlášť, až na něm bude koordinátor stát.
 
 ## 4. Meze povelů
 

@@ -55,10 +55,9 @@ ladí se o polovinu snáz.
 - [x] P4: dva můstky aktuátorů, jeden na model.
 - [ ] TF: `map` → `v1/base_link`, `v2/base_link`.
 - [ ] Startovní pozice podle [08 R15](./08_rozhodnuti.md), svět beze změny.
-- [ ] Ověřit proti ground truth, že se spawn pozice modelu a home pozice SITL
-      shodují (nevyřešený předpoklad z [04 §3](./04_rozhrani.md)). Mřížka mapy
-      je vystředěná na origin EKF, takže na tomhle stojí celé slučování —
-      [08 R16](./08_rozhodnuti.md).
+- [x] Ověřeno proti ground truth: tři instance sdílejí jeden počátek EKF a
+      hlásí své spawn offsety, takže slučování mřížek platí —
+      [04 §3](./04_rozhrani.md).
 - [ ] Arbiter (G9): autonomie publikuje nominální povel, arbiter ho ořezává a
       jako jediný píše `/ap/v<i>/cmd_vel`. Otestovat, že při mlčení omezení
       ořezává konzervativně.

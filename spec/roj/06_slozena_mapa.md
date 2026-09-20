@@ -81,10 +81,12 @@ srovnání s baseline, kvůli kterému celý úkol existuje.
 
 Odůvodnění je v [08](./08_rozhodnuti.md).
 
-- **R16 — mřížka 20 × 20 m při 0,10 m zůstává.** Velikost problém není. Problém
-  je, že mřížka je vystředěná na počátek frame (`occupancy_mapper.py:94-98`),
-  kterým je origin EKF daného agenta: tři různé originy znamenají tři mřížky
-  vystředěné na tři různá místa, všechny pojmenované `map`. **Změřit v M2.**
+- **R16 — mřížka 20 × 20 m při 0,10 m zůstává** a obava, která u ní stála, se
+  nepotvrdila. Mřížka je vystředěná na počátek frame
+  (`occupancy_mapper.py:94-98`), kterým je origin EKF agenta — a **ten je pro
+  všechny tři společný**, ověřeno 20. 9. 2026 na třech agentech, kteří hlásí
+  své spawn offsety místo nul ([04 §3](./04_rozhrani.md)). Tři mřížky jsou
+  tedy vystředěné na totéž místo a slučování buňka po buňce platí.
 - **R17 — rozejití map** se sleduje podílem konfliktních buněk z §2. Počítá se
   při každém sloučení, práh se zapíše před prvním během M5.
 - **R18 — složená mapa se agentům neposílá.** Dostávají hotové cíle a nic

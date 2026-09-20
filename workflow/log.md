@@ -796,6 +796,21 @@ terms rather than a number on its own.
   forward flight 1.36 m with 0.89 m of clearance, coverage 94 and 95 per cent.
   Both coverage runs took the outside mode, 16 per cent of poses inside.
 
+- **The three EKFs share one origin, and that was the last thing M2 had to
+  find out.** The agents stand 2 m apart, so it took no manoeuvre to answer:
+  v1 reports (-1.98, +0.49), v2 (+0.00, +0.49), v3 (+2.00, +0.49), against
+  ground truth of (+0.50, -2.00), (+0.50, 0.00) and (+0.50, +2.00). Each
+  reports its **spawn offset** rather than zero, so the origin is the world's
+  and not each machine's own.
+- That clears R16, which was the risk the merged map rested on: three grids
+  centred on the frame origin are centred on the same physical point, so
+  merging them cell by cell is sound. `spec/roj/04`, `/06`, `/07` and `/08`
+  updated accordingly - the open-questions table in 08 is now empty.
+- It also shows the axis mapping: reported x is world y and reported y is
+  world x, which is `gazeboXYZToNED 0 0 0 180 0 90` in the model. Measured on
+  MAVLink; whether `/ap/v<i>/pose/filtered` agrees is a separate check, and
+  the coordinator is the thing that will need it.
+
 ## Log Entry Template
 
 ```text
