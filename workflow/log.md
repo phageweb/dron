@@ -608,6 +608,38 @@ terms rather than a number on its own.
   identities and the coordinator going quiet - because those need machines
   running. They wait for M2.
 
+- **The airframe switch was not switching the airframe, and it invalidates
+  two milestones.** `model://` is resolved by sdformat through `SDF_PATH`, not
+  through `GZ_SIM_RESOURCE_PATH`. The dev shell exports `SDF_PATH` pointing at
+  `models/` - the CineLog - and `gazebo.launch.py` overrides it per airframe,
+  but the fourteen shell check scripts never did. So every `check_*.sh` run
+  with `OPENIPC_AIRFRAME=pavo20` loaded the CineLog and flew it under the
+  Pavo20's parameters. Measured directly: with the environment those scripts
+  build for pavo20, the file that loads is
+  `models/openipc_cinewhoop/model.sdf`.
+- All fourteen now export `SDF_PATH` with the airframe's directory in front,
+  and the same command then loads `models_pavo20/openipc_cinewhoop/model.sdf`.
+- What that costs: the M0 coverage baseline, the M1 dynamic limits and so
+  `d_safe`, the pavo20 rate sweep, guided takeoff and forward flight are all
+  CineLog numbers wearing a Pavo20 label. They are marked in place in
+  `spec/roj/` rather than deleted - as CineLog measurements they are sound,
+  and M0's run-to-run spread is still the noise floor it was measured to be.
+- It also explains two days of "a renamed Gazebo model does not turn its
+  rotors". There was no mechanism because there was no phenomenon: every
+  variant that flew was the CineLog being substituted through `SDF_PATH`, and
+  every variant that did not was the first time the Pavo20 model had ever been
+  loaded. Renaming did not stop the rotors; it stopped the substitution. The
+  entry is retracted in place with its evidence kept, because the sequence of
+  eliminations is the useful part and the conclusion was the wrong one.
+- The honest reading of the week: the thing that looked like a Gazebo bug was
+  a substitution nobody had reason to suspect, and the tell was in the log all
+  along - "the LAVA model's numbers to a tenth", "the rate gains transfer
+  unchanged", a 15 per cent difference in roll authority that the sweep could
+  not see. Three separate results that all meant the same thing, read three
+  times as a coincidence.
+- **And the real defect underneath: the Pavo20 model has never flown.** Loaded
+  properly it ramps throttle to 46 per cent and stays on the ground. Next.
+
 ## Log Entry Template
 
 ```text

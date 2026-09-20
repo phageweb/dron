@@ -76,7 +76,12 @@ tady dosazený do čísel tohoto repozitáře:
 d_safe = 2 * r_rotor + 2 * e_pozice + v_max * t_latence + s_brzdna + rezerva
 ```
 
-| Člen | Pavo20 | Odkud |
+> **Pozor, 20. 9. 2026:** členy měřené v M1 pocházejí z letu, který ve
+> skutečnosti proběhl na **CineLogu** — kontrolní skripty nenastavovaly
+> `SDF_PATH` a airframe se nepřepnul (viz [02 §3](./02_vrstva_drona.md)).
+> Geometrický člen pro Pavo20 platí, zbytek ne; součet se po přeměření změní.
+
+| Člen | dosud uváděno jako Pavo20 | Odkud |
 | --- | ---: | --- |
 | `2 * r_rotor` geometrické minimum | 0,1221 m | model; CineLog by měl 0,1667 m |
 | `2 * e_pozice` chyba odhadu | 0,020 m | drift ve visu, M1 — **v simulaci** |
