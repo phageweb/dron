@@ -763,6 +763,23 @@ terms rather than a number on its own.
   pair: 1.94 m. Publishing the first number would have been the same mistake
   the airframe substitution was, on a smaller scale.
 
+- **M0 re-measured on the Pavo20, and the third run changed what the baseline
+  means.** Runs 1 and 2 read room 93 per cent, enclosure 94, with 16 per cent
+  of poses inside. Run 3 read 89, 92 and **62 per cent inside**: it went into
+  the enclosure and stayed, and the room outside paid for it - the x- wall
+  dropped from 93 and 97 to 83.
+- So this policy on this airframe is bimodal: it either commits to the
+  enclosure or circles outside it, and which one a run gets is the largest
+  term in the spread. The noise floor is not the 2 points the CineLog showed
+  but **4 points on the room and 14 on a single wall**. Any swarm result
+  smaller than that is indistinguishable from which mode the run fell into.
+- That is a more useful baseline than three tidy runs would have been, and it
+  is the second time this project has been saved by measuring three times
+  instead of once.
+- The CineLog on the same course read 94/93/93 and 96/95/94 with 16/17/16 per
+  cent inside - much tighter. The difference between the airframes is
+  therefore not only where they fly but how repeatably.
+
 ## Log Entry Template
 
 ```text

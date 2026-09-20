@@ -33,16 +33,30 @@ K nim tenhle úkol přidává tři, které s jedním dronem nemají smysl:
 
 ## 3. Baseline
 
-> **NEPLATNÉ od 20. 9. 2026.** Tabulka níž je změřená na **CineLogu**, ne na
-> Pavo20. `model://` se řeší přes `SDF_PATH`, který kontrolní skripty
-> nenastavovaly, takže běh s `OPENIPC_AIRFRAME=pavo20` načetl CineLog model a
-> odlétal ho s parametry Pavo20. Skripty jsou opravené; baseline se musí
-> změřit znovu. Rozbor v `workflow/troubleshooting.md`, „The Airframe Switch
-> Did Not Switch the Airframe". Čísla nechávám, protože jako **CineLog
-> baseline** platí a rozptyl mezi běhy je použitelný odhad šumu měření.
+**Přeměřeno 20. 9. 2026 na skutečném Pavo20**, tři běhy
+`scripts/check_room_coverage.sh`, všechny zelené:
 
-Změřeno 19. 9. 2026, tři běhy `scripts/check_room_coverage.sh`, všechny
-zelené. Plné znění v `workflow/log.md`.
+| | run 1 | run 2 | run 3 | rozptyl |
+| --- | ---: | ---: | ---: | ---: |
+| podlaha místnosti | 93 % | 93 % | 89 % | **4 body** |
+| vnitřek ohrady | 94 % | 94 % | 92 % | 2 body |
+| stěna x− z dosažitelné části | 93 % | 97 % | 83 % | **14 bodů** |
+| pozice uvnitř ohrady | 16 % | 16 % | **62 %** | 46 bodů |
+
+**Ten rozptyl je hlavní výsledek a je mnohem větší, než se čekalo.** Třetí běh
+strávil v ohradě 62 % času proti 16 % v prvních dvou — jiná dráha, ne jiný
+stroj. A protože byl uvnitř, zbyl mu čas na zbytek místnosti: podlaha 89 %
+místo 93 a stěna x− 83 % místo 93.
+
+Chování téhle politiky je tedy **bimodální**: buď do ohrady vletí a zůstane,
+nebo krouží venku. Šum měření proto není 2 body jako u CineLogu, ale spíš
+4 body na místnosti a 14 na jedné stěně. Rozdíl, který má roj prokázat, musí
+být větší než tohle — jinak se nedá odlišit od toho, který ze dvou režimů běh
+zrovna trefil.
+
+Pro srovnání, CineLog na téže trati (19. 9., měřený, když se ještě myslelo, že
+je to Pavo20): místnost 94/93/93, ohrada 96/95/94, pozice uvnitř 16/17/16.
+Tedy výrazně těsnější — a to je samo o sobě rozdíl mezi draky, ne mezi běhy.
 
 | | run 1 | run 2 | run 3 | rozptyl |
 | --- | ---: | ---: | ---: | ---: |
