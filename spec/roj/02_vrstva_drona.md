@@ -22,16 +22,27 @@ Co smí koordinátor předpokládat — a nic víc. Přesná témata a timeouty 
 | G6 | při slabé baterii sám přistane | `BATT_FS_*`, `check_low_battery_landing.sh` |
 | G7 | při výpadku senzoru se zachová definovaně | `check_sensor_dropout.sh` |
 | G8 | jeho identita se restartem nezmění | **neexistuje**, dnes je instance jen jedna |
-| G9 | přijme omezení rychlosti a dodrží ho, i když mu autonomie velí jinak | **neexistuje**, je to arbiter z [08 R19](./08_rozhodnuti.md) |
+| G9 | přijme omezení rychlosti a dodrží ho, i když mu autonomie velí jinak | `arbiter`, hotovo 20. 9. 2026 |
 
-G3, G8 a G9 jsou jediné tři, které se kvůli roji musí dodělat. Zbytek se jen
+G3 a G8 zbývají; G9 je hotové. Jsou to jediné tři, které se kvůli roji musí
+dodělat. Zbytek se jen
 zopakuje pro každou instanci.
 
 G9 je nový uzel — **arbiter** — mezi `simple_indoor_autonomy` a `/ap/cmd_vel`.
-Autonomie napříště publikuje nominální povel a arbiter ho ořízne podle omezení
-od roje; při mlčení koordinátoru ořezává konzervativně. Je to jediný způsob, jak
-dát roji brzdu, aniž by obešel G4 a G5. Téma `cmd_vel` je v uzlu parametr, takže
-autonomie se kvůli tomu nemění.
+Autonomie publikuje nominální povel a arbiter ho ořízne podle omezení od roje;
+je to jediný způsob, jak dát roji brzdu, aniž by obešel G4 a G5. Téma `cmd_vel`
+je v uzlu parametr, takže autonomie se kvůli tomu nemění.
+
+Hotovo 20. 9. 2026 (`openipc_cinewhoop_demo/arbiter.py`). Dvě rozhodnutí v něm
+stojí za přečtení, protože obě jdou proti prvnímu nápadu:
+
+- **Mlčení koordinátoru neznamená stop, ale pomalu** (výchozí 0,25 m/s).
+  Zastavený agent se nedostane ani z deadlocku, a od zastavení při skutečně
+  ztracené lince je tu `GUID_TIMEOUT`, tedy G3. Explicitní `stop` od
+  koordinátoru se ale s mlčením neplete a je respektovaný okamžitě.
+- **Arbiter je opt-in.** Když neběží, autonomie publikuje přímo na
+  `/ap/cmd_vel` přesně jako dnes, takže všechny jednodronové kontroly létají
+  beze změny. Rojový běh ho spustí, jednodronový ne.
 
 ## 2. Co je na tomhle stroji změřené
 

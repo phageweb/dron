@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>openipc_swarm</name>
+  <version>0.1.0</version>
+  <description>Coordinator layer for the three-drone mapping task in spec/roj.</description>
+  <maintainer email="phage@example.invalid">phage</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <!-- The frontier and reachability arithmetic lives in the demo package and is
+       reused rather than rewritten; see spec/roj/08_rozhodnuti.md R5. -->
+  <exec_depend>openipc_cinewhoop_demo</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+
+  <test_depend>pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

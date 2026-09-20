@@ -17,6 +17,14 @@ if [ -d ros_ws/src ] && find ros_ws/src -mindepth 2 -name package.xml -print -qu
     python3 -m pytest ros_ws/src/openipc_cinewhoop_demo/test
   fi
 
+  # The coordinator's arithmetic - map merging, target assignment, the safety
+  # filter and staleness - runs without a simulator, so it belongs in the
+  # baseline rather than behind an opt-in flight check.
+  if [ -d ros_ws/src/openipc_swarm/test ]; then
+    echo "==> Swarm coordinator unit tests"
+    python3 -m pytest ros_ws/src/openipc_swarm/test
+  fi
+
   echo "==> URDF/SDF model consistency check"
   python3 scripts/check_model_consistency.py
 

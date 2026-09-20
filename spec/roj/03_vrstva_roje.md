@@ -103,12 +103,28 @@ Dvě věci k tomu patří, jinak se to číslo použije špatně:
 Nejjednodušší věc, která může fungovat, a záměrně ne CBF ani ORCA:
 
 - Filtr dostane polohy a rychlosti všech tří agentů.
-- Pro každou dvojici spočítá vzdálenost a předpovídanou vzdálenost za
-  `t_horizont` při současných rychlostech.
-- Klesne-li předpověď pod `d_safe`, pošle **oběma** agentům omezení rychlosti;
-  pod tvrdší mez omezení „stop". Ořezání provede arbiter na agentovi.
+- Pro každou dvojici spočítá nejmenší vzdálenost, ke které se podle
+  současných rychlostí přiblíží během `t_horizont`. Vzorkuje se po horizontu,
+  ne jen jeho konec: dva křižující stroje jsou si nejblíž uprostřed.
+- **Stop se nevydává na `d_safe`, ale o „zastavovací prostor" dřív.** To je
+  oprava, kterou si vynutil test: `d_safe` v sobě už brzdnou dráhu a latenci
+  obsahuje, takže povel k zastavení vydaný až na téhle hranici znamená, že ji
+  stroje poslušně přejedou. Stop tedy padá na `d_safe + v_max * t_latence +
+  s_brzdna`, což je při 1 m/s na Pavo20 1,30 + 1,16 = 2,46 m.
+- Nad tím je pásmo stejné šířky, ve kterém se rychlost **plynule** krátí podle
+  předpovězené vzdálenosti. Škálovat podle *současné* vzdálenosti vypadá
+  rozumně a nedělá nic: dvojice 5 m od sebe, která se rychle sbližuje, se
+  označí za rizikovou a vzápětí dostane plnou rychlost, protože 5 m je pohodlná
+  vzdálenost — což je, přesně do chvíle, kdy není.
+- Omezení dostanou **oba** agenti dvojice. Ořezání provede arbiter na agentovi.
 - Priorita při rovnosti je pevná podle ID, aby dva agenti neuhýbali proti sobě.
 - Každý zásah se loguje: čas, dvojice, vzdálenost, co filtr změnil.
+
+Implementováno v `ros_ws/src/openipc_swarm/openipc_swarm/safety.py`, testy v
+`test/test_safety.py` — včetně tří zastavených trajektorií (čelní sblížení,
+dohánění, tři stroje do jednoho bodu), ve kterých stroje **zpomalují měřenou
+brzdnou dynamikou z M1**, ne okamžitě, a přesto nikdy neklesnou pod `d_safe`.
+Test s okamžitou odezvou by o skutečném stroji nedokazoval nic.
 
 Počet zásahů a čas strávený v omezeném režimu jsou metriky, ne vedlejší efekt.
 Roj, který pokryje místnost a filtr v něm zasáhl 400krát, je špatně naladěný

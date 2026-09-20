@@ -81,16 +81,19 @@ neselhala kvůli tomu, že jich je víc.
 
 Všechno, co jde otestovat offline, se offline otestuje.
 
-- [ ] Slučování mřížek na uložených mapách, včetně počítání konfliktů.
-- [ ] Přidělení frontier cílů na uložené mapě: tři agenti, žádný dvakrát týž cíl.
-- [ ] Bezpečnostní filtr na syntetických trajektoriích: čelní sblížení,
+- [x] Slučování mřížek na uložených mapách, včetně počítání konfliktů.
+- [x] Přidělení frontier cílů na uložené mapě: tři agenti, žádný dvakrát týž cíl.
+- [x] Bezpečnostní filtr na syntetických trajektoriích: čelní sblížení,
       dohánění, tři stroje v jednom bodě.
-- [ ] Sledování stáří stavu a epocha mise.
-- [ ] Testy kontraktu z [04 §6](./04_rozhrani.md) — aspoň záměna identit a
-      ztichnutí.
+- [x] Sledování stáří stavu a epocha mise.
+- [x] Arbiter na straně agenta (G9), včetně chování při mlčení koordinátoru.
+- [ ] Testy kontraktu z [04 §6](./04_rozhrani.md) — záměna identit a ztichnutí
+      potřebují běžící stroje, takže čekají na M2.
 
-*Hotovo, když:* filtr prokazatelně zabrání srážce na syntetických datech a
-přidělení nedá dvěma agentům týž cíl.
+*Hotovo* 20. 9. 2026 až na poslední bod. Balíček
+`ros_ws/src/openipc_swarm/`, 40 testů, plus 9 testů arbitru v demo balíčku;
+oboje běží v `scripts/ci.sh` bez simulátoru. Filtr drží `d_safe` i na
+trajektoriích, kde stroje brzdí měřenou dynamikou z M1.
 
 ## M5 — mapování třemi drony
 

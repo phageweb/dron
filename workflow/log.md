@@ -569,6 +569,45 @@ terms rather than a number on its own.
   was to leave 400 lines of working infrastructure untracked, which hides the
   state rather than recording it.
 
+- **M4 built while M2 is blocked, because none of it needs a simulator.**
+  New package `ros_ws/src/openipc_swarm/`: merging the agents' occupancy grids
+  with a conflict count, assigning frontier targets so no two agents are sent
+  to one opening, the separation filter, and the staleness and mission-epoch
+  tracking. 40 tests, plus 9 for the arbiter in the demo package. Both suites
+  run in `scripts/ci.sh` with no Gazebo and no autopilot.
+- The exploration arithmetic is reused rather than rewritten: frontier
+  detection, the reachability sweep and the turn-aware route cost all come
+  from `grid_helpers`, which the single-drone explorer already uses and which
+  `check_room_coverage.sh` already measures. Using the same cost function is
+  what makes a swarm result comparable with the single-drone baseline.
+- **A test corrected the design of the safety filter, and the correction
+  matters.** `spec/roj/03` said to order the stop when the predicted
+  separation drops below `d_safe`. But `d_safe` is a sum that already contains
+  the braking distance and the latency, so a stop ordered at that line is
+  ordered too late: the machines coast through it while obeying. The stop is
+  now ordered at `d_safe + v_max*t_latency + s_braking`, which on the Pavo20
+  at 1 m/s is 2.46 m, and `d_safe` goes back to being what K1 says it is - the
+  line the run must not cross. Three stepped trajectories, with the machines
+  decelerating at the 0.65 m/s^2 that M1 implies rather than instantly, now
+  hold it: head-on, catch-up, and three converging on one point.
+- A second correction from the same tests: scaling the speed limit by the
+  agents' *current* distance looks sensible and does nothing. A pair 5 m apart
+  and closing fast gets flagged and then told it may keep full speed, because
+  5 m is a comfortable distance - which it is, right up until it is not. The
+  limit scales on the predicted closest approach, which is also what raised
+  the alarm.
+- The arbiter (G9) is the agent's half of the seam. Two of its decisions go
+  against the first instinct and are written down where they are made:
+  silence from the coordinator means **slow** (0.25 m/s), not stop, because a
+  stopped agent cannot even back out of a deadlock and `GUID_TIMEOUT` is the
+  thing that stops a machine whose link is really gone - while an explicit
+  stop is honoured immediately and never confused with silence. And the
+  arbiter is opt-in: with it not running the autonomy publishes straight to
+  `/ap/cmd_vel` as today, so every single-drone check flies unchanged.
+- What M4 still cannot do is the contract tests from `spec/roj/04` - swapped
+  identities and the coordinator going quiet - because those need machines
+  running. They wait for M2.
+
 ## Log Entry Template
 
 ```text
