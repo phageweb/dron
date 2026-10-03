@@ -216,6 +216,11 @@ def main():
     bridges = write_bridge_config(os.path.join(out_root, "bridge"),
                                   world_name.group(1), names)
 
+    # Each agent's EKF origin is where it starts, so these are what moves its
+    # pose and its map into the room. The coordinator takes them as one flat
+    # list, x and y per agent, in the order of the names.
+    print("offsets " + " ".join(f"{x} {y}" for x, y, _ in
+                                START_POSES[:len(names)]))
     print(f"models {os.path.abspath(out_models)}")
     print(f"world {os.path.abspath(world_path)}")
     for path in bridges:

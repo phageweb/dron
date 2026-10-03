@@ -8,13 +8,20 @@ in one sitting.
 
 The contract it holds up is `spec/roj/04_rozhrani.md`:
 
-    in   /ap/v<i>/pose/filtered     where each agent is
-         /v<i>/map                  what each agent has seen
+    in   /ap/v<i>/pose/filtered     where each agent is, in its own frame
+         /v<i>/map                  what each agent has seen, in its own frame
     out  /v<i>/explore/target       where it should head
          /v<i>/swarm/constraint     how fast it may go
          /swarm/map                 the merged map
          /swarm/assignment          who was sent where, for the log
          /swarm/safety              every intervention, for the metric
+
+Everything inside the node is in the room's frame. Each agent's pose and map
+arrive relative to where that agent started, so they are moved into the room
+on the way in and its target is moved back on the way out (`frames`). The
+offsets are a required parameter, `start_offsets`, because the default an
+omitted one would have - zero - is the bug that made the first swarm flight
+stop itself and overlay three rooms.
 
 It never publishes `/ap/v<i>/cmd_vel`. That is R19: the agent's arbiter clips
 its own autonomy's command with the constraint, so a wrong decision here can
@@ -28,14 +35,31 @@ from typing import Dict, List, Optional, Tuple
 import rclpy
 from geometry_msgs.msg import PointStamped, PoseStamped
 from nav_msgs.msg import OccupancyGrid
+from rclpy.exceptions import ParameterUninitializedException
 from rclpy.node import Node
+from rclpy.parameter import Parameter
 from rclpy.qos import QoSDurabilityPolicy, QoSProfile, qos_profile_sensor_data
 from std_msgs.msg import Float32, String
 
+from openipc_cinewhoop_demo.grid_helpers import frontier_cells, frontier_clusters
 from openipc_swarm.assignment import Agent, assign_targets
-from openipc_swarm.merge import GeometryMismatch, conflict_fraction, merge_grids
+from openipc_swarm.frames import (
+    offset_in_cells,
+    parse_offsets,
+    shift_grid,
+    to_agent,
+    to_room,
+)
+from openipc_swarm.merge import (
+    GeometryMismatch,
+    clear_agents,
+    conflict_fraction,
+    merge_grids,
+)
 from openipc_swarm.safety import (
     AgentMotion,
+    backoff_limit,
+    deadlock_backoff,
     separation_terms,
     speed_limits,
 )
@@ -64,9 +88,13 @@ def velocity_from(previous: Optional[Tuple[float, Tuple[float, float, float]]],
 
 
 class Coordinator(Node):
-    def __init__(self):
-        super().__init__("swarm_coordinator")
+    def __init__(self, **kwargs):
+        super().__init__("swarm_coordinator", **kwargs)
         self.declare_parameter("agents", ["v1", "v2", "v3"])
+        # x and y of each agent's start in the room, flat and in the order of
+        # `agents`. Typed and without a default: an omitted parameter fails in
+        # parse_offsets instead of quietly meaning every agent started at 0, 0.
+        self.declare_parameter("start_offsets", Parameter.Type.DOUBLE_ARRAY)
         # The separation is derived from the speed the swarm is allowed to
         # fly, not carried over from the speed it was measured at. The first
         # swarm flight ordered 3366 stops and no slowdowns because it held the
@@ -85,8 +113,16 @@ class Coordinator(Node):
         self.declare_parameter("resolution_m", 0.10)
         self.declare_parameter("clearance_cells", 3)
         self.declare_parameter("min_frontier_cells", 4)
+        # The airframe, in cells: how much of the merged map round each agent
+        # is the agent itself rather than a wall (`merge.clear_agents`).
+        self.declare_parameter("agent_radius_cells", 2)
 
         self._names: List[str] = list(self.get_parameter("agents").value)
+        try:
+            offsets = list(self.get_parameter("start_offsets").value)
+        except ParameterUninitializedException:
+            offsets = []
+        self._offsets = parse_offsets(self._names, offsets)
         self._state = SwarmState(
             max_age_s=float(self.get_parameter("state_max_age_s").value))
         self._previous: Dict[str, Tuple[float, Tuple[float, float, float]]] = {}
@@ -144,8 +180,8 @@ class Coordinator(Node):
     def _pose_handler(self, name: str):
         def handle(msg: PoseStamped):
             now = self._now()
-            position = (msg.pose.position.x, msg.pose.position.y,
-                        msg.pose.position.z)
+            position = to_room((msg.pose.position.x, msg.pose.position.y,
+                                msg.pose.position.z), self._offsets[name])
             velocity = velocity_from(self._previous.get(name), now, position)
             self._previous[name] = (now, position)
             self._state.update(name, now, (position, velocity))
@@ -155,6 +191,19 @@ class Coordinator(Node):
         def handle(msg: OccupancyGrid):
             self._maps[name] = msg
         return handle
+
+    def _in_room(self, name: str, grid: OccupancyGrid) -> List[int]:
+        """An agent's grid moved into the room, ready to merge.
+
+        Every mapper lays its grid out the same way around its own origin, so
+        the agent's offset in whole cells is the whole of the move, and the
+        grid keeps its size and its `info`: the same numbers now describe the
+        room instead of that agent's start.
+        """
+        d_col, d_row = offset_in_cells(self._offsets[name],
+                                       grid.info.resolution)
+        return shift_grid(list(grid.data), grid.info.width, grid.info.height,
+                          d_col, d_row)
 
     def _tick(self):
         now = self._now()
@@ -171,10 +220,19 @@ class Coordinator(Node):
     def _separate(self, fresh, stale) -> Dict[str, float]:
         motions = [AgentMotion(name, payload[0], payload[1])
                    for name, payload in fresh.items()]
+        max_speed = float(self.get_parameter("max_speed_mps").value)
         limits, interventions = speed_limits(
-            motions, self._d_safe_m,
-            float(self.get_parameter("max_speed_mps").value),
-            self._stopping_room_m)
+            motions, self._d_safe_m, max_speed, self._stopping_room_m)
+
+        # A stop alone deadlocks: two machines inside the stop line are both
+        # held at zero and neither can open the gap. One of them is let move,
+        # only as fast as still stops it short of d_safe.
+        backer = deadlock_backoff(motions, limits,
+                                  self._d_safe_m + self._stopping_room_m)
+        if backer is not None:
+            limits[backer] = backoff_limit(
+                motions, limits, backer, self._d_safe_m,
+                float(self.get_parameter("latency_s").value), max_speed)
 
         for name in self._names:
             message = Float32()
@@ -190,6 +248,9 @@ class Coordinator(Node):
         if interventions:
             self._safety_log.publish(String(data=json.dumps({
                 "stale": stale,
+                "backoff": ({"agent": backer,
+                             "limit_mps": round(limits[backer], 3)}
+                            if backer is not None else None),
                 "interventions": [
                     {"pair": list(i.pair), "distance_m": round(i.distance_m, 3),
                      "predicted_m": round(i.predicted_m, 3),
@@ -203,8 +264,10 @@ class Coordinator(Node):
         if len(maps) < len(self._names):
             return  # not every agent has published a map yet
         try:
-            merged, conflicts = merge_grids([list(m.data) for m in maps])
-        except GeometryMismatch as error:
+            grids = [self._in_room(name, self._maps[name])
+                     for name in self._names]
+            merged, conflicts = merge_grids(grids)
+        except (GeometryMismatch, ValueError) as error:
             self.get_logger().error(f"Maps cannot be merged: {error}")
             return
 
@@ -223,8 +286,14 @@ class Coordinator(Node):
                       / maps[0].info.resolution)
             agents.append(Agent(name, (col, row)))
 
+        # Planned on the map with the agents taken out of it. The published
+        # map keeps them: it is the record of what was seen.
+        planning = clear_agents(
+            merged, maps[0].info.width, maps[0].info.height,
+            [a.cell for a in agents],
+            int(self.get_parameter("agent_radius_cells").value))
         assignment, unassigned = assign_targets(
-            merged, maps[0].info.width, maps[0].info.height, agents,
+            planning, maps[0].info.width, maps[0].info.height, agents,
             maps[0].info.resolution,
             maps[0].info.origin.position.x, maps[0].info.origin.position.y,
             int(self.get_parameter("clearance_cells").value),
@@ -233,17 +302,34 @@ class Coordinator(Node):
         for name, target in assignment.items():
             point = PointStamped()
             point.header = grid.header
-            point.point.x, point.point.y = target.point_m
+            point.point.x, point.point.y = to_agent(target.point_m,
+                                                    self._offsets[name])
             self._targets[name].publish(point)
 
+        # Why nobody got a target, when nobody does: the first swarm flights
+        # left all three unassigned on every tick, and an empty assignment
+        # alone cannot say whether there was nothing to go to or nowhere to
+        # start from.
+        width = maps[0].info.width
+        openings = frontier_clusters(frontier_cells(
+            planning, width, maps[0].info.height))
         self._assignment_log.publish(String(data=json.dumps({
+            "frontier_clusters": len(openings),
+            "agent_cells_cleared": sum(1 for a, b in zip(merged, planning)
+                                       if a != b),
+            "agent_cells": {a.name: [a.cell[0], a.cell[1],
+                                     merged[a.cell[1] * width + a.cell[0]]
+                                     if 0 <= a.cell[0] < width
+                                     and 0 <= a.cell[1] < maps[0].info.height
+                                     else None]
+                            for a in agents},
             "assigned": {name: {"cell": list(t.cell),
                                 "cost_m": round(t.cost_m, 3)}
                          for name, t in assignment.items()},
             "unassigned": unassigned,
             "conflict_cells": conflicts,
             "conflict_fraction": round(
-                conflict_fraction(conflicts, [list(m.data) for m in maps]), 4),
+                conflict_fraction(conflicts, grids), 4),
             "limits_mps": {n: round(v, 3) for n, v in limits.items()},
         })))
 

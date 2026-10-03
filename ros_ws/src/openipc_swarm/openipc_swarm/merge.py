@@ -98,3 +98,37 @@ def conflict_fraction(conflicts: int, grids: Sequence[Sequence[int]]) -> float:
         if sum(1 for grid in grids if grid[cell] != UNKNOWN) > 1:
             shared += 1
     return conflicts / shared if shared else 0.0
+
+
+def clear_agents(values: Sequence[int], width: int, height: int,
+                 cells: Sequence[Tuple[int, int]], radius_cells: int,
+                 occupied_above: int = 65, free_value: int = 0) -> List[int]:
+    """The grid with every agent's own body taken back out of it.
+
+    Each agent's lidar sees the others and its mapper paints them as walls,
+    because a single-drone mapper has no way to know an obstacle is a drone.
+    In the merged map that leaves a wall wherever an agent is flying: it plugs
+    the door the others should go through, and it grows round the agent
+    itself so that nothing can be reached from where it stands. The flight
+    that showed it had v2 and v3 standing on occupied cells on a quarter of
+    all ticks, and the enclosure 59 per cent mapped against 94 in the flight
+    where they did not.
+
+    Only occupied cells within `radius_cells` of an agent are cleared, and
+    only to free: the radius is the airframe, so the one way this can erase a
+    real wall is with an agent touching it. Unknown stays unknown - an agent
+    standing somewhere is not evidence about what is behind it.
+    """
+    cleared = list(values)
+    r2 = radius_cells * radius_cells
+    for col, row in cells:
+        for d_row in range(-radius_cells, radius_cells + 1):
+            for d_col in range(-radius_cells, radius_cells + 1):
+                if d_col * d_col + d_row * d_row > r2:
+                    continue
+                c, r = col + d_col, row + d_row
+                if 0 <= c < width and 0 <= r < height:
+                    index = r * width + c
+                    if cleared[index] >= occupied_above:
+                        cleared[index] = free_value
+    return cleared

@@ -12,7 +12,10 @@ import unittest
 from openipc_swarm.safety import (
     AgentMotion,
     closest_approach,
+    backoff_limit,
+    braking_distance_m,
     deadlock_backoff,
+    speed_for_room,
     separation,
     speed_limits,
 )
@@ -177,8 +180,48 @@ class TestK1OnSyntheticTrajectories(unittest.TestCase):
         self.assertGreaterEqual(closest, D_SAFE_M)
 
 
-if __name__ == "__main__":
-    unittest.main()
+class TestSpeedForRoom(unittest.TestCase):
+    def test_no_room_is_no_speed(self):
+        self.assertEqual(speed_for_room(0.0, 0.408, 0.5), 0.0)
+        self.assertEqual(speed_for_room(-0.2, 0.408, 0.5), 0.0)
+
+    def test_plenty_of_room_is_the_cap(self):
+        self.assertEqual(speed_for_room(5.0, 0.408, 0.5), 0.5)
+
+    def test_the_speed_found_stops_inside_the_room(self):
+        for room in (0.05, 0.2, 0.4, 0.6):
+            v = speed_for_room(room, 0.408, 0.5)
+            self.assertGreater(v, 0.0)
+            self.assertLessEqual(v * 0.408 + braking_distance_m(v), room + 1e-9)
+            # and not needlessly slower than that
+            faster = v + 0.01
+            self.assertGreater(faster * 0.408 + braking_distance_m(faster), room)
+
+
+class TestBackoffLimit(unittest.TestCase):
+    def test_the_measured_deadlock_gets_moving(self):
+        # v2 and v3 as the second swarm flight left them: 1.39 m apart,
+        # under a 1.41 m stop line, both stopped.
+        agents = [AgentMotion("v2", (2.95, -1.75, 1.0), (0.0, 0.0, 0.0)),
+                  AgentMotion("v3", (3.45, -0.45, 1.0), (0.0, 0.0, 0.0))]
+        limit = backoff_limit(agents, {"v2": 0.0, "v3": 0.0}, "v2",
+                              d_safe_m=0.78, latency_s=0.408,
+                              max_speed_mps=0.5)
+        self.assertGreater(limit, 0.0)
+        self.assertLess(limit, 0.5)
+
+    def test_at_d_safe_it_stays_put(self):
+        agents = [AgentMotion("v1", (0.0, 0.0, 1.0), (0.0, 0.0, 0.0)),
+                  AgentMotion("v2", (0.78, 0.0, 1.0), (0.0, 0.0, 0.0))]
+        self.assertEqual(backoff_limit(agents, {}, "v1", 0.78, 0.408, 0.5),
+                         0.0)
+
+    def test_the_nearest_neighbour_sets_the_limit(self):
+        far = [AgentMotion("v1", (0.0, 0.0, 1.0), (0, 0, 0)),
+               AgentMotion("v2", (1.3, 0.0, 1.0), (0, 0, 0))]
+        near = far + [AgentMotion("v3", (0.0, 0.9, 1.0), (0, 0, 0))]
+        self.assertLess(backoff_limit(near, {}, "v1", 0.78, 0.408, 0.5),
+                        backoff_limit(far, {}, "v1", 0.78, 0.408, 0.5))
 
 
 class TestSpeedDependentTerms(unittest.TestCase):
@@ -211,3 +254,7 @@ class TestSpeedDependentTerms(unittest.TestCase):
         self.assertLess(d_safe + room, 1.5)
         fast_safe, fast_room = separation_terms(1.0, 0.06107, 0.012, 0.408)
         self.assertGreater(fast_safe + fast_room, 2.5)
+
+
+if __name__ == "__main__":
+    unittest.main()

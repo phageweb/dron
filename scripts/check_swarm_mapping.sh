@@ -75,8 +75,9 @@ echo "$generated"
 models_path="$(echo "$generated" | sed -n 's/^models //p')"
 world_path="$(echo "$generated" | sed -n 's/^world //p')"
 mapfile -t bridge_configs < <(echo "$generated" | sed -n 's/^bridge //p')
-if [ -z "$models_path" ] || [ -z "$world_path" ]; then
-  echo "The generator did not print a models and world path." >&2
+start_offsets="$(echo "$generated" | sed -n 's/^offsets //p')"
+if [ -z "$models_path" ] || [ -z "$world_path" ] || [ -z "$start_offsets" ]; then
+  echo "The generator did not print a models path, a world path and offsets." >&2
   exit 1
 fi
 export GZ_SIM_RESOURCE_PATH="$models_path:$(dirname "$world_path")${GZ_SIM_RESOURCE_PATH:+:$GZ_SIM_RESOURCE_PATH}"
@@ -310,6 +311,7 @@ done
 
 ros2 run openipc_swarm coordinator --ros-args \
   -p "agents:=[$(seq -s, -f 'v%g' 1 "$agents" | sed 's/[^,]*/\"&\"/g')]" \
+  -p "start_offsets:=[$(echo "$start_offsets" | sed 's/ /, /g')]" \
   >"$run_dir/coordinator.log" 2>&1 &
 demo_pids+=($!)
 sleep 8
@@ -492,8 +494,10 @@ stops = sum(1 for entry in safety_log
             for i in entry["interventions"] if i["action"] == "stop")
 slows = sum(1 for entry in safety_log
             for i in entry["interventions"] if i["action"] == "slow")
+backoffs = sum(1 for entry in safety_log if entry.get("backoff"))
 print(f"  coordinator ticks logged: {ticks}; safety messages: "
-      f"{len(safety_log)} ({stops} stops, {slows} slowdowns)")
+      f"{len(safety_log)} ({stops} stops, {slows} slowdowns, "
+      f"{backoffs} ticks with somebody backing off)")
 if ticks:
     idle = sum(1 for entry in assignment_log if not entry["assigned"])
     unassigned = sum(len(entry["unassigned"]) for entry in assignment_log)
@@ -504,6 +508,13 @@ if ticks:
     print(f"  ticks with nobody assigned: {idle} of {ticks}; "
           f"agent-ticks unassigned: {unassigned}")
     print(f"  distinct assignments over the flight: {len(distinct)}")
+    openings = sorted(entry.get("frontier_clusters", 0)
+                      for entry in assignment_log)
+    print(f"  openings in the merged map: median {openings[len(openings) // 2]}, "
+          f"most {openings[-1]}")
+    last = assignment_log[-1].get("agent_cells", {})
+    print("  where the agents stood on the last tick (col, row, cell value): "
+          + ", ".join(f"{n} {tuple(c)}" for n, c in sorted(last.items())))
     print(f"  conflicting cells, worst tick: {max(conflicts):.4f}")
     limited = [min(entry["limits_mps"].values()) for entry in assignment_log
                if entry["limits_mps"]]
@@ -513,6 +524,16 @@ if ticks:
               f"{braked} of {len(limited)}")
 with open(os.path.join(run_dir, "coordinator_log.json"), "w") as handle:
     _json.dump({"safety": safety_log, "assignment": assignment_log}, handle)
+# The last merged map and where everybody stood on it, so an assignment can
+# be replayed offline against exactly what the coordinator saw.
+with open(os.path.join(run_dir, "merged_map.json"), "w") as handle:
+    _json.dump({"width": grid.info.width, "height": grid.info.height,
+                "resolution": grid.info.resolution,
+                "origin": [grid.info.origin.position.x,
+                           grid.info.origin.position.y],
+                "data": list(grid.data),
+                "agent_cells": assignment_log[-1].get("agent_cells", {})
+                if assignment_log else {}}, handle)
 
 if min(flown.values()) == 0:
     sys.exit("An agent published no pose at all; it never flew.")

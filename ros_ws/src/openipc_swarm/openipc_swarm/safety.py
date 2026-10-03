@@ -156,7 +156,9 @@ def deadlock_backoff(
     """Which agent gives ground when two have stopped facing each other.
 
     Two stopped machines inside the stop line stay there for ever, because
-    neither can move until the other does. The tie is broken by name so both
+    neither can move until the other does. The second swarm flight did exactly
+    that: v2 and v3 stood 1.39 m apart against a 1.41 m stop line on every
+    tick. Choosing who backs off is half of it; `backoff_limit` says how fast. The tie is broken by name so both
     sides compute the same answer and only one backs off; which one is
     arbitrary, and that is fine as long as the rule is the same everywhere.
     """
@@ -192,6 +194,57 @@ def braking_distance_m(speed_mps: float,
     # Above the fastest measurement there is no data, so extrapolating would
     # be inventing one. The caller is told what the fastest measured stop was.
     return table[-1][1] * speed_mps / table[-1][0]
+
+
+def speed_for_room(room_m: float, latency_s: float, max_speed_mps: float,
+                   measured=None) -> float:
+    """The fastest a machine may go and still stop within `room_m`.
+
+    The inverse of the stopping room: `v * latency + braking(v)` grows with v,
+    so the answer is found by bisection rather than by inverting a table that
+    is not a formula. No room is no speed.
+    """
+    if room_m <= 0.0:
+        return 0.0
+
+    def needs(v):
+        return v * latency_s + braking_distance_m(v, measured)
+
+    if needs(max_speed_mps) <= room_m:
+        return max_speed_mps
+    low, high = 0.0, max_speed_mps
+    for _ in range(40):
+        middle = 0.5 * (low + high)
+        if needs(middle) <= room_m:
+            low = middle
+        else:
+            high = middle
+    return low
+
+
+def backoff_limit(
+    agents: Iterable[AgentMotion],
+    limits: Dict[str, float],
+    backer: str,
+    d_safe_m: float,
+    latency_s: float,
+    max_speed_mps: float,
+) -> float:
+    """How fast the agent chosen to give ground may move while the rest wait.
+
+    Everyone else it is near has been told to stop, so the only machine that
+    can close a gap is this one, and it may go exactly as fast as still lets
+    it stop short of `d_safe` from the nearest of them - in whatever direction
+    its own autonomy takes it, including straight at them. That is what makes
+    it safe to let one machine move inside the stop line at all, and it is
+    why the others must be stopped first: the argument holds only against
+    machines that are standing still.
+    """
+    agents = list(agents)
+    me = next(a for a in agents if a.name == backer)
+    room = min((separation(me, other) - d_safe_m for other in agents
+                if other.name != backer), default=float("inf"))
+    return speed_for_room(room, latency_s, max_speed_mps)
 
 
 def separation_terms(speed_mps: float, rotor_tip_m: float,

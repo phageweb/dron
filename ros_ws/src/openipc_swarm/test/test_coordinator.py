@@ -1,8 +1,14 @@
-"""The one piece of the coordinator that is arithmetic rather than wiring."""
+"""The coordinator's arithmetic, and the one piece of wiring that moves frames."""
 
 import unittest
 
-from openipc_swarm.coordinator import velocity_from
+import rclpy
+from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import OccupancyGrid
+from rclpy.parameter import Parameter
+
+from openipc_swarm.coordinator import Coordinator, velocity_from
+from openipc_swarm.merge import UNKNOWN
 
 
 class TestVelocityFrom(unittest.TestCase):
@@ -31,6 +37,49 @@ class TestVelocityFrom(unittest.TestCase):
         previous = (0.0, (1.0, 2.0, 3.0))
         self.assertEqual(velocity_from(previous, 2.0, (3.0, 6.0, 9.0)),
                          (1.0, 2.0, 3.0))
+
+
+class TestCoordinatorFrames(unittest.TestCase):
+    """The node, not the module: the first swarm flight's bug was wiring."""
+
+    @classmethod
+    def setUpClass(cls):
+        rclpy.init()
+
+    @classmethod
+    def tearDownClass(cls):
+        rclpy.try_shutdown()
+
+    def node(self, offsets):
+        overrides = [Parameter("agents", value=["v1", "v2"])]
+        if offsets is not None:
+            overrides.append(Parameter("start_offsets", value=offsets))
+        node = Coordinator(parameter_overrides=overrides)
+        self.addCleanup(node.destroy_node)
+        return node
+
+    def test_it_will_not_start_without_offsets(self):
+        with self.assertRaises(ValueError):
+            self.node(None)
+
+    def test_two_agents_at_their_own_origins_are_two_places(self):
+        node = self.node([0.5, -2.0, 0.5, 2.0])
+        for name in ("v1", "v2"):
+            msg = PoseStamped()
+            msg.pose.position.z = 1.0
+            node._pose_handler(name)(msg)
+        fresh = node._state.fresh(node._now())
+        self.assertEqual(fresh["v1"][0], (0.5, -2.0, 1.0))
+        self.assertEqual(fresh["v2"][0], (0.5, 2.0, 1.0))
+
+    def test_a_map_is_moved_by_its_own_agents_offset(self):
+        node = self.node([0.0, 0.0, 0.2, -0.1])
+        grid = OccupancyGrid()
+        grid.info.width, grid.info.height, grid.info.resolution = 4, 3, 0.1
+        grid.data = [UNKNOWN] * 12
+        grid.data[1 * 4 + 1] = 100          # col 1, row 1
+        self.assertEqual(node._in_room("v1", grid).index(100), 1 * 4 + 1)
+        self.assertEqual(node._in_room("v2", grid).index(100), 0 * 4 + 3)
 
 
 if __name__ == "__main__":

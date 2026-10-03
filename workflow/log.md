@@ -912,6 +912,29 @@ terms rather than a number on its own.
   to its pose, and shift its grid by the matching number of cells before
   merging. Next.
 
+## 2026-10-03 - the swarm in the room's frame
+
+- The coordinator now reads every agent in the room's frame: poses moved by
+  each agent's start offset, maps shifted by whole cells before merging,
+  targets moved back out (`openipc_swarm/frames.py`). `start_offsets` is a
+  required parameter - zero is what the first swarm flights used without
+  knowing it - and the generator prints it from `START_POSES`.
+- The old 83 to 84 per cent was the overlay of three rooms. Measured in one
+  room it is bimodal: 92/94, 85/59, 92/93, 86/58 per cent (room/enclosure)
+  over four flights.
+- "No agent ever assigned" was the frame bug. Now exactly one is, because of
+  the 6 to 15 openings in the merged map typically one is reachable at
+  flying clearance, and R5 gives one opening to one agent.
+- Found a stop deadlock: a stop is a speed limit of zero, so v2 and v3 stood
+  1.39 m apart against a 1.41 m stop line for a whole flight.
+  `deadlock_backoff` existed and nothing called it; `backoff_limit` now lets
+  the chosen agent move as fast as still stops it short of d_safe.
+- Agents map each other as walls (v2 and v3 on occupied cells a quarter of
+  all ticks in a bad flight). `merge.clear_agents` takes a 0.2 m disc round
+  each agent out of the planning map. No measurable effect on the outcome.
+- What decides the bad mode is the two agents with no target: they wander
+  into one corner and jam. Fixing that changes R5 - left as a decision.
+
 ## Log Entry Template
 
 ```text

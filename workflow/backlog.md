@@ -496,22 +496,52 @@ M2 is closed except the two items below; M5 is where the work is.
 
 ### Open, and blocking M5
 
-- [ ] Add each agent's start offset to the pose the coordinator reads.
+- [x] Add each agent's start offset to the pose the coordinator reads.
       AP_DDS publishes a pose relative to that vehicle's own origin, so three
       machines 2 m apart report the same position and the safety filter stops
       them for ever. The offsets are in `generate_agent_models.py`
       (`START_POSES`); pass them to the coordinator as a parameter.
-- [ ] Shift each agent's grid by the matching number of cells before merging,
+      Done in `openipc_swarm/frames.py`: `start_offsets` is required, the
+      generator prints it and `check_swarm_mapping.sh` passes it on. Targets
+      go back out in each agent's own frame.
+- [x] Shift each agent's grid by the matching number of cells before merging,
       for the same reason: three grids centred on three different physical
       places are being overlaid as if they were one room, so the 83 to 84 per
       cent coverage reported so far is that overlay and not a measurement.
-- [ ] Re-fly `check_swarm_mapping.sh 3` once both are in, and compare against
+- [x] Re-fly `check_swarm_mapping.sh 3` once both are in, and compare against
       the baseline honestly: 89 to 93 per cent of the room, 92 to 94 of the
       enclosure, with a noise floor of 4 points on the room and 14 on one
-      wall.
-- [ ] Work out why no agent is ever assigned a target. It may simply be the
-      frame bug above - three agents at one cell - but it has not been
-      checked separately, and `assign_targets` has tests that pass.
+      wall. **Bimodal, 2026-10-03.** With offsets, backoff and the agents
+      cleared out of the planning map, four flights came out 92/94, 85/59,
+      92/93 and 86/58 (room/enclosure). The good mode is the baseline, not
+      better; the bad mode is the swarm in a jam - two agents without a
+      target wander reactively into the same corner, stop each other, and
+      the one let back off creeps without getting out. Clearing the agents
+      out of the map is right in principle and made no measurable difference.
+- [ ] Decide what an agent without a target does. R5 gives one opening to
+      one agent, and the merged map rarely has more than one reachable, so
+      two of three fly with no target almost all the time, and that is what
+      jams them. Candidates: a target away from the others when there is no
+      opening left for it, or letting two agents share an opening when there
+      are fewer openings than agents. Either changes R5, so it is a decision
+      before it is code.
+- [ ] Measure time to coverage, not coverage at a fixed time. A swarm that
+      maps the same room as one drone is only worth having if it does it
+      sooner, and the check cannot see that.
+- [x] Work out why no agent is ever assigned a target. It was the frame bug:
+      with the offsets in, one agent is assigned on every tick. Only one,
+      because of 13 openings in the merged map only one was reachable at
+      flying clearance - the enclosure door - and greedy gives one opening
+      to one agent. That is the rule working, not a bug; the coordinator log
+      now carries the opening count and every agent's cell to tell the two
+      apart (`frontier_clusters`, `agent_cells`), and the check saves the
+      last merged map as `merged_map.json` for an offline replay.
+- [x] Break the stop deadlock. A stop is a scalar speed limit of zero, so a
+      pair inside the stop line could never open the gap: v2 and v3 stood
+      1.39 m apart against a 1.41 m line on every tick of the first flight
+      with offsets, 1901 stops. `deadlock_backoff` already picked who gives
+      ground and nothing called it; `backoff_limit` now lets that one move as
+      fast as still stops it short of d_safe from everyone, who are stopped.
 
 ### Open, not blocking
 

@@ -3,6 +3,7 @@
 import unittest
 
 from openipc_swarm.merge import (
+    clear_agents,
     UNKNOWN,
     GeometryMismatch,
     conflict_fraction,
@@ -69,6 +70,40 @@ class TestConflictFraction(unittest.TestCase):
         first = [FREE, UNKNOWN]
         second = [UNKNOWN, FREE]
         self.assertEqual(conflict_fraction(0, [first, second]), 0.0)
+
+
+class TestClearAgents(unittest.TestCase):
+    # 5 by 5, a drone painted as a wall at the centre and a real wall on the
+    # right-hand column.
+    def grid(self):
+        g = [0] * 25
+        g[2 * 5 + 2] = 100          # the other drone
+        for row in range(5):
+            g[row * 5 + 4] = 100    # a wall
+        return g
+
+    def test_the_drone_is_taken_out(self):
+        cleared = clear_agents(self.grid(), 5, 5, [(2, 2)], 1)
+        self.assertEqual(cleared[2 * 5 + 2], 0)
+
+    def test_a_wall_out_of_reach_stays(self):
+        cleared = clear_agents(self.grid(), 5, 5, [(2, 2)], 1)
+        self.assertEqual([cleared[r * 5 + 4] for r in range(5)], [100] * 5)
+
+    def test_unknown_is_not_made_free(self):
+        g = [UNKNOWN] * 9
+        self.assertEqual(clear_agents(g, 3, 3, [(1, 1)], 1), g)
+
+    def test_an_agent_at_the_edge_does_not_wrap(self):
+        g = [100] * 9
+        cleared = clear_agents(g, 3, 3, [(0, 0)], 1)
+        self.assertEqual(cleared[2], 100)      # row 0, col 2
+        self.assertEqual(cleared[0], 0)
+
+    def test_the_input_is_not_changed(self):
+        g = self.grid()
+        clear_agents(g, 5, 5, [(2, 2)], 1)
+        self.assertEqual(g, self.grid())
 
 
 if __name__ == "__main__":
