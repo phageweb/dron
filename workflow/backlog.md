@@ -554,7 +554,16 @@ M2 is closed except the two items below; M5 is where the work is.
       measuring them is step 2 of the bench checklist
 - [x] Prepare a bench checklist without propellers
       (`spec/realna_stavba_dronu/04_bench_checklist.md`)
-- [ ] Weigh individual components, which needs the parts on a scale
+- [ ] Weigh individual components, which needs the parts on a scale. The
+      Rotorama CZ half of the Pavo20 list has arrived
+      (`spec/realna_stavba_dronu/13_nakoupeno.md`); the frame, the Walksnail
+      Lite+ and the lidar have not
+- [ ] Bring `models_pavo20/` down to what was bought. The model flies the
+      850 mAh pack at 0.22934 kg; the order brought a 750 mAh pack at 69 g
+      instead of 76, and the video unit is now the 10.5 g Walksnail Lite+
+      rather than the 13.76 g Wyvern. The bill of materials says 0.21908 kg,
+      thrust to weight 3.7. Hover throttle and gains need re-running, and the
+      57 g 550 mAh spare should at least be checked to hold altitude
 - [ ] Plan mechanical sensor placement, which needs the frame dry-fitted
 - [x] Choose the front obstacle sensor: LDRobot LD06, imported. Nothing else in the build is blocked on a
       single decision this hard: LD06 is the only candidate that gives a real
@@ -589,6 +598,23 @@ M2 is closed except the two items below; M5 is where the work is.
 - [ ] Watch the 5 V rail. The LD06 is a brushed motor drawing 300 mA at startup
       on the same BEC as the flow sensor and the receiver. Current is not the
       problem; noise might be
+- [ ] Settle whether ArduPilot's LD06 driver takes the STL-19P. The D500 kit's
+      sensor speaks the same frame (0x54, 12 points, same CRC) at the same
+      230400, and the ROS 2 package runs it off `ld19.launch.py` - so Lidar360
+      with `PRX1_TYPE` 16 should just work. Should is doing the work in that
+      sentence; nobody has plugged one in. This is the last thing between the
+      comparison and buying the D500 instead of the LD06
+- [ ] Re-do the 5 V budget if the D500 is bought. STL-19P draws 540 mA at
+      startup and 290 mA running, against the LD06's 300 and 180. Still under a
+      third of the 2 A BEC, but the capacitor that was already advised stops
+      being optional
+- [x] Verify LD19 against LD06, which the alternatives chapter had recommended
+      as the newer and cheaper default. It is neither: LD19 is the same sensor
+      with a bottom mounting plate, 5 g heavier, and youyeetoo list it as
+      discontinued. Its own spec table maps `FHL-LD19` to device `LDS06`. D300
+      is that same LD19 plus a CP2102 USB board, which is dead weight when the
+      scan goes out over UART. The one genuinely different sensor of the four is
+      the D500's STL-19P
 - [ ] Confirm the EMAX Wyvern Link Alpha over the RunCam WiFiLink 2. It is 11 to
       16 g lighter for the same job, which the mass goal prefers, but EMAX publish
       neither power draw nor range where RunCam quote up to 15 W. Those two

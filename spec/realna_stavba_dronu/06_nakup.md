@@ -70,8 +70,11 @@ Následující věci už jsou přibalené, nebo zatím nejsou rozhodnuté:
   adaptér: jsou duplicitní;
 - běžnou kompaktní **14,8V LiPo** Tattu R-Line 750 mAh: cílový CAD počítá s
   podlouhlou **15,2V LiHV** variantou;
-- LD06-LD, LD19 nebo jiný údajný ekvivalent bez ověření hmotnosti, rozměrů a
-  UART protokolu proti původnímu LD06;
+- LD06-LD, LD19, D300 nebo jiný údajný ekvivalent bez ověření hmotnosti,
+  rozměrů a UART protokolu proti původnímu LD06. **LD19 a D300 jsou tím
+  ověřením už prošlé a neprošly** — je to LD06 s montážní deskou, o 5 g těžší.
+  Jediná varianta, která za úvahu stojí, je **D500 (STL-19P)**, viz
+  [alternativy](./07_alternativy_a_zkusenosti.md#lidar-rodina-ldrobot--ld06-ld19-d300-d500);
 - companion computer. Neobjednávat, dokud nepadne pokus poslat UART z LD06 dolů
   přes video jednotku - ta je v kusovníku tak jako tak a stojí nula gramů.
   Podrobnosti a důkazy v [Kudy se sken dostane do ROS 2](./09_kudy_do_ros.md).

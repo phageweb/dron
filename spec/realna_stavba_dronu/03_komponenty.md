@@ -83,6 +83,13 @@ dronu a 55 mm široký rotující válec na rámu se 128 mm rozvorem. Lehké sen
 skladem jsou jednobodové. **Skutečný 2D sken v hmotnostní třídě dronu se v ČR
 nekoupí**; LD06 by byl dovoz.
 
+**V EU už ale skladem je.** Polský Botland vede **D500 kit (senzor STL-19P)** za
+133 € s odesláním do 24 hodin — tedy 46 g a 38,59 × 38,89 × 33,5 mm, prakticky
+půdorys LD06. Proti dovozu je to zhruba dvojnásobek ceny (69 USD u téhož
+prodejce, kde stojí i LD06), ale je to evropská reklamace a týden místo měsíce.
+Srovnání celé rodiny LD06 / LD19 / D300 / D500 a co je mezi nimi doopravdy za
+rozdíl je v [alternativách](./07_alternativy_a_zkusenosti.md#lidar-rodina-ldrobot--ld06-ld19-d300-d500).
+
 Simulace dnes modeluje přední lidar jako 61 vzorků přes 60 stupňů, 0.10 až 8.0 m.
 Tomu neodpovídá **žádný** z kandidátů přesně: LD06 má dosah i pokrytí, ale váhu,
 VL53L5CX má úhel a váhu, ale poloviční dosah. Až bude senzor vybraný, musí se

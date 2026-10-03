@@ -217,7 +217,7 @@ bez konkurence.
 
 ---
 
-## Lidar: LDRobot LD06
+## Lidar: rodina LDROBOT — LD06, LD19, D300, D500
 
 **Kupovat:** dovoz, [Sunhokey](https://sunhokey.cn/products/dtof-lidar-ld06),
 75,50 USD. Kusovník správně říká **až po kontrole fotky štítku a konektoru**.
@@ -231,22 +231,84 @@ bez konkurence.
   Pokud pojede lidar na palubním počítači, počítej s tím, že si ovladač budeš
   vybírat.
 
-**Alternativy:**
+**Alternativy:** čtyři jména, která prodejci uvádějí v jednom inzerátu — LD06,
+LD19, D300 a D500 — **nejsou čtyři lidary.** Jsou to dva senzory a dvě krabice.
 
-| Model | Dosah | Cena | Poznámka |
+| | LD06 | LD19 | D300 kit | D500 kit |
+| --- | --- | --- | --- | --- |
+| Senzor uvnitř | LD06 | LD19 — totéž jádro, navíc spodní montážní deska; hlásí se jako zařízení **LDS06** | **LD19** + CP2102 deska + kabely | **STL-19P** (hlásí se jako LDS19) + deska + kabely |
+| Hmotnost | **42 g** [datasheet] | ~47 g | 47 g + deska | **46 g** [Botland], 47 g [DFRobot] |
+| Rozměry | 38,59 × 38,59 × 33,5 mm | totéž + deska | totéž | **38,59 × 38,89 × 33,5 mm** |
+| Dosah | 0,02–12 m při 70 % | totéž | totéž | 0,03–12 m (bílý), 0,03–**8** m (černý) |
+| Měření | 4 500 Hz | 4 500 Hz | 4 500 Hz | **5 000 Hz** |
+| Otáčky | 5–13 Hz | 5–13 Hz | 5–13 Hz | 6–13 Hz |
+| Přesnost | ±45 mm na 2–12 m *(jiné pásmo datasheet neuvádí)* | totéž | totéž | **±10 mm do 0,5 m, ±20 mm 0,5–2 m**, ±30 mm 2–12 m |
+| Odolnost proti světlu | 30 klux | 30 klux | 30 klux | **60 klux** |
+| Detekce skla | ne | ne | ne | **ano** |
+| Proud | 300 mA rozběh / 180 mA provoz | totéž | totéž | **540 mA rozběh / 290 mA provoz**, 1,45 W |
+| UART | 230400, ZH1.5T-4P | 230400, ZH1.5T-4P | + USB | 230400, ZH1.5T-4P (+ USB) |
+| Cena | 75,50 USD [Sunhokey] | 69 USD | 69 USD | **69 USD** dovoz; **133 € skladem v EU** [Botland] |
+| Stav | vyrábí se | youyeetoo ho vede jako **discontinued** | stojí na discontinued LD19 | vyrábí se |
+
+**LD19 není novější LD06 — je to tentýž senzor s montážní deskou.** Předchozí
+verze téhle kapitoly tvrdila opak a doporučovala ho jako výchozí volbu; to bylo
+špatně. Všechny parametry sedí na LD06 do posledního čísla (4 500 Hz, 30 klux,
+0,02–12 m při 70 %, 300/180 mA) a tabulka výrobce mapuje `FHL-LD19` na zařízení
+**LDS06**. Ta deska stojí **5 g** a youyeetoo ho navíc vede jako doběhový.
+**Otevřená položka „ověřit LD19 proti LD06" je tím zavřená: nepřináší nic.**
+
+**D300 je LD19 plus CP2102 deska a kabely** — tedy USB převodník kolem
+doběhového senzoru. Pro nás je ta deska mrtvá váha: lidar má jít po UARTu do FC
+nebo přes video jednotku, ne po USB. Smysl by dostala jen ve variantě
+s palubním počítačem, a ta je [rozhodnutím](../../workflow/decisions.md)
+odložená.
+
+**Jediný skutečně jiný senzor v té čtveřici je STL-19P v D500.** A je lepší
+přesně tam, kde na tom téhle stavbě záleží:
+
+- **Přesnost v pásmu, ve kterém se demo rozhoduje.** Autonomie brzdí 0,8 m před
+  překážkou a brzdná dráha je 0,6 m — to je celé uvnitř pásma 0,5–2 m, pro které
+  STL-19P udává **±20 mm**. Datasheet LD06 pro tohle pásmo neudává **nic**;
+  jediné číslo, které dává, je ±45 mm na 2–12 m.
+- 5 000 Hz proti 4 500 Hz, tedy o 11 % hustší sken při stejných otáčkách.
+- 60 klux místo 30 a detekce skla. Uvnitř to skoro nehraje roli — ale prosklené
+  dveře a okno v pokoji ano, a mapování bytu je přesně ten případ.
+
+**Co to stojí:** 4 g (42 → 46 g) a proud. 290 mA trvale proti 180 mA a 540 mA
+při rozběhu proti 300 mA. Na 5V větvi s BEC 2 A to vychází pořád s rezervou —
+540 + 40 (flow) + jednotky mA je **pod 600 mA, tedy necelá třetina** — ale ten
+kondenzátor, který byl doporučený už pro LD06, je teď o důvod potřebnější.
+
+**Geometricky je to výměna kus za kus.** 38,59 × 38,89 proti 38,59 × 38,59 mm
+a stejná výška 33,5 mm: **rozdíl je tři desetiny milimetru v jedné ose.** CAD
+ani ta nulová rezerva mezi lidarem a baterií na Pavo20 se tím nemění — nezlepší
+se, ale ani nezhorší. Konektor je stejný ZH1.5T-4P, takže i ta redukce, kterou
+kusovník objednává s lidarem, platí dál.
+
+**Softwarově to vypadá jako drop-in, ale ověřené to není.** Stejný rámec
+(0x54, 12 bodů v paketu, stejné CRC) i stejných 230400 Bd; ROS 2 balík
+`ldlidar_ros2` se na STL-19P pouští `ld19.launch.py` a komunitní knihovna
+`LDROBOT-LIDAR-STL` vede LD19, LD06 a STL-19P jako jednu rodinu. **ArduPilot ale
+dokumentuje jmenovitě jen LD06** (`SERIAL_PROTOCOL` 11, `PRX1_TYPE` 16,
+230400). Že tentýž ovladač vezme i STL-19P, je z protokolu velmi
+pravděpodobné — **a je to odvozeno, ne vyzkoušeno.**
+
+| Ostatní | Dosah | Cena | Poznámka |
 | --- | ---: | ---: | --- |
-| **LD06** | 12 m | ~80 USD | náš výchozí, 4,5 kHz, 5–13 Hz |
-| **LD19** | 12 m | ~70 USD | novější verze LD06, navíc spodní montážní deska; **levnější a novější** |
-| **STL27L** | 25 m | ~160 USD | 21,6 kHz měření, přesnost ±20 mm do 8 m; dvojnásobná cena |
+| **STL-27L** | 25 m | ~160 USD | 21,6 kHz, ale **921600 Bd** — ovladač LD06 v ArduPilotu ho na 230400 nevezme |
 | RPLidar C1 | 12 m | ~90 USD | jiný výrobce, jiný protokol, ArduPilot ho zná |
 
-**LD19 stojí za zvážení jako výchozí volba místo LD06** — je to jeho novější
-verze, je levnější a ArduPilot ho vede pod stejnou podporou. Kusovník ho zatím
-zakazuje kupovat „bez ověření hmotnosti, rozměrů a UART protokolu", což je
-správná opatrnost; tohle je důvod to ověření udělat, ne důvod ho neudělat.
-
 STL27L má **21,6 kHz proti 4,5 kHz** — pětkrát hustší data. Pro mapování bytu by
-to bylo znatelně lepší, ale je to dvojnásobek ceny a víc dat po tom UARTu.
+to bylo znatelně lepší, ale je to dvojnásobek ceny, víc dat po tom UARTu, a
+oproti dřívějšímu zápisu tu je ještě jeden háček: **jede na 921600 Bd**, což je
+jiná rychlost, než jakou ArduPilot u Lidar360 nastavuje.
+
+**Doporučení:** koupit **D500 (STL-19P)** místo LD06. U stejného prodejce stojí
+stejných 69 USD, je to novější senzor, vejde se na totéž místo a přesnost udává
+i v pásmu, ve kterém tenhle dron brzdí. Platí se 4 g a 110 mA. Kontrola fotky
+štítku a konektoru platí **dvojnásob** — prodejce, u kterého stojí LD06, LD19,
+D300 i D500 shodně 69 USD, zjevně nacenil inzerát plošně a co skutečně přijde,
+je otázka.
 
 ---
 
@@ -327,8 +389,11 @@ baterie), je to rozebrané v backlogu.
 
 1. **Rozhodnout palubní počítač.** Mění hmotnost, spotřebu i to, kam vede kabel
    od lidaru. Všechno ostatní na tom závisí.
-2. **Ověřit LD19 proti LD06.** Novější a levnější; když sedí, ušetří se a
-   získá se lepší podpora.
+2. ~~**Ověřit LD19 proti LD06.**~~ Hotovo, a odpověď je ne: LD19 je tentýž
+   senzor s montážní deskou navíc, o 5 g těžší a doběhový. **Skutečná otázka je
+   D500 (STL-19P)** — za stejnou cenu novější senzor se stejným půdorysem
+   a s udanou přesností v pásmu, ve kterém tenhle dron brzdí. Zbývá ověřit, že
+   ho vezme ovladač LD06 v ArduPilotu.
 3. **Zavřít otázku tahu na zkušebním stavu**, než se objedná víc než jedna sada
    motorů. Zkušenost s původním CineLogem je varování, které stálo někoho jinému
    za baterii.
@@ -356,6 +421,14 @@ baterie), je to rozebrané v backlogu.
 - [OpenIPC wiki: RunCam WiFiLink](https://github.com/OpenIPC/wiki/blob/master/en/fpv-runcam-wifilink-openipc.md)
 - [wfb-ng README](https://github.com/svpcom/wfb-ng/blob/master/README.md)
 - [Waveshare: DTOF LIDAR STL27L](https://www.waveshare.com/wiki/DTOF_LIDAR_STL27L)
+- [Waveshare: D500 LiDAR Kit (STL-19P)](https://www.waveshare.com/wiki/D500_LiDAR_Kit)
+- [youyeetoo wiki: FHL-LD19 — srovnání STL-19P, LD19 a STL-27L](https://wiki.youyeetoo.com/en/Lidar/D300)
+- [LDROBOT DeveloperKit: co je v D300 kitu](https://github.com/ldrobotSensorTeam/DeveloperKit/blob/master/D300Kit.md)
+- [DFRobot SEN0547: DTOF Laser Sensor Kit STL-19P](https://www.dfrobot.com/product-2610.html)
+- [Botland: D500 LiDAR Kit STL-19P, skladem v EU](https://botland.store/laser-scanners-lidar/21991-d500-lidar-kit-stl-19p-laser-scanner-360-degrees-12m-dfrobot-sen0547-6959420922680.html)
+- [ldlidar_ros2 — ROS 2 ovladač](https://github.com/ldrobotSensorTeam/ldlidar_ros2)
+- [LDROBOT-LIDAR-STL — LD19, LD06 a STL-19P jako jedna rodina](https://github.com/pschatzmann/LDROBOT-LIDAR-STL)
+- [Zprovoznění D500 / STL-19P na ROS 2 Jazzy](https://harminder.dev/blog/2025/11/02/setting-up-and-running-the-d500-lidar-kits-stl-19p-on-ros-2-jazzy/)
 - [awesome-2d-lidars](https://github.com/kaiaai/awesome-2d-lidars)
 - [Oscar Liang: micro FPV batteries](https://oscarliang.com/whoop-toothpick-lipo-battery/)
 - [Oscar Liang: BetaFPV ELRS Nano TX/RX](https://oscarliang.com/betafpv-elrs-nano-tx-rx/)

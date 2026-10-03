@@ -22,7 +22,8 @@ Tato větev popisuje fyzickou stavbu plánovaného 3" cinewhoopu. Je oddělená 
   [Kudy se sken dostane do ROS 2](./09_kudy_do_ros.md)
 
 **Druhý drak.** Ta hmotnost vedla k nacenění alternativního rámu: tentýž náklad
-na **BetaFPV Pavo20 Pro** ve 4S provedení vyjde na 229 g a o 1 503 Kč levněji.
+na **BetaFPV Pavo20 Pro** ve 4S provedení vyjde na 219 g a o 3 423 Kč levněji.
+Díly z Rotoramy CZ jsou už koupené, viz [Nakoupeno](./13_nakoupeno.md).
 Létá v simulaci proti stejným checkům. Viz [Pavo20 jako nosič LD06](./10_pavo20.md)
 a [Kusovník Pavo20 Pro](./11_kusovnik_pavo20.md).
 
@@ -62,6 +63,8 @@ Všechny bench testy flight controlleru, ESC, motorů, ArduPilot konfigurace a R
 - [Kudy se sken dostane do ROS 2](./09_kudy_do_ros.md) - čtyři cesty a proč dvě z nich padly
 - [Pavo20 jako nosič LD06](./10_pavo20.md) - co by stálo dostat lidar i video pod 250 g
 - [Kusovník Pavo20 Pro](./11_kusovnik_pavo20.md) - co koupit, kde a za kolik, rozdělené na dvě etapy
+- [Nakoupeno](./13_nakoupeno.md) - co už je zaplacené, za kolik, a co z kusovníku chybí
+- [Postup stavby Pavo20 Pro](./14_postup_stavby_pavo20.md) - od firmwaru po první let, s piny a parametry
 
 ## Návaznost na simulaci
 
