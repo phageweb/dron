@@ -2,7 +2,11 @@
 
 import unittest
 
-from openipc_cinewhoop_demo.arbiter import clipped_speed, effective_limit
+from openipc_cinewhoop_demo.arbiter import (
+    barrier_command,
+    clipped_speed,
+    effective_limit,
+)
 
 
 class TestClippedSpeed(unittest.TestCase):
@@ -51,3 +55,32 @@ class TestEffectiveLimit(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestBarrierCommand(unittest.TestCase):
+    def test_nothing_fresh_passes_the_command_unchanged(self):
+        self.assertEqual(barrier_command(0.4, 0.0, None, None, 1.0, 0.15),
+                         (0.4, 0.0, "none"))
+        self.assertEqual(barrier_command(0.4, 0.0, [-1.0, 0.0, 0.0], 2.0,
+                                         1.0, 0.15), (0.4, 0.0, "none"))
+
+    def test_a_neighbour_ahead_takes_the_forward_part(self):
+        # Neighbour straight ahead at d_safe: may not close at all.
+        x, y, action = barrier_command(0.4, 0.0, [-1.0, 0.0, 0.0], 0.1,
+                                       1.0, 0.15)
+        self.assertLessEqual(x, 1e-9)
+        self.assertEqual(action, "right_hand")
+        self.assertLess(y, 0.0)          # body -y is the right
+
+
+class TestApAxes(unittest.TestCase):
+    def test_left_in_ros_is_negative_y_for_ap_dds(self):
+        from openipc_cinewhoop_demo.arbiter import to_ap_body_y
+        self.assertEqual(to_ap_body_y(0.1), -0.1)
+
+    def test_back_off_is_capped(self):
+        # Deep inside d_safe: the barrier asks for 1 m/s apart.
+        x, y, action = barrier_command(0.0, 0.0, [-1.0, 0.0, 1.0], 0.1, 1.0,
+                                       0.15, back_off_max_mps=0.25)
+        self.assertEqual(action, "back_off")
+        self.assertAlmostEqual((x * x + y * y) ** 0.5, 0.25)

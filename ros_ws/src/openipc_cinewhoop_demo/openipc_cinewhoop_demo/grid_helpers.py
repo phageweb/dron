@@ -12,7 +12,7 @@ plan a climb over anything.
 """
 
 import math
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Sequence, Tuple
 
 # Log-odds rather than a count or a flag. A flag cannot be argued out of once it
 # is set, so a single spurious return leaves a wall in the map for ever, and a
@@ -384,6 +384,7 @@ def reachability(
     clearance_cells: int,
     free_below: int = 50,
     occupied_above: int = 65,
+    blocked: Optional[set] = None,
 ):
     """How far every cell is from the vehicle by a way it could actually fly.
 
@@ -418,9 +419,15 @@ def reachability(
 
     Returns the step count to each reachable cell and the cell each was reached
     from, which is the route back.
+
+    `blocked` is `blocked_cells` of the same map and clearance, when the caller
+    already has it: a swarm sweeps once per agent over one map, and growing the
+    walls again for each was a third of the coordinator's 0.2 s tick.
     """
     values = list(values)
-    blocked = blocked_cells(values, cols, rows, clearance_cells, occupied_above)
+    if blocked is None:
+        blocked = blocked_cells(values, cols, rows, clearance_cells,
+                                occupied_above)
 
     def known_floor(cell):
         col, row = cell
@@ -563,3 +570,187 @@ def carrot(
                                resolution_m, origin_x_m, origin_y_m)
     return cell_centre(route[-1][0], route[-1][1],
                        resolution_m, origin_x_m, origin_y_m)
+
+
+def visible_carrot(
+    route: Iterable[Tuple[int, int]],
+    values: Sequence[int],
+    cols: int,
+    rows: int,
+    resolution_m: float,
+    origin_x_m: float,
+    origin_y_m: float,
+    max_lookahead_m: float,
+    half_width_m: float,
+    min_lookahead_m: float = 0.3,
+    occupied_above: int = 65,
+    start_m: Optional[Tuple[float, float]] = None,
+    escape_radius_m: Optional[float] = None,
+    min_step_m: float = 0.0,
+) -> Optional[Tuple[float, float]]:
+    """The furthest point on the route the vehicle can fly straight at.
+
+    `carrot` takes a fixed stride, and round the jamb of a door a fixed stride
+    lands past the corner: the straight line to it grazes the wall, the
+    autonomy's corridor sees the wall within its stop distance, and the vehicle
+    turns away from a route it could have flown. This walks back from
+    `max_lookahead_m` to the first route point whose straight line from the
+    vehicle keeps `half_width_m` off every wall and every unknown cell - the
+    corridor the autonomy itself checks - and steers at that.
+
+    Return None if no segment clears the corridor. A short unchecked stride
+    is not a safe fallback. Check from the actual pose when supplied, including
+    the first cells; rounding the pose to the route's cell can cut a corner.
+
+    Return None too when the only clear point short of the route's end is
+    within `min_step_m` of the vehicle. Beside a pillar the centre of the
+    vehicle's own cell is always clear, and the autonomy takes a point that
+    close as reached: in world 2 on 2026-10-04 an agent held on one for 97 s
+    while every route it was given led past the pillar.
+    """
+    route = list(route)
+    if not route:
+        return None
+    actual_start = start_m or cell_centre(
+        *route[0], resolution_m, origin_x_m, origin_y_m)
+
+    def line_is_clear(a, b):
+        end = (origin_x_m + b[0] * resolution_m,
+               origin_y_m + b[1] * resolution_m)
+        return corridor_is_clear(values, cols, rows, resolution_m,
+                                 origin_x_m, origin_y_m, actual_start, end,
+                                 half_width_m, escape_radius_m)
+
+    if not route:
+        return None
+    start = ((start_m[0] - origin_x_m) / resolution_m,
+             (start_m[1] - origin_y_m) / resolution_m) if start_m else (
+                 route[0][0] + 0.5, route[0][1] + 0.5)
+    furthest = min(len(route) - 1, int(max_lookahead_m / resolution_m))
+    # Short safe segments are useful near corners; min_lookahead is only a
+    # compatibility argument, never a reason to skip validation.
+    for index in range(furthest, -1, -1):
+        end = (route[index][0] + 0.5, route[index][1] + 0.5)
+        if line_is_clear(start, end):
+            point = cell_centre(route[index][0], route[index][1],
+                                resolution_m, origin_x_m, origin_y_m)
+            if (index < len(route) - 1
+                    and math.dist(actual_start, point) < min_step_m):
+                return None
+            return point
+    return None
+
+
+def navigation_blocked(values, cols, rows, clearance_cells):
+    """Erode known floor by a circular footprint, including the map edges.
+
+    Rows are Python integer bitsets: shifts and intersections check the same
+    disc as cell-by-cell inflation, without expanding thousands of unknown
+    cells on each coordinator tick.
+    """
+    floor = []
+    for r in range(rows):
+        bits = 0
+        for c in range(cols):
+            if 0 <= values[r*cols+c] < 50:
+                bits |= 1 << c
+        floor.append(bits)
+    mask = (1 << cols) - 1
+    offsets = [(dc, dr)
+               for dr in range(-clearance_cells, clearance_cells+1)
+               for dc in range(-clearance_cells, clearance_cells+1)
+               if dc*dc+dr*dr <= clearance_cells*clearance_cells]
+    blocked = set()
+    for r in range(rows):
+        safe = mask
+        for dc, dr in offsets:
+            other = floor[r+dr] if 0 <= r+dr < rows else 0
+            safe &= other >> dc if dc >= 0 else other << -dc
+        unsafe = mask ^ safe
+        while unsafe:
+            bit = unsafe & -unsafe
+            blocked.add((bit.bit_length()-1, r))
+            unsafe ^= bit
+    return blocked
+
+
+def corridor_is_clear(values, cols, rows, resolution, ox, oy, start, end,
+                      half_width, escape_radius=None):
+    """Exact capsule versus closed grid squares, including map boundaries.
+
+    Recovery may leave an existing safety-margin overlap, never a body
+    collision: distance to each such obstacle must not decrease and the
+    endpoint must restore the full margin. No part of the segment is skipped.
+    """
+    ax, ay = start
+    bx, by = end
+    dx, dy = bx-ax, by-ay
+    length2 = dx*dx + dy*dy
+
+    def point_box(x, y, x0, x1, y0, y1):
+        return math.hypot(max(x0-x, 0., x-x1), max(y0-y, 0., y-y1))
+
+    def point_segment(x, y):
+        t = max(0., min(1., ((x-ax)*dx + (y-ay)*dy)/length2)) if length2 else 0.
+        return math.hypot(x-ax-t*dx, y-ay-t*dy)
+
+    c0 = math.floor((min(ax, bx)-half_width-ox)/resolution)
+    c1 = math.floor((max(ax, bx)+half_width-ox)/resolution)
+    r0 = math.floor((min(ay, by)-half_width-oy)/resolution)
+    r1 = math.floor((max(ay, by)+half_width-oy)/resolution)
+    for r in range(r0, r1+1):
+        for c in range(c0, c1+1):
+            if (0 <= c < cols and 0 <= r < rows
+                    and 0 <= values[r*cols+c] < 50):
+                continue
+            x0, y0 = ox+c*resolution, oy+r*resolution
+            x1, y1 = x0+resolution, y0+resolution
+            first = point_box(ax, ay, x0, x1, y0, y1)
+            last = point_box(bx, by, x0, x1, y0, y1)
+            lo, hi = 0., 1.
+            for p, d, low, high in ((ax, dx, x0, x1), (ay, dy, y0, y1)):
+                if abs(d) < 1e-12:
+                    if p < low or p > high:
+                        lo, hi = 1., 0.
+                        break
+                else:
+                    u, v = sorted(((low-p)/d, (high-p)/d))
+                    lo, hi = max(lo, u), min(hi, v)
+            distance = 0. if lo <= hi else min(
+                first, last, *(point_segment(x, y)
+                               for x in (x0, x1) for y in (y0, y1)))
+            if distance + 1e-9 >= half_width:
+                continue
+            if (escape_radius is not None and first >= escape_radius
+                    and distance + 1e-9 >= first and last >= half_width):
+                continue
+            return False
+    return True
+
+
+def escape_waypoint(values, cols, rows, resolution, ox, oy, start,
+                    half_width, body_radius, blocked, min_step=0.0):
+    """Find a nearby full-clearance point when the route leaves the wrong way.
+
+    Every tested segment uses the same monotone, body-clear recovery rule.
+    Merely shortening a route beside the wall is never an escape, and neither
+    is a point within `min_step` of the vehicle, which it takes as reached.
+    """
+    c0, r0 = math.floor((start[0]-ox)/resolution), math.floor((start[1]-oy)/resolution)
+    if (c0, r0) not in blocked:
+        return None
+    reach = int(math.ceil(2 * half_width / resolution)) + 2
+    candidates = []
+    for c in range(max(0, c0-reach), min(cols, c0+reach+1)):
+        for r in range(max(0, r0-reach), min(rows, r0+reach+1)):
+            if (c, r) in blocked or not 0 <= values[r*cols+c] < 50:
+                continue
+            point = cell_centre(c, r, resolution, ox, oy)
+            if math.dist(start, point) < min_step:
+                continue
+            candidates.append((math.dist(start, point), point))
+    for _, point in sorted(candidates):
+        if corridor_is_clear(values, cols, rows, resolution, ox, oy,
+                             start, point, half_width, body_radius):
+            return point
+    return None

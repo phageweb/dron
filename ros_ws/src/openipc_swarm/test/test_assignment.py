@@ -6,9 +6,15 @@ room allows. That makes the assignment's job unambiguous and its failure -
 sending both agents to the same end - visible.
 """
 
+import math
 import unittest
 
-from openipc_swarm.assignment import Agent, assign_targets, work_overlap
+from openipc_swarm.assignment import (
+    Agent,
+    assign_targets,
+    spread_targets,
+    work_overlap,
+)
 
 UNKNOWN = -1
 FREE = 0
@@ -79,8 +85,10 @@ class TestAssignment(unittest.TestCase):
             corridor(), COLS, ROWS, agents, RESOLUTION_M,
             ORIGIN_X_M, ORIGIN_Y_M, clearance_cells=1)
         x, y = assignment["v1"].point_m
-        self.assertGreaterEqual(x, 0.0)
-        self.assertLessEqual(x, COLS * RESOLUTION_M)
+        # The centre of the very cell the cost was computed for.
+        col, row = assignment["v1"].cell
+        self.assertAlmostEqual(x, (col + 0.5) * RESOLUTION_M)
+        self.assertAlmostEqual(y, (row + 0.5) * RESOLUTION_M)
         self.assertGreater(assignment["v1"].cost_m, 0.0)
 
 
@@ -98,6 +106,78 @@ class TestWorkOverlap(unittest.TestCase):
 
     def test_nothing_seen_is_no_overlap_rather_than_a_crash(self):
         self.assertEqual(work_overlap({}), 0.0)
+
+
+class TestSpreadTargets(unittest.TestCase):
+    """Where an agent goes when R5 has no opening left for it."""
+
+    def room(self, cols=30, rows=30):
+        return [FREE] * (cols * rows)
+
+    def spread(self, agents, names, taken=(), spread_m=1.5, cols=30, rows=30):
+        return spread_targets(self.room(cols, rows), cols, rows, agents,
+                              taken, names, RESOLUTION_M, ORIGIN_X_M,
+                              ORIGIN_Y_M, clearance_cells=1, spread_m=spread_m)
+
+    def test_it_moves_away_from_the_agent_next_to_it(self):
+        agents = [Agent("v1", (15, 15)), Agent("v2", (16, 15))]
+        target = self.spread(agents, ["v2"])["v2"]
+        self.assertGreaterEqual(math.dist(target.cell, (15, 15)), 15 - 1e-9)
+
+    def test_far_enough_is_enough(self):
+        # Already 2 m from the other agent with spread at 1.5 m: stay put
+        # rather than cross the room for distance that buys nothing.
+        agents = [Agent("v1", (5, 15)), Agent("v2", (25, 15))]
+        target = self.spread(agents, ["v2"])["v2"]
+        self.assertEqual(target.cell, (25, 15))
+
+    def test_two_spreading_agents_do_not_pick_the_same_corner(self):
+        agents = [Agent("v1", (15, 15)), Agent("v2", (14, 15)),
+                  Agent("v3", (16, 15))]
+        chosen = self.spread(agents, ["v2", "v3"])
+        self.assertGreaterEqual(
+            math.dist(chosen["v2"].cell, chosen["v3"].cell), 15 - 1e-9)
+
+    def test_an_assigned_opening_counts_as_taken(self):
+        agents = [Agent("v1", (2, 15)), Agent("v2", (15, 15))]
+        target = self.spread(agents, ["v2"], taken=[(28, 15)])["v2"]
+        self.assertGreaterEqual(math.dist(target.cell, (28, 15)), 15 - 1e-9)
+
+    def test_only_the_named_agents_get_one(self):
+        agents = [Agent("v1", (15, 15)), Agent("v2", (16, 15))]
+        self.assertEqual(list(self.spread(agents, ["v1"])), ["v1"])
+
+    def test_away_is_never_past_a_close_neighbour(self):
+        # v2 west of v3 and close: whatever v2 is sent to must be west of it,
+        # even though the far east of the room is further from everyone.
+        agents = [Agent("v1", (2, 2)), Agent("v2", (10, 15)),
+                  Agent("v3", (20, 15))]
+        target = spread_targets(self.room(), 30, 30, agents, (), ["v2"],
+                                RESOLUTION_M, 0.0, 0.0, clearance_cells=1,
+                                spread_m=3.0, close_m=1.41)["v2"]
+        self.assertLess(target.cell[0], 10)
+
+    def test_it_never_targets_a_wall(self):
+        cols = rows = 12
+        values = self.room(cols, rows)
+        for row in range(rows):
+            values[row * cols + 6] = 100
+        chosen = spread_targets(values, cols, rows,
+                                [Agent("v1", (2, 6)), Agent("v2", (3, 6))],
+                                (), ["v2"], RESOLUTION_M, 0.0, 0.0,
+                                clearance_cells=1, spread_m=2.0)
+        self.assertLess(chosen["v2"].cell[0], 5)
+
+    def test_the_route_runs_from_the_agent_to_the_place(self):
+        # The coordinator steers along it (`carrot`), so it has to be there
+        # and has to be walkable: start on the agent, end on the target,
+        # one cell per step.
+        agents = [Agent("v1", (15, 15)), Agent("v2", (16, 15))]
+        target = self.spread(agents, ["v2"])["v2"]
+        self.assertEqual(target.route[0], (16, 15))
+        self.assertEqual(target.route[-1], target.cell)
+        for a, b in zip(target.route, target.route[1:]):
+            self.assertLessEqual(max(abs(a[0] - b[0]), abs(a[1] - b[1])), 1)
 
 
 if __name__ == "__main__":

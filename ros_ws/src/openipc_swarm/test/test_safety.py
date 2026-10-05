@@ -15,6 +15,9 @@ from openipc_swarm.safety import (
     backoff_limit,
     braking_distance_m,
     deadlock_backoff,
+    deadlock_backoffs,
+    escape_limit,
+    leads_away,
     speed_for_room,
     separation,
     speed_limits,
@@ -123,6 +126,30 @@ class TestDeadlock(unittest.TestCase):
                   AgentMotion("v2", (5.0, 0.0, 1.0))]
         limits = {"v1": 0.0, "v2": 0.0}
         self.assertIsNone(deadlock_backoff(agents, limits, 2.0))
+
+    def test_every_jam_gets_a_backer(self):
+        # Flight 5 of 2026-10-03: v1 freed every tick, v2 and v3 frozen.
+        agents = [AgentMotion("v1", (0.0, 0.0, 1.0)),
+                  AgentMotion("v2", (1.0, 0.0, 1.0)),
+                  AgentMotion("v3", (6.0, 0.0, 1.0)),
+                  AgentMotion("v4", (7.0, 0.0, 1.0))]
+        limits = {n: 0.0 for n in ("v1", "v2", "v3", "v4")}
+        self.assertEqual(deadlock_backoffs(agents, limits, 2.0), ["v1", "v3"])
+
+    def test_a_chain_is_one_group(self):
+        agents = [AgentMotion("v1", (0.0, 0.0, 1.0)),
+                  AgentMotion("v2", (1.5, 0.0, 1.0)),
+                  AgentMotion("v3", (3.0, 0.0, 1.0))]
+        limits = {n: 0.0 for n in ("v1", "v2", "v3")}
+        self.assertEqual(deadlock_backoffs(agents, limits, 2.0), ["v1"])
+
+    def test_two_backers_share_the_room_between_them(self):
+        agents = [AgentMotion("v1", (0.0, 0.0, 1.0)),
+                  AgentMotion("v3", (2.0, 0.0, 1.0))]
+        alone = backoff_limit(agents, {}, "v1", 0.78, 0.408, 0.5)
+        shared = backoff_limit(agents, {}, "v1", 0.78, 0.408, 0.5,
+                               also_moving=["v3"])
+        self.assertLess(shared, alone)
 
 
 class TestK1OnSyntheticTrajectories(unittest.TestCase):
@@ -254,6 +281,74 @@ class TestSpeedDependentTerms(unittest.TestCase):
         self.assertLess(d_safe + room, 1.5)
         fast_safe, fast_room = separation_terms(1.0, 0.06107, 0.012, 0.408)
         self.assertGreater(fast_safe + fast_room, 2.5)
+
+
+class TestSlowBand(unittest.TestCase):
+    def test_a_pair_standing_in_the_band_is_left_alone(self):
+        agents = [AgentMotion("v1", (0.0, 0.0, 1.0), (0.0, 0.0, 0.0)),
+                  AgentMotion("v2", (1.9, 0.0, 1.0), (0.0, 0.0, 0.0))]
+        limits, interventions = speed_limits(agents, 0.78, 0.5, 0.63)
+        self.assertEqual(limits, {"v1": 0.5, "v2": 0.5})
+        self.assertEqual(interventions, [])
+
+    def test_hover_jitter_is_not_closing(self):
+        agents = [AgentMotion("v1", (0.0, 0.0, 1.0), (0.004, 0.0, 0.0)),
+                  AgentMotion("v2", (1.46, 0.0, 1.0), (-0.003, 0.0, 0.0))]
+        limits, _ = speed_limits(agents, 0.78, 0.5, 0.63)
+        self.assertEqual(limits, {"v1": 0.5, "v2": 0.5})
+
+    def test_a_pair_closing_in_the_band_is_slowed(self):
+        agents = [AgentMotion("v1", (0.0, 0.0, 1.0), (0.3, 0.0, 0.0)),
+                  AgentMotion("v2", (1.9, 0.0, 1.0), (0.0, 0.0, 0.0))]
+        limits, _ = speed_limits(agents, 0.78, 0.5, 0.63)
+        self.assertLess(limits["v1"], 0.5)
+
+    def test_a_pair_separating_in_the_band_is_left_alone(self):
+        agents = [AgentMotion("v1", (0.0, 0.0, 1.0), (-0.3, 0.0, 0.0)),
+                  AgentMotion("v2", (1.9, 0.0, 1.0), (0.0, 0.0, 0.0))]
+        limits, _ = speed_limits(agents, 0.78, 0.5, 0.63)
+        self.assertEqual(limits["v1"], 0.5)
+
+
+class TestEscapeInsideDSafe(unittest.TestCase):
+    """v1 and v3, 0.67 m apart under a 0.78 m d_safe, for 899 ticks."""
+
+    def pair(self):
+        return [AgentMotion("v1", (0.0, 0.0, 1.0)),
+                AgentMotion("v3", (0.67, 0.0, 1.0))]
+
+    def test_a_target_away_lets_it_move(self):
+        limit = escape_limit(self.pair(), "v1", (-2.0, 0.5), 0.78, 0.146,
+                             0.408, 0.5)
+        self.assertGreater(limit, 0.0)
+        self.assertLessEqual(limit, 0.5)
+
+    def test_a_target_towards_the_other_does_not(self):
+        self.assertEqual(escape_limit(self.pair(), "v1", (3.0, 0.0), 0.78,
+                                      0.146, 0.408, 0.5), 0.0)
+
+    def test_no_target_no_move(self):
+        self.assertEqual(escape_limit(self.pair(), "v1", None, 0.78, 0.146,
+                                      0.408, 0.5), 0.0)
+
+    def test_it_still_stops_short_of_contact(self):
+        limit = escape_limit(self.pair(), "v1", (-2.0, 0.0), 0.78, 0.146,
+                             0.408, 0.5)
+        self.assertLessEqual(limit * 0.408 + braking_distance_m(limit),
+                             0.67 - 0.146 + 1e-9)
+
+    def test_away_means_away_from_every_close_neighbour(self):
+        me = AgentMotion("v1", (0.0, 0.0, 1.0))
+        east = AgentMotion("v2", (0.5, 0.0, 1.0))
+        north = AgentMotion("v3", (0.0, 0.5, 1.0))
+        self.assertTrue(leads_away(me, (-1.0, -1.0), [east, north]))
+        self.assertFalse(leads_away(me, (-1.0, 1.0), [east, north]))
+
+    def test_the_one_headed_away_backs_off(self):
+        agents = self.pair()
+        limits = {"v1": 0.0, "v3": 0.0}
+        self.assertEqual(
+            deadlock_backoffs(agents, limits, 1.41, preferred=["v3"]), ["v3"])
 
 
 if __name__ == "__main__":

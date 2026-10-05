@@ -16,10 +16,14 @@ from openipc_cinewhoop_demo.scan_helpers import (
     reading_is_fresh,
     relative_bearing,
     safe_forward_speed,
+    scaled_forward_speed,
+    cruise_steer,
+    route_room,
     takeoff_needs_retry,
     turn_direction,
     turn_is_finished,
     turn_is_going_round,
+    turn_may_end,
     turn_sign_towards,
     way_is_clear,
     wrap_angle,
@@ -67,6 +71,53 @@ class ScanHelpersTest(unittest.TestCase):
     def test_no_braking_distance_keeps_the_old_behaviour(self):
         self.assertEqual(safe_forward_speed(0.8, True, 0.8, 0.5, 0.0), 0.5)
 
+    def test_scaled_speed_is_full_with_room_for_the_whole_braking(self):
+        self.assertAlmostEqual(scaled_forward_speed(1.4, True, 0.8, 0.5, 0.6, 0.1), 0.5)
+        self.assertEqual(scaled_forward_speed(3.0, True, 0.8, 0.5, 0.6, 0.1), 0.5)
+
+    def test_scaled_speed_still_moves_where_the_old_rule_stopped(self):
+        # 1.1 m ahead: the stop rule holds (1.4 m), this flies at half speed.
+        self.assertEqual(safe_forward_speed(1.1, True, 0.8, 0.5, 0.6), 0.0)
+        self.assertAlmostEqual(
+            scaled_forward_speed(1.1, True, 0.8, 0.5, 0.6, 0.1), 0.25)
+
+    def test_scaled_speed_braking_always_fits_the_room(self):
+        for tenth in range(0, 30):
+            nearest = 0.8 + tenth * 0.05
+            v = scaled_forward_speed(nearest, True, 0.8, 0.5, 0.6, 0.1)
+            self.assertLessEqual(v / 0.5 * 0.6, nearest - 0.8 + 1e-9)
+
+    def test_scaled_speed_holds_rather_than_creeps(self):
+        self.assertEqual(scaled_forward_speed(0.85, True, 0.8, 0.5, 0.6, 0.1), 0.0)
+        self.assertEqual(scaled_forward_speed(0.7, True, 0.8, 0.5, 0.6, 0.1), 0.0)
+
+    def test_scaled_speed_still_stops_a_blind_vehicle(self):
+        self.assertEqual(scaled_forward_speed(None, False, 0.8, 0.5, 0.6, 0.1), 0.0)
+        self.assertEqual(scaled_forward_speed(None, True, 0.8, 0.5, 0.6, 0.1), 0.5)
+
+    def test_route_room_lets_the_vehicle_reach_a_point_before_a_wall(self):
+        # Wall 0.7 m ahead, route point 0.35 m ahead: the stop rule gives
+        # nothing (0.7 < 0.8), the route lets it close to 0.35 m.
+        self.assertAlmostEqual(route_room(0.7, 0.8, 0.3, 0.35), 0.35)
+
+    def test_route_room_never_goes_past_the_clearance(self):
+        # Point 1 m ahead but the wall at 0.6 m: only up to 0.3 m off it.
+        self.assertAlmostEqual(route_room(0.6, 0.8, 0.3, 1.0), 0.3)
+
+    def test_route_room_is_the_stop_rule_without_a_target(self):
+        self.assertAlmostEqual(route_room(2.0, 0.8, 0.3, None), 1.2)
+        self.assertEqual(route_room(None, 0.8, 0.3, 0.5), math.inf)
+
+    def test_cruise_steer_turns_towards_the_target_and_is_capped(self):
+        self.assertAlmostEqual(cruise_steer(0.2, 0.4, 1.0, 0.05), 0.2)
+        self.assertAlmostEqual(cruise_steer(-0.2, 0.4, 1.0, 0.05), -0.2)
+        self.assertEqual(cruise_steer(1.5, 0.4, 1.0, 0.05), 0.4)
+        self.assertEqual(cruise_steer(-1.5, 0.4, 1.0, 0.05), -0.4)
+
+    def test_cruise_steer_leaves_a_nearly_aligned_nose_alone(self):
+        self.assertEqual(cruise_steer(0.03, 0.4, 1.0, 0.05), 0.0)
+        self.assertEqual(cruise_steer(None, 0.4, 1.0, 0.05), 0.0)
+
     def test_a_cone_can_be_pointed_off_a_wing(self):
         # Eight beams every 45 degrees from straight behind: the nearest return
         # ahead, off the left and off the right are three different numbers, and
@@ -104,6 +155,25 @@ class ScanHelpersTest(unittest.TestCase):
         # Nothing in range is all the room there is. The caller only asks this
         # while the scan is fresh, so an empty one is open air and not a fault.
         self.assertTrue(way_is_clear(None, 0.8, 0.6, 0.3))
+
+    def test_a_turn_on_a_near_route_point_ends_where_the_cruise_would_fly(self):
+        # rand20-G case 38: in a doorway, the baffle 1.1 m ahead and the route
+        # point 0.21 m off. route_room gives 0.3 m, the cruise flies on it,
+        # and the turn must end rather than rock on the bearing for 193 s.
+        route = 0.8 + route_room(1.1, 0.8, 0.3, 0.21)
+        self.assertFalse(way_is_clear(1.1, 0.8, 0.12, 0.3))
+        self.assertTrue(turn_may_end(1.1, route, 0.8, 0.12, 0.3))
+        self.assertGreater(scaled_forward_speed(route, True, 0.8, 0.5, 0.6, 0.1),
+                           0.0)
+
+    def test_a_turn_off_the_route_keeps_its_margin(self):
+        self.assertFalse(turn_may_end(1.1, None, 0.8, 0.12, 0.3))
+        self.assertTrue(turn_may_end(1.22, None, 0.8, 0.12, 0.3))
+        self.assertTrue(turn_may_end(None, None, 0.8, 0.12, 0.3))
+
+    def test_a_turn_on_the_route_still_needs_its_braking_room(self):
+        route = 0.8 + route_room(0.35, 0.8, 0.3, 0.21)
+        self.assertFalse(turn_may_end(0.35, route, 0.8, 0.12, 0.3))
 
     def test_the_turn_goes_towards_the_room(self):
         self.assertEqual(turn_direction(5.0, 2.0), 1.0)

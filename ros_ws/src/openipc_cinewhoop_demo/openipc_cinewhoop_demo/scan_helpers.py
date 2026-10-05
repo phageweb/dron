@@ -272,6 +272,86 @@ def safe_forward_speed(
     return forward_speed
 
 
+def scaled_forward_speed(
+    nearest_range: Optional[float],
+    scan_has_returns: bool,
+    stop_distance: float,
+    forward_speed: float,
+    braking_distance: float,
+    min_speed: float,
+) -> float:
+    """As fast as still stops short of the stop distance, not all or nothing.
+
+    `safe_forward_speed` stops at the clearance plus the braking distance from
+    full speed, 1.4 m with the demo's numbers, and the enclosure door has its
+    baffle 1.45 m behind it: the vehicle stopped in the doorway, turned and
+    left, flight after flight (swarm flights of 2026-10-03). Slower, the stop
+    is shorter. The braking distance is taken as proportional to speed - 0.6 m
+    at 0.5 m/s, so 0.24 m at 0.2 - which overstates it at low speed, where the
+    v^2 part of ArduPilot's shaping matters least: conservative, never short.
+
+    Below `min_speed` it holds instead of creeping: a vehicle doing 2 cm/s is
+    not getting anywhere, and the turn logic is what should take over.
+    """
+    if not scan_has_returns:
+        return 0.0
+    if nearest_range is None:
+        return forward_speed
+    room = nearest_range - stop_distance
+    if room <= 0.0:
+        return 0.0
+    if braking_distance <= 0.0:
+        return forward_speed
+    speed = forward_speed * min(1.0, room / braking_distance)
+    return speed if speed >= min_speed else 0.0
+
+
+def route_room(
+    nearest_range: Optional[float],
+    stop_distance: float,
+    route_clearance: float,
+    target_distance: Optional[float],
+) -> float:
+    """How far the vehicle may fly on when its nose is on a point of a route.
+
+    The stop distance is for flying blind into whatever is ahead. A point the
+    coordinator planned (`visible_carrot`: on the route, in clear line) is
+    not that: the way to it is known to be clear, so the vehicle may close to
+    it even when a wall stands just beyond - up to `route_clearance` off that
+    wall, never past the point itself. Without this a route through a 1.3 m
+    gap, or round the baffle 1.35 m inside a door, was never flown: the wall
+    behind the point was inside 0.9 m, so the point counted as behind a wall
+    and the vehicle span on the spot for 10 to 20 s and left (complex world,
+    2026-10-03, 40 s of one flight).
+    """
+    if nearest_range is None:
+        return math.inf
+    room = nearest_range - stop_distance
+    if target_distance is None:
+        return room
+    return max(room, min(nearest_range - route_clearance, target_distance))
+
+
+def cruise_steer(
+    bearing_rad: Optional[float],
+    max_yaw_rate_rps: float,
+    gain_per_s: float,
+    deadband_rad: float,
+) -> float:
+    """Yaw rate towards the target while flying, proportional and capped.
+
+    The cruise used to fly straight until a wall stopped it and only then turn
+    towards the target, so a vehicle that left a turn 30 degrees off flew 2 m
+    the wrong way before it found out. Steering on the way keeps the nose on a
+    target that is a point along the route (`carrot`), which is what makes it
+    safe: that point is meant to be flown at, not a target behind a wall.
+    """
+    if bearing_rad is None or abs(bearing_rad) <= deadband_rad:
+        return 0.0
+    rate = gain_per_s * bearing_rad
+    return max(-max_yaw_rate_rps, min(max_yaw_rate_rps, rate))
+
+
 def hold_reason(fresh: bool, scan_has_returns: bool,
                 nearest_range: Optional[float]):
     """Why the vehicle is not moving: a reason, and the detail that goes with it.
@@ -429,6 +509,35 @@ def way_is_clear(
     if nearest_range is None:
         return True
     return nearest_range >= stop_distance + braking_distance + margin_m
+
+
+def turn_may_end(
+    nearest_range: Optional[float],
+    route_range: Optional[float],
+    stop_distance: float,
+    braking_distance: float,
+    margin_m: float,
+) -> bool:
+    """Whether a turn has room ahead to end on.
+
+    `route_range` is the nearest range as the route rule sees it with the nose
+    on a point of the coordinator's route (`stop_distance + route_room`), or
+    None when the nose is not on one. On a route the cruise flies whenever
+    that range leaves the braking distance, so the turn may end there too.
+
+    It used to apply only when the route range differed from the plain one,
+    and with a route point closer than the wall beyond it less the stop
+    distance they are equal. With the wall 1.01 to 1.22 m ahead and the point
+    0.2 m off - a doorway, where the visible part of the route is short - the
+    turn wanted the margin of `way_is_clear` that the cruise does not, never
+    ended, and rocked on the target's bearing: 193 s of one flight
+    (rand20-G case 38), and 76 turns over 20 s in 39 of its 60 flights.
+    """
+    if way_is_clear(nearest_range, stop_distance, braking_distance, margin_m):
+        return True
+    if route_range is None:
+        return False
+    return route_range - stop_distance >= braking_distance
 
 
 def turn_direction(

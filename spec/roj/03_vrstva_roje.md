@@ -68,6 +68,12 @@ Návrh verze 1, záměrně nudný:
    shluků jsou triviální úloha; optimalita tu nikoho nezajímá.
 5. Přiřazení drží po `target_hold_m`, aby agenti neoscilovali mezi cíli.
 
+**Verze 2 (2026-10-03, [R5b](./08_rozhodnuti.md)):** shluky se dělí na
+pozorovací body s odhadem viditelných neznámých buněk; cena se počítá k témuž
+bodu, který agent dostane, a se skutečným yaw. Přiřazení vybírá parametr
+`allocator` (`clusters` = verze 1, `iterative`, `hungarian`, `minpos`,
+`utility`). Kód: `openipc_swarm/allocation.py`.
+
 Co se tím měří: **překryv práce** z [01 §2](./01_zadani_mapovani.md). Když je
 vysoký, přidělení nefunguje, i kdyby mapa vyšla.
 

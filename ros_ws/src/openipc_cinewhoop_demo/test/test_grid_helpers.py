@@ -8,6 +8,7 @@ from openipc_cinewhoop_demo.grid_helpers import (
     UNKNOWN,
     blocked_cells,
     carrot,
+    visible_carrot,
     cell_centre,
     cell_of,
     cells_on_ray,
@@ -607,6 +608,44 @@ class RouteTest(unittest.TestCase):
         x, y = carrot(route, 0.10, 0.0, 0.0, 0.50)
         self.assertAlmostEqual(x, 0.55)
         self.assertAlmostEqual(y, 0.05)
+
+    def test_the_visible_carrot_is_the_far_end_of_a_straight_clear_run(self):
+        values = [0] * (30 * 30)
+        route = [(5, row) for row in range(5, 29)]
+        x, y = visible_carrot(route, values, 30, 30, 0.10, 0.0, 0.0, 2.0, 0.3)
+        self.assertAlmostEqual(x, 0.55)
+        self.assertAlmostEqual(y, 2.55)  # 20 cells on: the whole 2.0 m
+
+    def test_the_visible_carrot_does_not_cut_the_corner_of_a_wall(self):
+        # A block of wall to the north-east of the vehicle; the route goes
+        # north past it and then east. The fixed stride lands round the corner
+        # and the straight line to it crosses the wall; this must not.
+        cols = rows = 30
+        values = [0] * (cols * rows)
+        for row in range(0, 11):
+            for col in range(8, cols):
+                values[row * cols + col] = 100
+        route = ([(4, row) for row in range(5, 15)]
+                 + [(col, 15) for col in range(4, 26)])
+        fixed = carrot(route, 0.10, 0.0, 0.0, 2.0)
+        x, y = visible_carrot(route, values, cols, rows, 0.10, 0.0, 0.0,
+                              2.0, 0.3)
+        self.assertNotAlmostEqual(x, fixed[0])
+        col, row = int(x / 0.10), int(y / 0.10)
+        steps = max(abs(col - 4), abs(row - 5))
+        for i in range(steps + 1):
+            c = round(4 + (col - 4) * i / steps)
+            r = round(5 + (row - 5) * i / steps)
+            self.assertNotEqual(values[r * cols + c], 100, (c, r))
+
+    def test_the_visible_carrot_rejects_an_uncleared_short_stride(self):
+        # Walled in on every side but the route: nothing clears the margin.
+        values = [100] * (10 * 10)
+        route = [(col, 5) for col in range(0, 10)]
+        for col, row in route:
+            values[row * 10 + col] = 0
+        self.assertIsNone(visible_carrot(
+            route, values, 10, 10, 0.10, 0.0, 0.0, 2.0, 0.3))
 
     def test_a_route_shorter_than_a_stride_is_followed_to_its_end(self):
         route = [(0, 0), (1, 0), (2, 0)]

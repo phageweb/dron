@@ -17,7 +17,8 @@ import math
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from openipc_cinewhoop_demo.grid_helpers import (
-    cluster_centroid,
+    blocked_cells,
+    cell_centre,
     frontier_cells,
     frontier_clusters,
     reachability,
@@ -48,6 +49,8 @@ class Target:
         self.cell = cell
         self.point_m = point_m
         self.cost_m = cost_m
+        # The cells from the agent to `cell`, when the allocator kept them.
+        self.route: List[Tuple[int, int]] = []
 
     def __repr__(self):  # pragma: no cover - debugging aid
         return (f"Target(cluster={self.cluster_index}, cell={self.cell}, "
@@ -98,9 +101,13 @@ def assign_targets(
                                   origin_x_m, origin_y_m)
             cost = route_cost_m(route, resolution_m, bearing,
                                 turn_cost_m_per_rad)
-            point = cluster_centroid(cluster, resolution_m,
-                                     origin_x_m, origin_y_m)
+            # The cell the cost is for, not the opening's centroid: that
+            # was a different point from the one costed, and for an opening
+            # bent round a corner it lay inside the wall (07 section 2).
+            point = cell_centre(nearest[0], nearest[1], resolution_m,
+                                origin_x_m, origin_y_m)
             costs[(agent.name, index)] = Target(index, nearest, point, cost)
+            costs[(agent.name, index)].route = route
 
     assignment: Dict[str, Target] = {}
     taken_clusters = set()
@@ -113,6 +120,95 @@ def assign_targets(
 
     unassigned = [agent.name for agent in agents if agent.name not in assignment]
     return assignment, unassigned
+
+
+def spread_targets(
+    values: Sequence[int],
+    cols: int,
+    rows: int,
+    agents: Iterable[Agent],
+    taken: Iterable[Tuple[int, int]],
+    names: Iterable[str],
+    resolution_m: float,
+    origin_x_m: float,
+    origin_y_m: float,
+    clearance_cells: int,
+    spread_m: float,
+    close_m: float = 0.0,
+    avoid: Iterable[Tuple[int, int]] = (),
+    navigation_mask: Optional[set] = None,
+    forbidden: Optional[Dict[str, set]] = None,
+) -> Dict[str, Target]:
+    """Somewhere to go for every agent no opening was left for.
+
+    R5a in `spec/roj/08_rozhodnuti.md`. Without it those agents fly the
+    reactive rule with no target, drift into the same corner and hold each
+    other there on the stop line: in the flights of 2026-10-03 the two of
+    three without a target flew 4 to 14 m in 130 s, and the room came out at
+    85 per cent against 92 when they happened to scatter.
+
+    The place is the reachable cell of clear floor furthest from every other
+    agent and every target already handed out, but only up to `spread_m`:
+    beyond that the safety filter no longer touches the pair, so being further
+    away buys nothing and costs a longer flight. Among cells that are far
+    enough, the nearest by route wins. Agents are served one at a time and
+    each choice counts as taken for the next, so two of them are not sent to
+    the same quiet corner.
+
+    A place far from everyone can still lie past the agent's nearest
+    neighbour, and then flying to it closes the gap it was meant to open:
+    v2 was sent to the far side of v3, 1.2 m away, and so was never allowed
+    to back off. Any agent within `close_m` therefore rules out every cell
+    that is not on the far side of this agent from it.
+
+    Cells in `avoid` are never chosen: an agent waiting for a door another
+    agent holds must not wait in it (`passages`).
+    """
+    agents = list(agents)
+    wanted = set(names)
+    occupied = list(taken)
+    grown = (blocked_cells(list(values), cols, rows, clearance_cells, 65)
+             if navigation_mask is None else navigation_mask)
+    blocked = grown | set(avoid)
+    spread_cells = spread_m / resolution_m
+    chosen: Dict[str, Target] = {}
+    for agent in agents:
+        if agent.name not in wanted:
+            continue
+        others = [a.cell for a in agents if a.name != agent.name] + occupied
+        close_cells = close_m / resolution_m
+        near = [a.cell for a in agents if a.name != agent.name
+                and math.dist(a.cell, agent.cell) <= close_cells]
+        agent_values = list(values)
+        for c, r in (forbidden or {}).get(agent.name, ()):
+            if 0 <= c < cols and 0 <= r < rows:
+                agent_values[r * cols + c] = 100
+        distance, parent = reachability(agent_values, cols, rows, agent.cell,
+                                        clearance_cells, blocked=grown)
+        best = None
+        for cell, steps in distance.items():
+            if cell in blocked:
+                continue
+            heading = (cell[0] - agent.cell[0], cell[1] - agent.cell[1])
+            if any(heading[0] * (agent.cell[0] - n[0])
+                   + heading[1] * (agent.cell[1] - n[1]) <= 0 for n in near):
+                continue
+            room = min((math.dist(cell, other) for other in others),
+                       default=spread_cells)
+            key = (-min(room, spread_cells), steps)
+            if best is None or key < best[0]:
+                best = (key, cell, steps)
+        if best is None:
+            continue
+        _, cell, steps = best
+        point = (origin_x_m + (cell[0] + 0.5) * resolution_m,
+                 origin_y_m + (cell[1] + 0.5) * resolution_m)
+        chosen[agent.name] = Target(-1, cell, point, steps * resolution_m)
+        # A quiet corner can be round a wall as easily as an opening can, and
+        # the agent is steered along the way to it, not at it (`carrot`).
+        chosen[agent.name].route = route_to(cell, parent, agent.cell)
+        occupied.append(cell)
+    return chosen
 
 
 def _bearing_to(agent: Agent, route, resolution_m, origin_x_m, origin_y_m) -> float:

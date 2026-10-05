@@ -1,6 +1,8 @@
 """The coordinator's arithmetic, and the one piece of wiring that moves frames."""
 
 import unittest
+import json
+from unittest.mock import Mock
 
 import rclpy
 from geometry_msgs.msg import PoseStamped
@@ -9,6 +11,7 @@ from rclpy.parameter import Parameter
 
 from openipc_swarm.coordinator import Coordinator, velocity_from
 from openipc_swarm.merge import UNKNOWN
+from openipc_cinewhoop_demo.grid_helpers import corridor_is_clear
 
 
 class TestVelocityFrom(unittest.TestCase):
@@ -80,6 +83,43 @@ class TestCoordinatorFrames(unittest.TestCase):
         grid.data[1 * 4 + 1] = 100          # col 1, row 1
         self.assertEqual(node._in_room("v1", grid).index(100), 1 * 4 + 1)
         self.assertEqual(node._in_room("v2", grid).index(100), 0 * 4 + 3)
+
+
+    def test_exploration_publishes_a_clear_segment_from_the_actual_pose(self):
+        node = self.node([0.0, 0.0, 0.0, 0.0])
+        grid = OccupancyGrid()
+        grid.info.width = grid.info.height = 41
+        grid.info.resolution = 0.1
+        grid.data = [0 if r < 25 else -1 for r in range(41) for _ in range(41)]
+        node._maps = {'v1': grid, 'v2': grid}
+        node._targets = {'v1': Mock(), 'v2': Mock()}
+        node._assignment_log = Mock()
+        fresh = {'v1': ((1.03, 1.04, 1.0), (0., 0., 0.)),
+                 'v2': ((2.91, 1.06, 1.0), (0., 0., 0.))}
+        node._explore(fresh, {'v1': .5, 'v2': .5})
+        record = json.loads(node._assignment_log.publish.call_args.args[0].data)
+        self.assertGreaterEqual(record['clearance_cells'], 4)
+        self.assertTrue(record['assigned'])
+        for name, publisher in node._targets.items():
+            point = publisher.publish.call_args.args[0].point
+            self.assertTrue(corridor_is_clear(
+                grid.data, 41, 41, grid.info.resolution, 0., 0.,
+                fresh[name][0][:2], (point.x, point.y), .33335))
+
+    def test_no_route_replaces_a_stale_target_with_hold(self):
+        node = self.node([0.0, 0.0, 0.0, 0.0])
+        grid = OccupancyGrid()
+        grid.info.width = grid.info.height = 20
+        grid.info.resolution = 0.1
+        grid.data = [-1] * 400
+        node._maps = {'v1': grid, 'v2': grid}
+        node._targets = {'v1': Mock(), 'v2': Mock()}
+        node._last_targets = {'v1': (5., 5.)}
+        fresh = {'v1': ((.5, .5, 1.), (0., 0., 0.)),
+                 'v2': ((1.5, 1.5, 1.), (0., 0., 0.))}
+        node._explore(fresh, {'v1': .5, 'v2': .5})
+        self.assertEqual(node._last_targets['v1'], (.5, .5))
+        self.assertEqual(node._last_kinds['v1'], 'hold')
 
 
 if __name__ == "__main__":

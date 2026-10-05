@@ -518,16 +518,109 @@ M2 is closed except the two items below; M5 is where the work is.
       target wander reactively into the same corner, stop each other, and
       the one let back off creeps without getting out. Clearing the agents
       out of the map is right in principle and made no measurable difference.
-- [ ] Decide what an agent without a target does. R5 gives one opening to
-      one agent, and the merged map rarely has more than one reachable, so
-      two of three fly with no target almost all the time, and that is what
-      jams them. Candidates: a target away from the others when there is no
-      opening left for it, or letting two agents share an opening when there
-      are fewer openings than agents. Either changes R5, so it is a decision
-      before it is code.
-- [ ] Measure time to coverage, not coverage at a fixed time. A swarm that
-      maps the same room as one drone is only worth having if it does it
-      sooner, and the check cannot see that.
+- [x] Decide what an agent without a target does: R5a, sent away from the
+      others (`assignment.spread_targets`), never past a close neighbour.
+- [x] Unjam the swarm. It took six things, each found in a flight's trace:
+      every jammed group gets a backer, not only the first pair; a backer
+      moves only if its target leads away from its neighbours (moving in any
+      direction, v1 flew into v3 under d_safe); a backer headed away has the
+      room to contact, not to d_safe; the slow band brakes only a pair
+      closing faster than 5 cm/s (it held two hovering agents at 0.04 m/s for
+      a whole flight); a held agent turns in place towards its target
+      (`simple_indoor_autonomy` `constraint_topic`); and an agent held 2 s is
+      sent away and stays so until it is clear of everyone, rather than
+      flipping back to its opening after one tick.
+- [x] Launch the swarm from one spot (R15 amended): a row 0.8 m apart, just
+      outside d_safe, so the swarm has to spread itself out.
+- [x] Let targets lie 0.2 m off a wall instead of 0.3 m, so the agents can
+      look into the 0.5 m alley behind the enclosure.
+- [x] Record a trace from the ground up (`trace_path`: positions, limits,
+      targets every tick, map changes every second) and replay it
+      (`scripts/replay_swarm_run.py`: slider, map discovered over time and
+      scored against the world file). `scripts/watch_sim.sh` opens a Gazebo
+      window onto a running flight once it is airborne.
+- [ ] Thin walls get erased. A one-cell wall (the enclosure's, the pillar's
+      middle) is marked free by rays whose end lands a few cm past its face;
+      the replay shows them red. The mapper should not clear the cell a ray
+      ends in, or should stop clearing a cell already well evidenced as
+      occupied.
+- [ ] The coverage figure counts the floor cell in front of every wall as
+      floor, and the map draws the wall's face into it: about 6 points of
+      the room that were seen. Count "seen" (free or occupied) as well as
+      "free", or drop the cells a face runs along, and re-take the baseline
+      the same way.
+- [x] Measure time to coverage, not coverage at a fixed time:
+      `replay_swarm_run.py` writes T50/T80/T90 for the room and the
+      enclosure from the trace (`time_to_coverage.json`), on the floor-only
+      mask, so the cells a wall's face runs along do not cap it.
+- [x] Viewpoints instead of openings, and the allocators of reserseRoju 06
+      and 07 behind one parameter (R5b, `allocation.py`): `iterative`,
+      `hungarian`, `minpos`, `utility` (default), with `clusters` as the
+      old R5. The point sent is the cell costed, the turn uses the real yaw,
+      and changing target costs 1 m.
+- [x] Compare the allocators and the filters on the same flights: 48
+      flights on 2026-10-05 in three worlds, every seed by `Gus/Guv/Gis/Giv`
+      (`swarm_batch.py`). `utility` beat `iterative` to the enclosure's T90
+      in 14 of 21 pairs (median 9 s, sign test p ~ 0.03) and stays the
+      default; vector and scalar were level (10 to 8) and vector kept every
+      pair at d_safe, so vector is the default now (R19a). Metres flown and
+      ticks held were not compared.
+- [x] Door reservation: off by default since 2026-10-05 (coordinator
+      `reserve_passages`, `OPENIPC_RESERVE_PASSAGES`). In 43 valid
+      flights with it and 4 without, two agents were never at one narrow
+      place at once; in one it hurt - the holder dithered between two
+      targets inside, a holder inside has no lease, and the other two stood
+      outside for the rest of the flight (enclosure 69 %).
+- [ ] Before reservation is switched on again: a holder that makes no
+      progress inside a passage loses it; the detector stops calling
+      everything under ~1.58 m narrow (clearance is 0.4 m, not 0.25) and
+      stops merging a door with the corridor behind it. Then fly it in a
+      world where the work behind a 1.2 m door needs more than one agent.
+- [ ] An agent occasionally drifts to 0.10-0.20 m of a wall with no
+      neighbour near: into the pillar while turning in place after
+      overshooting its target, round the enclosure's corner (one flight in
+      ~100, scalar and vector alike; `wall_m` in the batch results).
+- [ ] Record which agent saw which cell first, so overlap and each agent's
+      share can be measured (07 section 6); the merged map alone cannot say.
+- [x] Door reservation and waiting outside it (07 section 4.3, E3):
+      `passages.py`, `reserve_passages:=true`. Not flown where it matters:
+      the test world's doors are 1.6 m and two agents pass in them.
+- [x] A world with a door narrower than ~1.3 m, to fly the reservation:
+      `cluttered_room_narrow_doors.sdf`, the enclosure's door and the gap
+      past its baffle both 1.0 m, the enclosure region unchanged.
+      `scripts/door_conflicts.py` says how long two agents were at one
+      narrow place at once.
+- [x] Check the barrier's sideways motion against walls: the arbiter makes
+      a half-plane of each nearby wall from the agent's 360° scan
+      (`velocity_barrier.wall_half_planes`), loosened to whatever the
+      autonomy itself asked for, and the sideways allowance goes from 0.15
+      to 0.25 m/s while the scan is fresh. The batch records the closest
+      any agent came to a wall (`wall_m`).
+- [x] Barrier filter (CBF, right-hand rule) as R19a, opt-in:
+      `velocity_barrier.py`, arbiter `filter_mode:=vector`, coordinator
+      `safety_filter:=vector`. Found AP_DDS reads base_link y as right.
+- [x] The scalar filter let a backer creep along its nose into its
+      neighbour (0.07 m). A backer now moves only if its target and its nose
+      both lead away: 8 valid flights, none under 0.77 m.
+- [x] Barrier gamma 2 closed a head-on pair to 0.39 m in flight (latency and
+      lag); 0.7: 6 valid flights, never under 0.75 m, enclosure mean 86 %.
+- [x] One agent fails to arm in SITL in about one flight in four (7 of 28
+      on 2026-10-03, always "waiting for the vehicle to become armable").
+      It never asked: ArduPilot's STATUSTEXT (now logged per agent,
+      `v<i>/statustext.log`) has no arming attempt and no PreArm refusal
+      from the agent that stayed down. A prearm_check request or reply lost
+      over XRCE-DDS left the autonomy's one pending call pending for good.
+      Calls unanswered for `service_timeout_s` (3 s) are now dropped and
+      asked again; the first flight after the fix lost one and flew.
+- [x] The check now fails a run in which not every agent got airborne,
+      instead of measuring the agents that did.
+- [ ] Altitude sags during a swarm flight, from about 0.97 m to 0.45 m over
+      200 s. Find out whether it is the SITL battery or the commands.
+- [x] The swarm check timed 130 s after a fixed 90 s wait, while the agents
+      are up in 10 s: every swarm figure before this afternoon is after some
+      220 s. It now starts at take-off (R3 amended).
+- [ ] Re-take the single-drone baseline and the swarm the same way: the
+      baseline's 130 s include its take-off, the swarm's do not.
 - [x] Work out why no agent is ever assigned a target. It was the frame bug:
       with the offsets in, one agent is assigned on every tick. Only one,
       because of 13 openings in the merged map only one was reachable at

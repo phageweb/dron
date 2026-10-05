@@ -26,6 +26,7 @@ Směr je z pohledu agenta.
 | `/v<i>/cmd_vel_nominal` | `TwistStamped` | uvnitř agenta | `simple_indoor_autonomy` | vstup arbitru |
 | `/v<i>/explore/target` | `PointStamped` | dovnitř | koordinátor | kam mířit; téma už dnes existuje |
 | `/v<i>/swarm/constraint` | omezení rychlosti nebo stop | dovnitř | koordinátor | vstup arbitru |
+| `/v<i>/swarm/barrier` | poloroviny povolených rychlostí (`Float32MultiArray`, a_x a_y b na souseda, rámec těla); v režimu R19a, výchozím od 5. 10. 2026 | dovnitř | koordinátor | vstup arbitru (`filter_mode vector`); zdi si arbiter bere z vlastního `/v<i>/scan/front` |
 | `/v<i>/scan/front` | `LaserScan` | ven | most Gazebo→ROS | dnes `/openipc_cinewhoop/scan/front` |
 | `/v<i>/range/down` | `Range` | ven | `range_adapter` | logické jméno, viz `gz_bridge.yaml` |
 | `/v<i>/map` | `OccupancyGrid` | ven | `occupancy_mapper` agenta | vstup do složené mapy |

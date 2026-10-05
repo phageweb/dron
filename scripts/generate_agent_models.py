@@ -27,14 +27,31 @@ import shutil
 import sys
 
 # Where the agents stand at the start of a run. From spec/roj/08_rozhodnuti.md
-# R15, which derives them from the room's geometry: 2.00 m apart, at least
-# 1.00 m off every wall, and x = 0.5 rather than 0 so that no agent begins
-# inside its own 0.8 m stop threshold against the enclosure wall.
+# R15: one launch spot, the agents in a row 0.8 m apart - just outside d_safe
+# (0.78 m at 0.5 m/s), inside the 1.41 m stop line, so the swarm starts as
+# a cluster and has to spread itself out, as it would from one table in a
+# real room. x = 0.5 rather than 0 keeps every agent more than 1 m off the
+# enclosure wall. The earlier 2 m spacing handed the swarm its separation
+# before it had done anything.
 START_POSES = [
-    (0.5, -2.0, 0.035),
+    (0.5, -0.8, 0.035),
     (0.5, 0.0, 0.035),
-    (0.5, 2.0, 0.035),
+    (0.5, 0.8, 0.035),
 ]
+
+# A world that moves the enclosure off that row gets its own, same spacing.
+# cluttered_room_corridors.sdf: the enclosure reaches x = 0.5, so the row
+# moves to x = 2.0 - 1.5 m off the enclosure, 2.0 m short of the x+ wall the
+# agents face, and from y = 0 up, clear of the pillar at y = -1.5.
+START_POSES_BY_WORLD = {
+    "cluttered_room_corridors.sdf": [
+        (2.0, 0.0, 0.035),
+        (2.0, 0.8, 0.035),
+        (2.0, 1.6, 0.035),
+    ],
+}
+START_POSES_BY_WORLD["cluttered_room_complex.sdf"] = (
+    START_POSES_BY_WORLD["cluttered_room_corridors.sdf"])
 
 # SITL instance N talks JSON on 9002 + 10*N, which is what -I<N> does to the
 # ports on the autopilot's side. The model has to listen where its own
@@ -47,8 +64,13 @@ def agent_model_name(index):
     return f"openipc_cinewhoop_v{index}"
 
 
-def write_model(source_dir, out_models, index):
-    """One agent's model directory: same airframe, own name, own port."""
+def write_model(source_dir, out_models, index, instance_base=0, camera=True):
+    """One agent's model directory: same airframe, own name, own port.
+
+    `instance_base` shifts the port the way the autopilot's -I shifts its own:
+    two swarms flown side by side (OPENIPC_SLOT) use instances 0-2 and 3-5,
+    and each model has to listen where its own autopilot speaks.
+    """
     name = agent_model_name(index)
     target = os.path.join(out_models, name)
     os.makedirs(target, exist_ok=True)
@@ -76,7 +98,7 @@ def write_model(source_dir, out_models, index):
         sys.exit(f"{source_dir}/model.sdf wired {namespaces} motor namespaces "
                  f"and {cmd_topics} rotor command topics to the model name; "
                  "expected both. The plugin block changed shape.")
-    port = FDM_PORT_BASE + (index - 1) * FDM_PORT_STEP
+    port = FDM_PORT_BASE + (instance_base + index - 1) * FDM_PORT_STEP
     sdf, ports_set = re.subn(r"<fdm_port_in>\d+</fdm_port_in>",
                              f"<fdm_port_in>{port}</fdm_port_in>", sdf)
     if ports_set != 1:
@@ -95,6 +117,16 @@ def write_model(source_dir, out_models, index):
                  "declaration; the generator would put its banner in the "
                  "wrong place.")
     sdf = sdf[:declaration.end()] + banner + sdf[declaration.end():]
+    if not camera:
+        # The mapping flies on the lidar. A 640 x 480 camera at 15 Hz per
+        # agent, rendered on the laptop's integrated GPU and bridged into
+        # ROS, is ~40 MB/s per swarm nobody reads; two swarms side by side
+        # with it ran at a real-time factor of 0.1 (swarm_batch.py).
+        sdf, cameras = re.subn(r'\s*<sensor name="front_camera" type="camera">.*?</sensor>',
+                               "", sdf, flags=re.S)
+        if cameras != 1:
+            sys.exit(f"{source_dir}/model.sdf has {cameras} front cameras to "
+                     "drop, expected exactly one.")
     with open(os.path.join(target, "model.sdf"), "w") as handle:
         handle.write(sdf)
 
@@ -137,7 +169,7 @@ def write_world(base_world, out_worlds, names):
 
 
 
-def write_bridge_config(out_root, world_name, names):
+def write_bridge_config(out_root, world_name, names, camera=True):
     """One ros_gz_bridge config per agent, derived from the single-drone one.
 
     The template in `config/gz_bridge.yaml` is the source, not a second copy:
@@ -163,6 +195,9 @@ def write_bridge_config(out_root, world_name, names):
             # a race to be the one a subscriber happens to hear.
             text = re.sub(r'- ros_topic_name: "/clock".*?direction: GZ_TO_ROS\n',
                           "", text, flags=re.S)
+        if not camera:
+            text = re.sub(r'- ros_topic_name: "/openipc_cinewhoop/camera/[^"]*".*?direction: GZ_TO_ROS\n',
+                          "", text, flags=re.S)
         text = text.replace("/model/openipc_cinewhoop/", f"/model/{name}/")
         text = text.replace('"/openipc_cinewhoop/', f'"/v{index}/')
         path = os.path.join(out_root, f"gz_bridge_v{index}.yaml")
@@ -179,6 +214,10 @@ def main():
     parser.add_argument("--agents", type=int, default=2)
     parser.add_argument("--world", default="room_test.sdf")
     parser.add_argument("--out", default="build/agent_sim")
+    parser.add_argument("--instance-base", type=int, default=0)
+    parser.add_argument("--no-camera", action="store_true",
+                        help="drop the front camera from the models and the "
+                        "bridge (the lidar mapping does not use it)")
     args = parser.parse_args()
 
     package = "ros_ws/src/openipc_cinewhoop_gazebo"
@@ -188,7 +227,20 @@ def main():
     if not os.path.isdir(source_dir):
         sys.exit(f"No model directory {source_dir} for airframe "
                  f"{args.airframe!r}.")
-    base_world = os.path.join(package, "worlds", args.world)
+    # A path to a world of its own (scripts/random_world.py writes them under
+    # logs/), or the name of one of the package's.
+    base_world = (args.world if os.path.isabs(args.world)
+                  else os.path.join(package, "worlds", args.world))
+    global START_POSES
+    START_POSES = START_POSES_BY_WORLD.get(args.world, START_POSES)
+    # A generated world says where its agents start, because only the
+    # generator knows where it left room for them.
+    if os.path.isfile(base_world):
+        written = re.search(r"START_POSES\s+([-\d.,\s]+?)\s*-->",
+                            open(base_world).read())
+        if written:
+            START_POSES = [tuple(float(v) for v in pose.split(",")) + (0.035,)
+                           for pose in written.group(1).split()]
     if not os.path.isfile(base_world):
         sys.exit(f"No world {base_world}.")
 
@@ -201,7 +253,8 @@ def main():
 
     names = []
     for index in range(1, args.agents + 1):
-        name, port = write_model(source_dir, out_models, index)
+        name, port = write_model(source_dir, out_models, index,
+                                 args.instance_base, not args.no_camera)
         names.append(name)
         print(f"  {name}: fdm_port_in {port}, start "
               f"{START_POSES[index - 1]}")
@@ -214,7 +267,7 @@ def main():
     if world_name is None:
         sys.exit(f"No <world name=...> in {world_path}.")
     bridges = write_bridge_config(os.path.join(out_root, "bridge"),
-                                  world_name.group(1), names)
+                                  world_name.group(1), names, not args.no_camera)
 
     # Each agent's EKF origin is where it starts, so these are what moves its
     # pose and its map into the room. The coordinator takes them as one flat

@@ -1,0 +1,6 @@
+# Worlds of rand20 where the enclosure was missed most (2026-10-04): 2 was
+# never entered by B-F, 10 mostly never had it assigned, 6 and 19 split.
+random 2 12 9
+random 6 12 9
+random 10 12 9
+random 19 12 9

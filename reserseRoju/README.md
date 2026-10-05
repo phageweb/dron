@@ -75,6 +75,15 @@ rozeslání stejného povelu všem strojům tyto vlastnosti nedává.
   přijímací kritéria.
 - [05 – Zdroje](./05_zdroje.md): komentovaná bibliografie a oddělení toho, co
   je doložené, od doporučení autora rešerše.
+- [06 – Algoritmy koordinátoru průzkumu](./06_algoritmy_koordinatora.md):
+  slučování map, detekce hranic, přidělení cílů, uváznutí a metriky – proti
+  tomu, co dělá náš koordinátor, a co z literatury převzít.
+- [07 – Rozšířená rešerše koordinátoru: ČVUT/MRS a další výzkum](./07_koordinator_revizni_reserse.md):
+  audit kódu, rozbory přidělování úloh a plánování pohybu včetně prací
+  z let 2024–2026, srovnání předpokladů a zadání experimentů pro Clauda.
+- [08 – Průvodce algoritmy koordinátoru](./08_pruvodce_algoritmy.md): co
+  z 06 a 07 je v kódu, kde to najít, které části článků číst, výsledky letů
+  a co už není potřeba sledovat.
 
 ## Doporučené pořadí čtení
 

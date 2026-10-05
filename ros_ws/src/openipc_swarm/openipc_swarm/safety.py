@@ -94,6 +94,7 @@ def speed_limits(
     stopping_room_m: float,
     slow_band_m: Optional[float] = None,
     horizon_s: float = 2.0,
+    closing_m_per_s: float = 0.05,
 ) -> Tuple[Dict[str, float], List[Intervention]]:
     """A speed limit per agent, and the list of what forced each one.
 
@@ -128,7 +129,15 @@ def speed_limits(
 
             if now <= stop_at or predicted <= stop_at:
                 action, limit = "stop", 0.0
-            elif predicted <= slow_from:
+            elif (predicted <= slow_from
+                  and now - predicted > closing_m_per_s * horizon_s):
+                # Only a pair that is closing. The band is there so a pair
+                # closing fast meets a gradient before the stop; applied to a
+                # pair merely hovering near each other it held v1 and v2 at
+                # 0.04 m/s, 1.46 m apart, for 815 ticks of 858, and neither
+                # could leave. "Closing" needs a threshold: a hovering
+                # machine's pose wanders by millimetres, and a pair that has
+                # come a millimetre nearer is not on its way to collide.
                 # Scaled on the prediction, which is also what raised the
                 # alarm. Scaling on the present distance instead looks
                 # reasonable and does nothing: a pair 5 m apart and closing
@@ -162,13 +171,51 @@ def deadlock_backoff(
     sides compute the same answer and only one backs off; which one is
     arbitrary, and that is fine as long as the rule is the same everywhere.
     """
-    agents = list(agents)
+    backers = deadlock_backoffs(agents, limits, stop_at_m)
+    return backers[0] if backers else None
+
+
+def deadlock_backoffs(
+    agents: Iterable[AgentMotion],
+    limits: Dict[str, float],
+    stop_at_m: float,
+    preferred: Iterable[str] = (),
+) -> List[str]:
+    """One agent to give ground in every group stopped inside the stop line.
+
+    A group is the stopped agents linked by being within the stop line of
+    each other. Returning only the first pair, as `deadlock_backoff` did
+    alone, freed v1 every tick of a flight in which v2 and v3 stood frozen
+    for all 130 seconds next to it - a second jam that one backer per tick
+    never reached.
+    """
     stopped = [a for a in agents if limits.get(a.name, 0.0) <= 0.0]
+    group = {a.name: a.name for a in stopped}
+
+    def root(name):
+        while group[name] != name:
+            name = group[name]
+        return name
+
     for index, first in enumerate(stopped):
         for second in stopped[index + 1:]:
             if separation(first, second) <= stop_at_m:
-                return min(first.name, second.name)
-    return None
+                a, b = root(first.name), root(second.name)
+                group[max(a, b)] = min(a, b)
+    members: Dict[str, List[str]] = {}
+    for a in stopped:
+        members.setdefault(root(a.name), []).append(a.name)
+    # Within a group, an agent already headed away from the rest gives way
+    # first: letting the one whose target points back into the group move
+    # only spends the room the others need.
+    keen = set(preferred)
+    backers = []
+    for names in members.values():
+        if len(names) < 2:
+            continue
+        willing = [n for n in names if n in keen]
+        backers.append(min(willing or names))
+    return sorted(backers)
 
 
 # What M1 measured on the Pavo20, and the only honest source for the braking
@@ -229,6 +276,7 @@ def backoff_limit(
     d_safe_m: float,
     latency_s: float,
     max_speed_mps: float,
+    also_moving: Iterable[str] = (),
 ) -> float:
     """How fast the agent chosen to give ground may move while the rest wait.
 
@@ -238,12 +286,68 @@ def backoff_limit(
     its own autonomy takes it, including straight at them. That is what makes
     it safe to let one machine move inside the stop line at all, and it is
     why the others must be stopped first: the argument holds only against
-    machines that are standing still.
+    machines that are standing still. Against another agent that is also
+    backing off, in another group, the room is halved, because both may
+    spend it.
+    """
+    agents = list(agents)
+    moving = set(also_moving)
+    me = next(a for a in agents if a.name == backer)
+    room = min(((separation(me, other) - d_safe_m)
+                / (2.0 if other.name in moving else 1.0)
+                for other in agents if other.name != backer),
+               default=float("inf"))
+    return speed_for_room(room, latency_s, max_speed_mps)
+
+
+def leads_away(me: AgentMotion, target_xy: Tuple[float, float],
+               others: Iterable[AgentMotion]) -> bool:
+    """Whether heading for `target_xy` opens the gap to every one of `others`.
+
+    Horizontal only: the agents hold one altitude, and the target is a point
+    on the floor plan. With nobody to move away from, any heading does.
+    """
+    heading = (target_xy[0] - me.position[0], target_xy[1] - me.position[1])
+    for other in others:
+        apart = (me.position[0] - other.position[0],
+                 me.position[1] - other.position[1])
+        if heading[0] * apart[0] + heading[1] * apart[1] <= 0.0:
+            return False
+    return True
+
+
+def escape_limit(
+    agents: Iterable[AgentMotion],
+    backer: str,
+    target_xy: Optional[Tuple[float, float]],
+    d_safe_m: float,
+    d_contact_m: float,
+    latency_s: float,
+    max_speed_mps: float,
+) -> float:
+    """How fast a backer may move away from its neighbours, if at all.
+
+    Called for every backer, and decisive close to or inside d_safe, where
+    `backoff_limit` has little or no room left.
+
+    Below d_safe `backoff_limit` has no room left and answers zero, which is
+    where the flights of 2026-10-03 ended: v1 and v3 0.67 m apart against a
+    0.78 m d_safe for 899 ticks of 1005, neither allowed to move, and the one
+    thing that would have helped - moving apart - forbidden. A speed limit
+    has no direction, so the coordinator lends it one: the agent's own target.
+    If that leads away from every neighbour inside d_safe, the agent may move,
+    as fast as still stops it short of contact - the airframes and the
+    estimate error, without the latency and braking terms d_safe adds for a
+    machine closing at full speed. If it leads anywhere else, it may not.
     """
     agents = list(agents)
     me = next(a for a in agents if a.name == backer)
-    room = min((separation(me, other) - d_safe_m for other in agents
-                if other.name != backer), default=float("inf"))
+    close = [a for a in agents
+             if a.name != backer and separation(me, a) < d_safe_m]
+    if target_xy is None or not leads_away(me, target_xy, close):
+        return 0.0
+    room = min((separation(me, a) - d_contact_m for a in agents
+                if a.name != backer), default=float("inf"))
     return speed_for_room(room, latency_s, max_speed_mps)
 
 

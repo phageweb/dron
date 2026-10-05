@@ -13,6 +13,7 @@ from geometry_msgs.msg import PointStamped, PoseStamped, TwistStamped
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import BatteryState, LaserScan, Range
+from std_msgs.msg import Float32
 from std_srvs.srv import Trigger
 
 from openipc_cinewhoop_demo.scan_helpers import (
@@ -24,13 +25,16 @@ from openipc_cinewhoop_demo.scan_helpers import (
     turn_direction,
     turn_is_finished,
     turn_is_going_round,
+    turn_may_end,
     turn_sign_towards,
-    way_is_clear,
     hold_reason,
     nearest_in_sector,
     reading_is_fresh,
     roll_pitch_from_quaternion,
     safe_forward_speed,
+    scaled_forward_speed,
+    cruise_steer,
+    route_room,
     takeoff_needs_retry,
     yaw_from_quaternion,
 )
@@ -131,6 +135,9 @@ class SimpleIndoorAutonomy(Node):
         # spec/realna_stavba_dronu/02_rozhrani_sim_real.md requires that moving
         # from SITL to hardware changes the launch, not the algorithm.
         self.declare_parameter("prearm_service", "/ap/prearm_check")
+        # How long a service call may go unanswered before it is asked again;
+        # see `_call`. An answer takes tens of milliseconds when it comes.
+        self.declare_parameter("service_timeout_s", 3.0)
         self.declare_parameter("mode_service", "/ap/mode_switch")
         self.declare_parameter("arm_service", "/ap/arm_motors")
         self.declare_parameter("takeoff_service", "/ap/experimental/takeoff")
@@ -183,11 +190,40 @@ class SimpleIndoorAutonomy(Node):
         # target means the explorer has stopped or has nothing left to say, and
         # the answer is the reactive rule rather than a heading from memory.
         self.declare_parameter("target_timeout_s", 3.0)
+        # In a swarm: the speed limit the coordinator hands this agent, read
+        # only to know when it is being held. Empty for a single drone, which
+        # nothing holds.
+        self.declare_parameter("constraint_topic", "")
+        self.declare_parameter("held_below_mps", 0.05)
         # How close to the nose the target has to be before the turn may end.
         # Wide enough that the vehicle is not chasing the last degree while a
         # wall sits in front of it, narrow enough to be a direction: at 4 m,
         # 10 degrees is 0.7 m.
         self.declare_parameter("align_tolerance_deg", 10.0)
+        # How the vehicle closes on a wall. "stop": full speed, then a stop at
+        # stop_distance + braking_distance (1.4 m) - the behaviour every check
+        # so far has verified, and the default. "slow": the speed falls with
+        # the room ahead so the braking still fits, and it holds only at
+        # stop_distance plus what min_speed_mps needs; through the enclosure
+        # door, whose baffle is 1.45 m in, that is the difference between
+        # going in and turning back. "slow_steer": "slow", and the nose is
+        # kept on the target while cruising instead of only in a turn.
+        # "route": "slow_steer", and with the nose on the target - a point of
+        # the coordinator's route - the way to that point counts as clear up
+        # to route_clearance_m off whatever is beyond it (`route_room`).
+        self.declare_parameter("approach_mode", "stop")
+        self.declare_parameter("route_clearance_m", 0.3)
+        self.declare_parameter("route_align_deg", 20.0)
+        self.declare_parameter("require_target", False)
+        self.declare_parameter("target_arrival_m", 0.12)
+        self.declare_parameter("min_speed_mps", 0.1)
+        self.declare_parameter("steer_gain_per_s", 1.0)
+        self.declare_parameter("steer_deadband_deg", 5.0)
+        # Too far off the nose to fix on the way: turn in place instead.
+        self.declare_parameter("steer_max_off_deg", 70.0)
+        # After a turn that gave up on the target (it was behind a wall), how
+        # long to fly the clear heading before steering at the target again.
+        self.declare_parameter("steer_resume_s", 3.0)
 
         self._battery_volts = None
         self._battery_time = None
@@ -202,6 +238,7 @@ class SimpleIndoorAutonomy(Node):
         # Whether the turn in progress has set its target aside and is just
         # looking for a way through. Per turn, cleared by _enter(TURN).
         self._going_round = False
+        self._steer_after = None
         self._last_scan_time = None
         self._roll = 0.0
         self._pitch = 0.0
@@ -214,6 +251,7 @@ class SimpleIndoorAutonomy(Node):
         self._range_time = None
         self._blind_reason = None
         self._pending = None
+        self._pending_since = None
         self._hold_reason = None
         self._altitude = None
         self._armed = False
@@ -237,6 +275,13 @@ class SimpleIndoorAutonomy(Node):
         self.create_subscription(
             BatteryState, self.get_parameter("battery_topic").value,
             self._on_battery, qos_profile_sensor_data)
+
+        self._held_limit = None
+        self._held_time = None
+        if self.get_parameter("constraint_topic").value:
+            self.create_subscription(
+                Float32, self.get_parameter("constraint_topic").value,
+                self._on_constraint, 10)
 
         self._auto = bool(self.get_parameter("auto_takeoff").value)
         if self._auto and not ARDUPILOT_SRVS:
@@ -330,6 +375,25 @@ class SimpleIndoorAutonomy(Node):
         self._battery_volts = msg.voltage
         self._battery_time = self.get_clock().now()
 
+    def _on_constraint(self, msg: Float32):
+        self._held_limit = float(msg.data)
+        self._held_time = self.get_clock().now()
+
+    def _held(self) -> bool:
+        """Whether the swarm is holding this agent still right now.
+
+        The arbiter clips the forward command to the limit and passes yaw, so
+        a held agent that keeps asking to fly forward goes nowhere and keeps
+        its nose wherever it was - usually at the agent it got too close to.
+        Knowing it is held lets it spend the wait turning towards where it has
+        been sent, so that when it is let go it flies there and not back in.
+        """
+        if self._held_limit is None or self._held_time is None:
+            return False
+        age = (self.get_clock().now() - self._held_time).nanoseconds * 1e-9
+        return (age < 1.0 and self._held_limit
+                < float(self.get_parameter("held_below_mps").value))
+
     def _on_target(self, msg: PointStamped):
         self._target = (msg.point.x, msg.point.y)
         self._target_time = self.get_clock().now()
@@ -401,6 +465,48 @@ class SimpleIndoorAutonomy(Node):
             return None
         return (self.get_clock().now() - self._last_scan_time).nanoseconds / 1e9
 
+    def _now_s(self):
+        return self.get_clock().now().nanoseconds * 1e-9
+
+    def _on_route(self):
+        """Whether the route rule applies: "route" mode, nose on the target."""
+        if str(self.get_parameter("approach_mode").value) != "route":
+            return False
+        bearing = self._bearing_to_target()
+        return bearing is not None and abs(bearing) <= math.radians(
+            float(self.get_parameter("route_align_deg").value))
+
+    def _route_nearest(self):
+        """The nearest range as the speed rule should see it.
+
+        In "route" mode, with the nose on the target, the room `route_room`
+        allows, expressed as the range that would give it; otherwise the
+        corridor's own nearest range.
+        """
+        if not self._on_route():
+            return self._nearest
+        if self._nearest is None:
+            return None
+        stop = float(self.get_parameter("stop_distance_m").value)
+        distance = math.dist(self._position, self._target)
+        return stop + route_room(
+            self._nearest, stop,
+            float(self.get_parameter("route_clearance_m").value), distance)
+
+    def _braking_to_start(self):
+        """The braking distance the turn's clear test allows for.
+
+        From full speed in "stop" mode. In the slow modes the vehicle sets off
+        at what the room allows, so a turn may end once there is room for the
+        slowest speed it will fly.
+        """
+        braking = float(self.get_parameter("braking_distance_m").value)
+        if str(self.get_parameter("approach_mode").value) == "stop":
+            return braking
+        return braking * (
+            float(self.get_parameter("min_speed_mps").value)
+            / float(self.get_parameter("forward_speed_mps").value))
+
     def _enter(self, state):
         if state == TURN:
             # Each turn asks the target question again from scratch, against
@@ -410,16 +516,34 @@ class SimpleIndoorAutonomy(Node):
         self.get_logger().info(state)
 
     def _call(self, client, request, on_done):
-        """Issue one service call and route its result, one call at a time."""
+        """Issue one service call and route its result, one call at a time.
+
+        A call with no answer after `service_timeout_s` is dropped and the
+        next tick asks again. AP_DDS services go over XRCE-DDS on UDP, and
+        one lost request or reply used to leave the call pending for good:
+        an agent in about one swarm flight in four sat in "waiting for the
+        vehicle to become armable" while ArduPilot, which logs every arming
+        attempt and refusal, never heard it ask.
+        """
+        now = self.get_clock().now()
         if self._pending is not None:
             if not self._pending.done():
-                return
+                waited = (now - self._pending_since).nanoseconds * 1e-9
+                if waited < float(
+                        self.get_parameter("service_timeout_s").value):
+                    return
+                self.get_logger().warn(
+                    f"No answer from {client.srv_name} in {waited:.1f} s; "
+                    "asking again.")
+                client.remove_pending_request(self._pending)
             self._pending = None
         if not client.service_is_ready():
             return
         future = client.call_async(request)
-        future.add_done_callback(lambda f: on_done(f.result()))
+        future.add_done_callback(
+            lambda f: None if f.cancelled() else on_done(f.result()))
         self._pending = future
+        self._pending_since = now
 
     def _battery_reason(self):
         """Why the vehicle should stop flying on the battery's account, or None.
@@ -480,6 +604,14 @@ class SimpleIndoorAutonomy(Node):
                 return
         if self._state == LAND:
             self._land()
+            return
+
+        if (self._state in (CRUISE, TURN)
+                and bool(self.get_parameter("require_target").value)
+                and (self._bearing_to_target() is None
+                     or math.dist(self._position, self._target) <= float(
+                         self.get_parameter("target_arrival_m").value))):
+            self._publish(0.0)
             return
 
         if self._state == WAIT_SCAN:
@@ -611,10 +743,13 @@ class SimpleIndoorAutonomy(Node):
             self._publish(0.0)
             return
 
-        clear = way_is_clear(
+        # Pointed at a route point with clear line to it: the wall is beyond
+        # the point, so the turn is done, not hunting for a way.
+        clear = turn_may_end(
             self._nearest,
+            self._route_nearest() if self._on_route() else None,
             float(self.get_parameter("stop_distance_m").value),
-            float(self.get_parameter("braking_distance_m").value),
+            self._braking_to_start(),
             float(self.get_parameter("turn_clear_margin_m").value))
         bearing = self._bearing_to_target()
         tolerance = math.radians(
@@ -623,6 +758,8 @@ class SimpleIndoorAutonomy(Node):
         was_going_round = self._going_round
         self._going_round = turn_is_going_round(
             bearing, clear, tolerance, self._going_round)
+        if bool(self.get_parameter("require_target").value):
+            self._going_round = False
         if self._going_round and not was_going_round:
             self.get_logger().info(
                 "The opening is on the nose and the way is still blocked, so "
@@ -636,6 +773,12 @@ class SimpleIndoorAutonomy(Node):
                             f"{math.degrees(abs(bearing)):.0f} deg")
             self.get_logger().info(f"Turn finished: {ahead} ahead{towards}")
             self._hold_reason = None
+            # A turn that went round flies the heading it found, for a while,
+            # before the cruise steers back towards a target behind a wall.
+            self._steer_after = (
+                self._now_s()
+                + float(self.get_parameter("steer_resume_s").value)
+                if self._going_round else None)
             self._enter(CRUISE)
             return
 
@@ -654,14 +797,41 @@ class SimpleIndoorAutonomy(Node):
             * float(self.get_parameter("turn_yaw_rate_rps").value))
 
     def _cruise(self, fresh):
+        if self._held():
+            bearing = self._bearing_to_target()
+            tolerance = math.radians(
+                float(self.get_parameter("align_tolerance_deg").value))
+            yaw = 0.0
+            # Not on a stale scan, for the reason _turn gives: rotating is
+            # deciding about air the vehicle cannot currently see.
+            if fresh and bearing is not None and abs(bearing) > tolerance:
+                yaw = math.copysign(
+                    float(self.get_parameter("turn_yaw_rate_rps").value),
+                    bearing)
+            if self._hold_reason != "held by the swarm":
+                self.get_logger().info("Holding: held by the swarm; turning "
+                                       "towards the target meanwhile")
+                self._hold_reason = "held by the swarm"
+            self._publish(0.0, yaw)
+            return
+
+        mode = str(self.get_parameter("approach_mode").value)
         speed = 0.0
-        if fresh:
+        if fresh and mode == "stop":
             speed = safe_forward_speed(
                 self._nearest,
                 self._scan_has_returns,
                 float(self.get_parameter("stop_distance_m").value),
                 float(self.get_parameter("forward_speed_mps").value),
                 float(self.get_parameter("braking_distance_m").value))
+        elif fresh:
+            speed = scaled_forward_speed(
+                self._route_nearest(),
+                self._scan_has_returns,
+                float(self.get_parameter("stop_distance_m").value),
+                float(self.get_parameter("forward_speed_mps").value),
+                float(self.get_parameter("braking_distance_m").value),
+                float(self.get_parameter("min_speed_mps").value))
 
         if speed == 0.0:
             # A fresh scan can still be all inf or nan, which is a blind
@@ -707,7 +877,35 @@ class SimpleIndoorAutonomy(Node):
         else:
             self._hold_reason = None
 
-        self._publish(speed)
+        if (bool(self.get_parameter("require_target").value)
+                and self._bearing_to_target() is not None):
+            room = max(0.0, math.dist(self._position, self._target) - float(
+                self.get_parameter("target_arrival_m").value))
+            speed = min(speed, float(self.get_parameter("forward_speed_mps").value)
+                        * min(1.0, room / float(
+                            self.get_parameter("braking_distance_m").value)))
+        yaw = 0.0
+        if speed > 0.0 and mode in ("slow_steer", "route") and (
+                self._steer_after is None or self._now_s() >= self._steer_after):
+            bearing = self._bearing_to_target()
+            if bearing is not None and abs(bearing) > math.radians(
+                    float(self.get_parameter("steer_max_off_deg").value)):
+                self.get_logger().info(
+                    f"The target is {math.degrees(bearing):+.0f} deg off the "
+                    "nose; turning to it in place")
+                self._turn_sign = math.copysign(1.0, bearing)
+                self._enter(TURN)
+                return
+            yaw = cruise_steer(
+                bearing,
+                float(self.get_parameter("turn_yaw_rate_rps").value),
+                float(self.get_parameter("steer_gain_per_s").value),
+                math.radians(
+                    float(self.get_parameter("steer_deadband_deg").value)))
+            if bearing is not None:
+                # Flying across the line to the target is flying away from it.
+                speed *= max(0.3, math.cos(bearing))
+        self._publish(speed, yaw)
 
     @staticmethod
     def _describe(value):

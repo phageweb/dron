@@ -935,6 +935,109 @@ terms rather than a number on its own.
 - What decides the bad mode is the two agents with no target: they wander
   into one corner and jam. Fixing that changes R5 - left as a decision.
 
+## 2026-10-03 (afternoon) - unjamming the swarm, launching it from one spot
+
+- Six fixes to the coordinator's safety filter and targets, each found in a
+  flight's trace: one backer per jammed group; a backer moves only if its
+  target leads away; its room is measured to contact; the slow band brakes
+  only a pair closing faster than 5 cm/s (it had held two hovering agents at
+  0.04 m/s for a whole flight); a held agent turns in place towards its
+  target; an agent held 2 s is sent away and stays sent away until clear of
+  everyone, and its away target is never past a close neighbour.
+- R15 amended: the swarm launches from one spot, a row 0.8 m apart.
+- Targets may lie 0.2 m off a wall instead of 0.3 m.
+- The coordinator writes a trace from the ground up (`trace_path`), and
+  `scripts/replay_swarm_run.py` replays it with a time slider, the map
+  discovered second by second and scored against the world file.
+- Last version, three flights without a Gazebo window: 92/95, 90/93, 87/73
+  (room/enclosure). The good flights equal one drone; the swarm is not yet
+  better, and not yet reliable.
+- `reserseRoju/06_algoritmy_koordinatora.md`: what the literature does about
+  each of these - utility discount and Hungarian assignment instead of R5a,
+  viewpoints instead of centroids, a vector limit (CBF) or the right-hand
+  rule instead of a scalar one, and time-to-90 % instead of coverage at 130 s.
+
+## 2026-10-03 (evening) - the coordinator algorithms from reserseRoju 06/07
+
+- Viewpoints instead of openings (R5b, `allocation.py`): each opening split
+  into reachable cells 1 m apart, each with an estimate of what it shows;
+  the point sent is the cell costed; the turn uses the real yaw; changing
+  target costs 1 m. Allocators behind `allocator`: `clusters` (old R5),
+  `iterative`, `hungarian`, `minpos`, `utility` (Burgard, default).
+- Passage reservation (`passages.py`, `reserve_passages`, off): one agent
+  through a gap two cannot pass in. The test world's doors are 1.6 m, so it
+  has nothing to do there yet.
+- Barrier filter (R19a, `velocity_barrier.py`, arbiter `filter_mode`,
+  coordinator `safety_filter`, off by default): reciprocal CBF half-planes,
+  closest safe velocity, right-hand rule. Offline 2, 3 and 4 agents swapping
+  through the centre all pass and never go under d_safe.
+- AP_DDS reads `linear.y` in base_link as right, not left (its comment says
+  left). Nothing had sent a y before; the barrier's first flight did, every
+  sideways step went the mirror way, and two agents closed to 0.20 m. The
+  arbiter now converts (`to_ap_body_y`).
+- Under the barrier an agent is never stopped, so R5a's "held 2 s" never
+  fired and three agents crawled in a bunch for 90 s. Held now also means
+  slower than 0.08 m/s next to a neighbour.
+- The swarm check waited a fixed 90 s for take-off; the agents are up in
+  10 s. Every swarm figure before today's evening was after ~220 s, not 130.
+  Fixed (R3 amended); the replay now gives T50/T80/T90 and coverage exactly
+  130 s after the last agent is up, on the floor-only mask.
+- Flights timed that way, room/enclosure at 130 s, closest pair:
+  clusters/scalar 89/47 0.41 m; utility/scalar 93/71 0.07 m, 94/72 0.78 m;
+  iterative/scalar 96/84 0.75 m, 97/99 0.14 m; utility/vector 95/81 0.71 m,
+  94/77 0.59 m; iterative/vector 98/100 0.62 m, 94/77 0.62 m.
+- The scalar filter's 0.07 and 0.14 m: a backer is let creep because its
+  target leads away, and the autonomy flies its nose, which led at the
+  neighbour. Vector never went under 0.59 m in four flights.
+- Scalar backer fix: a backer moves only if its target and its nose both
+  lead away. 20-flight batch (5 invalid, one agent never armed): scalar never
+  under 0.77 m in 8 flights, enclosure mean 89 %, iterative and utility the
+  same. Barrier gamma 2 closed a head-on pair to 0.39 m (the lagged model
+  gives 0.36); gamma is now 0.7.
+- Barrier at gamma 0.7: 6 valid flights of 8, never under 0.75 m, enclosure
+  mean 86 % - level with the fixed scalar filter (89 %), not better.
+- `reserseRoju/08_pruvodce_algoritmy.md`: what is in the code, where, which
+  sections of which papers, the results, and what no longer needs watching.
+
+## 2026-10-05 - reserseRoju 08 section 7: the filter, the allocator, the door
+
+- The barrier's sideways motion now checked against walls: the arbiter
+  reads the agent's 360° scan and makes a half-plane of the nearest return
+  in each of 24 sectors within 1 m (`wall_half_planes`), loosened to the
+  autonomy's own command so a wall only stops what the filter added. With a
+  fresh scan the sideways allowance is 0.25 m/s, without one 0.15 m/s as
+  before. Offline: a head-on pair in a 1.4 m corridor passes at 0.79 m and
+  stays 0.30 m off the walls; without the walls it went to 0.19 m.
+- `cluttered_room_narrow_doors.sdf`: the enclosure's door and the gap past
+  its baffle narrowed. First at 1.0 m, which is at the coordinator's limit:
+  routes need 0.4 m of known floor round every cell, 9 cells across a 10
+  cell door, and in 2 of 15 flights the map closed it and the swarm stopped
+  with a third of the enclosure unseen. Now 1.2 m.
+- Agents that never armed: ArduPilot's STATUSTEXT, now logged per agent
+  (`v<i>/statustext.log`; a heartbeat is needed or it sends none), showed no
+  arming attempt from the agent that stayed down. The autonomy's one pending
+  service call waited forever for a prearm_check answer lost over XRCE-DDS.
+  It is now dropped after 3 s and asked again; in the 48 flights since, it
+  fired in 6 flights, all valid, and no flight was invalid for it.
+- Batches: `room-afv` (cluttered_room, 12), `narrow-afv` (1.0 m, 16),
+  `narrow12-afv` (1.2 m, 20, with `F` = no reservation as control). Every
+  seed by `Gus/Guv/Gis/Giv`. 47 of 48 valid; the invalid one was before the
+  service fix.
+- Decided: vector filter is the default (level with scalar on T90, 10:8:3
+  in 21 pairs; the only one that kept every pair at d_safe). `utility`
+  stays the default (14:4:3 against `iterative`, median 9 s). Both in
+  `spec/roj/08_rozhodnuti.md` R19a and R5b, numbers in reserseRoju/08 §7.
+- Door reservation never had two agents to separate, in any of 47 flights,
+  and in one it left two agents without a target for over 100 of 130 s
+  behind a dithering holder.
+  Switched off by default (coordinator `reserve_passages`, the swarm
+  check's `OPENIPC_RESERVE_PASSAGES`); version G and the `G..` versions of
+  `swarm_batch.py` still set it on, so earlier batches stay comparable.
+- `swarm_batch.py`: versions `Gus/Guv/Gis/Giv`, version F now explicitly
+  without reservation (it had silently gained it with the 2026-10-04
+  default), and `wall_m`, the closest any agent came to a wall.
+  `scripts/door_conflicts.py` counts time with two agents at one door.
+
 ## Log Entry Template
 
 ```text

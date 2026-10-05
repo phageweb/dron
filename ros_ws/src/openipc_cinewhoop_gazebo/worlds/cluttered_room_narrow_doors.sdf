@@ -1,0 +1,192 @@
+<?xml version="1.0"?>
+<!-- cluttered_room.sdf with both apertures of the enclosure narrowed from
+     1.6 m to 1.2 m: the door in its -y side (x -1.8 to -0.6) and the gap past
+     the baffle (x -3.4 to -2.2). Everything else, and the enclosure's outer
+     walls, are where they are there, so the enclosure region the checks
+     derive from the inner_* bounding box is the same and the figures compare.
+
+     What it is for: `reserve_passages` (passages.py, reserseRoju 07 section
+     4.3). Two agents pass each other only in a gap wider than d_safe plus
+     the wall clearance on each side: 1.44 m with the autonomy's 0.33 m
+     corridor, 1.58 m with the coordinator's 0.4 m. The 1.6 m door let
+     them. At 1.2 m two do not pass, and one
+     still gets through the coordinator's planning: it routes only through
+     cells with 0.4 m of known floor all round (4 cells of 0.1 m), so it
+     needs 9 clear cells across a door. The first version had 1.0 m
+     apertures - 10 cells - and in 2 of 15 flights (2026-10-05) a wall
+     drawn one cell thick or an unknown cell at a jamb closed one for the
+     planner, and the swarm stopped with a third of the enclosure unseen.
+     So the window for a door that tests the reservation is about 1.1 to
+     1.4 m, and 1.2 m leaves the map three cells of slack.
+
+     See cluttered_room.sdf for why the enclosure has the shape it has. -->
+<sdf version="1.10">
+  <world name="cluttered_room">
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+
+    <gravity>0 0 -9.80665</gravity>
+    <magnetic_field>6e-06 2.3e-05 -4.2e-05</magnetic_field>
+    <atmosphere type="adiabatic"/>
+
+    <light name="ceiling_light" type="directional">
+      <pose>0 0 4 0 0 0</pose>
+      <cast_shadows>true</cast_shadows>
+      <direction>-0.3 0.4 -1</direction>
+      <diffuse>0.9 0.86 0.75 1</diffuse>
+    </light>
+
+    <!-- Same floor as every other world here: top surface at z = 0.025. -->
+    <model name="floor">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>10 8 0.05</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>10 8 0.05</size></box></geometry>
+          <material><diffuse>0.45 0.48 0.48 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Four walls, 0.1 m thick, their inner faces at x = +-4 and y = +-3. -->
+    <model name="wall_x_plus">
+      <static>true</static>
+      <pose>4.05 0 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.1 6.2 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.1 6.2 2.0</size></box></geometry>
+          <material><diffuse>0.62 0.60 0.56 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_x_minus">
+      <static>true</static>
+      <pose>-4.05 0 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.1 6.2 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.1 6.2 2.0</size></box></geometry>
+          <material><diffuse>0.62 0.60 0.56 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_y_plus">
+      <static>true</static>
+      <pose>0 3.05 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>8.2 0.1 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>8.2 0.1 2.0</size></box></geometry>
+          <material><diffuse>0.62 0.60 0.56 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_y_minus">
+      <static>true</static>
+      <pose>0 -3.05 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>8.2 0.1 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>8.2 0.1 2.0</size></box></geometry>
+          <material><diffuse>0.62 0.60 0.56 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- The enclosure. Same 0.1 m thickness and 2 m height as the outer walls,
+         so nothing about the lidar's view of it is special. Its interior is
+         x -3.4 to -0.6 and y -0.4 to 2.4; the door is the gap left in the -y
+         side, from x = -1.8 to -0.6.
+
+         The check derives the region it reports on from these walls rather than
+         from a number written down twice: the bounding box of everything named
+         inner_*, pulled in by the thickness. Moving one of them moves what gets
+         measured, and `inner_baffle` lies inside that box, so it adds a wall
+         without moving the region. -->
+    <model name="inner_x_minus">
+      <static>true</static>
+      <pose>-3.45 1.0 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.1 2.9 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.1 2.9 2.0</size></box></geometry>
+          <material><diffuse>0.55 0.52 0.48 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="inner_y_plus">
+      <static>true</static>
+      <pose>-2.0 2.45 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>2.9 0.1 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>2.9 0.1 2.0</size></box></geometry>
+          <material><diffuse>0.55 0.52 0.48 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="inner_x_plus">
+      <static>true</static>
+      <pose>-0.55 1.0 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.1 2.9 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.1 2.9 2.0</size></box></geometry>
+          <material><diffuse>0.55 0.52 0.48 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="inner_y_minus_stub">
+      <static>true</static>
+      <pose>-2.65 -0.45 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1.7 0.1 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>1.7 0.1 2.0</size></box></geometry>
+          <material><diffuse>0.55 0.52 0.48 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- What makes the enclosure an enclosure rather than a recess. It reaches
+         from the x+ inner wall, the side the door is flush with, to x = -2.2,
+         leaving a 1.2 m gap against the x- wall. -->
+    <model name="inner_baffle">
+      <static>true</static>
+      <pose>-1.4 1.0 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1.6 0.1 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>1.6 0.1 2.0</size></box></geometry>
+          <material><diffuse>0.55 0.52 0.48 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- A shadow that moves, for contrast with one that does not. -->
+    <model name="pillar">
+      <static>true</static>
+      <pose>2.0 -1.5 1.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.4 0.4 2.0</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.4 0.4 2.0</size></box></geometry>
+          <material><diffuse>0.5 0.45 0.42 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <include>
+      <uri>model://openipc_cinewhoop</uri>
+      <pose>0 0 0.035 0 0 0</pose>
+    </include>
+  </world>
+</sdf>
