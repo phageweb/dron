@@ -165,6 +165,26 @@ def truth_window(grid, room, rects, margin_m=0.3):
     return {"c0": c0, "r0": r0, "cw": c1 - c0, "ch": r1 - r0}, truth
 
 
+def wrong_cells(deltas, grid, window, truth, upto_frame):
+    """Cells the map has the wrong way round when frame `upto_frame` is drawn:
+    wholly inside a wall but called free, or floor called occupied. Cells a
+    wall's face runs through are not counted; either answer is fair there.
+    The same rule the replay's map note counts.
+    """
+    w, c0, r0, cw, ch = (grid["w"], window["c0"], window["r0"],
+                         window["cw"], window["ch"])
+    cls = {}
+    for frame_index, changes in deltas:
+        if frame_index > upto_frame:
+            break
+        for index, value in changes:
+            col, row = index % w - c0, index // w - r0
+            if 0 <= col < cw and 0 <= row < ch:
+                cls[row * cw + col] = value
+    return sum(1 for i, c in cls.items()
+               if (truth[i] == 2 and c == 1) or (truth[i] == 1 and c == 2))
+
+
 def airborne_at(path, above_m=0.3):
     """When every agent in the trace was first above `above_m`, trace time.
 
@@ -632,6 +652,7 @@ def main():
     trace = os.path.join(run_dir, "trace.jsonl")
     live = None
     reach = None
+    wrong = None
     if os.path.isfile(trace):
         frames, times, grid, deltas = frames_from_trace(trace)
         if grid and deltas:
@@ -667,6 +688,7 @@ def main():
             end = next((k for k, t in enumerate(times)
                         if start is not None and t - start >= budget),
                        len(frames) - 1)
+            wrong = wrong_cells(deltas, grid, window, truth, end)
             live = {"win": window, "res": grid["res"], "ox": grid["ox"],
                     "oy": grid["oy"], "truth": truth, "end": end,
                     "deltas": [per_frame.get(k) for k in range(len(frames))]}
@@ -700,9 +722,13 @@ def main():
             summary.append(f"{part} {line}")
             print(f"{part}: {line}")
         with open(os.path.join(run_dir, "time_to_coverage.json"), "w") as handle:
-            json.dump({part: {(t if t == "at_budget" else f"T{round(100 * t)}"): v
-                              for t, v in figures.items()}
-                       for part, figures in reach.items()}, handle)
+            out = {part: {(t if t == "at_budget" else f"T{round(100 * t)}"): v
+                          for t, v in figures.items()}
+                   for part, figures in reach.items()}
+            # Wall cells called free and floor called occupied, at the end
+            # of the budget: what a faster or sloppier flight costs the map.
+            out["map"] = {"wrong_cells": wrong}
+            json.dump(out, handle)
     summary.append(f"{len(frames)} coordinator ticks, {source}")
 
     data = {

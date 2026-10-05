@@ -316,6 +316,9 @@ seed“; let, který T90 nedosáhl, prohrává.
      lhůtu, takže v2 a v3 zbytek letu stály venku a ohrada skončila na
      69 %. Bez rezervace (`F`) bylo T90 v mediánu 33 s proti 46 s se
      zapnutou (`Gus`, 4 páry – náznak).
+   Odpoledne to potvrdily čtyři lety výchozí konfigurace bez rezervace
+   ve stejném světě: T90 ohrady 25–29 s proti 28–49 s (medián 46 s)
+   s rezervací – rezervace čas skoro zdvojnásobovala.
    **Rozhodnuto 5. 10.: rezervace je jako výchozí vypnutá**, dokud
    detektor nebude brát jen skutečné dveře (bez slévání s chodbou)
    a držitel, který v průchodu nepostupuje, nepřijde o rezervaci. Pro

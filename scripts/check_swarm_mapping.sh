@@ -413,7 +413,8 @@ for index in $(seq 1 "$agents"); do
     -p "approach_mode:=${OPENIPC_APPROACH:-route}" \
     -p "corridor_margin_m:=$corridor_margin" \
     -p "require_target:=true" \
-    -p "steer_max_off_deg:=20.0" \
+    -p "steer_max_off_deg:=${OPENIPC_STEER_MAX_OFF:-20.0}" \
+    -p "turn_yaw_rate_rps:=${OPENIPC_TURN_RATE:-0.4}" \
     -p "align_tolerance_deg:=8.0" \
     -p "route_align_deg:=10.0" \
     >"$run_dir/autonomy_$ns.log" 2>&1 &
@@ -435,6 +436,7 @@ ros2 run openipc_swarm coordinator --ros-args \
   -p "start_offsets:=[$(echo "$start_offsets" | sed 's/ /, /g')]" \
   -p "trace_path:=$run_dir/trace.jsonl" \
   -p "allocator:=${OPENIPC_ALLOCATOR:-utility}" \
+  -p "turn_yaw_rate_rps:=${OPENIPC_TURN_RATE:-0.4}" \
   -p "safety_filter:=${OPENIPC_SAFETY_FILTER:-vector}" \
   -p "reserve_passages:=${OPENIPC_RESERVE_PASSAGES:-false}" \
   -p "lookahead_m:=${OPENIPC_LOOKAHEAD:-1.4}" \

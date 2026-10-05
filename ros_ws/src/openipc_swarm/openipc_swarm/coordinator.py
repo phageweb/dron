@@ -132,6 +132,10 @@ class Coordinator(Node):
         # A lower bound; the flight corridor also sets a minimum at map time.
         self.declare_parameter("clearance_cells", 4)
         self.declare_parameter("safe_viewpoints", True)
+        # How fast the agents turn in place (the autonomy's turn_yaw_rate_rps).
+        # A turn costs what flying would in the same time: max_speed / rate
+        # metres per radian, 1.25 at 0.5 m/s and 0.4 rad/s.
+        self.declare_parameter("turn_yaw_rate_rps", 0.4)
         self.declare_parameter("target_overdue_s", 30.0)
         self.declare_parameter("target_stalled_s", 15.0)
         self.declare_parameter("target_retry_s", 25.0)
@@ -649,6 +653,9 @@ class Coordinator(Node):
                     self.get_parameter("switch_cost_m").value),
                 forbidden=forbidden, safe_viewpoints=safe_views,
                 memory=self._exploration, now_s=now,
+                turn_cost_m_per_rad=float(
+                    self.get_parameter("max_speed_mps").value)
+                / float(self.get_parameter("turn_yaw_rate_rps").value),
                 navigation_mask=nav_mask if safe_views else None)
         plan_ms = (time.perf_counter() - started) * 1000.0
         doors = None

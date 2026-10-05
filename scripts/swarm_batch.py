@@ -74,9 +74,13 @@ for _a, _allocator in (("u", "utility"), ("i", "iterative")):
         VERSIONS["G" + _a + _f] = dict(VERSIONS["G"],
                                        OPENIPC_ALLOCATOR=_allocator,
                                        OPENIPC_SAFETY_FILTER=_filter)
+# Time spent turning in place (reserseRoju/08 section 7 defaults, 2026-10-05):
+# T  the default flight, Guv.  T8  turning at 0.8 rad/s instead of 0.4.
+VERSIONS["T"] = dict(VERSIONS["Guv"], OPENIPC_RESERVE_PASSAGES="false")
+VERSIONS["T8"] = dict(VERSIONS["T"], OPENIPC_TURN_RATE="0.8")
 FIELDS = ["case", "seed", "version", "allocator", "valid", "enclosure",
           "enclosure_flown", "room", "enclosure_t90", "room_t90", "entered_s",
-          "closest_m", "wall_m", "late_ticks", "rtf", "attempt", "run_dir", "seconds"]
+          "closest_m", "wall_m", "wrong_cells", "late_ticks", "rtf", "attempt", "run_dir", "seconds"]
 # Work done beside a flight - scoring the last one, generating worlds - runs
 # at low priority: two flights already take 10 of 12 cores, and a flight
 # starved of CPU slows its simulation against the wall clock its nodes time
@@ -182,6 +186,7 @@ def metrics(run_dir, world, flight_s=FLIGHT_S):
         entered_s=None if entered is None else round(entered, 1),
         closest_m=None if closest == math.inf else round(closest, 3),
         wall_m=None if wall == math.inf else round(wall, 3),
+        wrong_cells=cov.get("map", {}).get("wrong_cells"),
         late_ticks=late,
         rtf=_mean_rtf(run_dir))
     return row

@@ -1038,6 +1038,28 @@ terms rather than a number on its own.
   default), and `wall_m`, the closest any agent came to a wall.
   `scripts/door_conflicts.py` counts time with two agents at one door.
 
+## 2026-10-05 (afternoon) - where the time goes
+
+- Time budget of the 14 default-config flights up to the enclosure's T90
+  (traces and autonomy logs): 54 % of agent time turning in place, 30 %
+  cruising, 15 % held by the swarm. 184 of 197 turns were a target more
+  than `steer_max_off_deg` (20) off the nose; half of all agent time had
+  no viewpoint ("away").
+- `turn_yaw_rate_rps` is now a swarm-check setting (`OPENIPC_TURN_RATE`)
+  and the coordinator's turn cost follows it (max_speed / rate m/rad,
+  was a fixed 1.25). `OPENIPC_STEER_MAX_OFF` likewise.
+- The replay writes `map.wrong_cells` to time_to_coverage.json (wall
+  called free, floor called occupied) and the batch records it.
+- Batches `turn-room` and `turn-narrow12`, 8 pairs, T (the default: vector,
+  utility, no reservation) against T8 (turning at 0.8 rad/s): the room's
+  T90 3-4 s sooner in 7 of 8 pairs, the enclosure's T90 no better (4:4),
+  room coverage at 130 s a point lower in every pair, and one T8 flight to
+  0.145 m of a wall with 29 wrong cells. Turning is not on the enclosure's
+  critical path; 0.4 rad/s stays.
+- With reservation off the 1.2 m door world's enclosure T90 is 25-29 s
+  (4 flights, T); with it on this morning it was 28-49 s, median 46 s
+  (Guv). The reservation was nearly doubling the time.
+
 ## Log Entry Template
 
 ```text
