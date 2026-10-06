@@ -75,9 +75,17 @@ for _a, _allocator in (("u", "utility"), ("i", "iterative")):
                                        OPENIPC_ALLOCATOR=_allocator,
                                        OPENIPC_SAFETY_FILTER=_filter)
 # Time spent turning in place (reserseRoju/08 section 7 defaults, 2026-10-05):
-# T  the default flight, Guv.  T8  turning at 0.8 rad/s instead of 0.4.
+# T  the default flight, Guv without reservation.  T8  turning at 0.8 rad/s
+# instead of 0.4.
 VERSIONS["T"] = dict(VERSIONS["Guv"], OPENIPC_RESERVE_PASSAGES="false")
 VERSIONS["T8"] = dict(VERSIONS["T"], OPENIPC_TURN_RATE="0.8")
+# T45, T845: T and T8 turning in place only for a target over 45 deg off
+# the nose instead of 20; smaller errors are steered out while flying.
+VERSIONS["T45"] = dict(VERSIONS["T"], OPENIPC_STEER_MAX_OFF="45.0")
+VERSIONS["T845"] = dict(VERSIONS["T8"], OPENIPC_STEER_MAX_OFF="45.0")
+# TS: T flown with code (since reverted) that did not count climbing or
+# turning agents as stalled; the version only labels the code. Twice as slow.
+VERSIONS["TS"] = dict(VERSIONS["T"])
 FIELDS = ["case", "seed", "version", "allocator", "valid", "enclosure",
           "enclosure_flown", "room", "enclosure_t90", "room_t90", "entered_s",
           "closest_m", "wall_m", "wrong_cells", "late_ticks", "rtf", "attempt", "run_dir", "seconds"]

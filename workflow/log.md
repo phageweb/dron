@@ -1060,6 +1060,25 @@ terms rather than a number on its own.
   (4 flights, T); with it on this morning it was 28-49 s, median 46 s
   (Guv). The reservation was nearly doubling the time.
 
+## 2026-10-06 - two more tries at the time, both negative
+
+- Turning only for a target over 45 deg off the nose instead of 20 (T45,
+  T845; 16 flights against T on the same seeds): at 0.4 rad/s the
+  enclosure's T90 went from 22-29 s to 36-84 s or never, at 0.8 rad/s it
+  was level in the room and 53 and 70 s in two of four narrow-door
+  flights. Steering out a large error while flying is a wide arc, and a
+  1.2 m door is missed by it. 20 deg and 0.4 rad/s stay; the 2026-10-04
+  choice of 20 was right. Faster turns (T8) gave twice the turns, mostly
+  small ones: overshoot past 20 deg and turn again.
+- Under the barrier every agent is counted stalled while it climbs (the
+  launch row is 0.8 m apart, inside the stop line) and while it turns in
+  place beside another, so all three fly "away" for the first ~6 s of
+  every flight. Excluding climbing and turning (TS, 8 flights) made the
+  enclosure's T90 twice as long in every pair (29-123 s against 22-29 s)
+  and the first entry 24-115 s against 17-22 s: without the spread the
+  three start for their openings from one cluster and hold each other
+  up. The accidental spread is worth keeping; the change is reverted.
+
 ## Log Entry Template
 
 ```text
