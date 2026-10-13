@@ -1,0 +1,244 @@
+{
+  "date": "2026-10-13",
+  "stl_files": [
+    {
+      "file": "1-base.stl",
+      "triangles": 10462,
+      "closed": true,
+      "components": 1,
+      "volume_mm3": 3807.3391,
+      "centroid_mm": [
+        0.0,
+        -4.10967,
+        3.6067
+      ],
+      "bounds_mm": [
+        [
+          -16.5,
+          16.5
+        ],
+        [
+          -38.0,
+          37.89869004513881
+        ],
+        [
+          0.0,
+          18.0
+        ]
+      ],
+      "sha256": "d23fdb0524ad690b9f88feeef3599f8546e1fb595afe7754c8af928f9b107f81"
+    },
+    {
+      "file": "2-camera_insert.stl",
+      "triangles": 944,
+      "closed": true,
+      "components": 1,
+      "volume_mm3": 784.2796,
+      "centroid_mm": [
+        0.0,
+        0.0,
+        3.2
+      ],
+      "bounds_mm": [
+        [
+          -9.899999998509884,
+          9.899999998509884
+        ],
+        [
+          -7.549999997019768,
+          7.549999997019768
+        ],
+        [
+          0.0,
+          6.4
+        ]
+      ],
+      "sha256": "d2c332c3091779392fb3436fbbd11b4ae716d6fbef8b4ccc5d036548ac102ec4"
+    },
+    {
+      "file": "3-d500_module.stl",
+      "triangles": 5720,
+      "closed": true,
+      "components": 1,
+      "volume_mm3": 4754.569,
+      "centroid_mm": [
+        -0.0,
+        -0.08539,
+        6.33114
+      ],
+      "bounds_mm": [
+        [
+          -26.9,
+          26.9
+        ],
+        [
+          -26.895,
+          21.2
+        ],
+        [
+          0.0,
+          21.8
+        ]
+      ],
+      "sha256": "83e9d8e6ae2c6558b8f94923415900beaa6c2fd70233bb99b18ab9c2d8abee3f"
+    }
+  ],
+  "baseline_clearances": [
+    {
+      "battery": "750",
+      "lidar": "false",
+      "angle": 0,
+      "pass_empty": true,
+      "echo": [
+        "ECHO: \"ESTIMATE ONLY: mass 171.78 g; CG [0,0,-15.552] mm\"",
+        "ECHO: \"Battery X=-0.413043 mm; +X right\"",
+        "ECHO: \"Battery target Y=-1.14384; used Y=-1.14384 mm; +Y rear\""
+      ]
+    },
+    {
+      "battery": "750",
+      "lidar": "false",
+      "angle": 20,
+      "pass_empty": true,
+      "echo": [
+        "ECHO: \"ESTIMATE ONLY: mass 171.78 g; CG [0,0,-15.552] mm\"",
+        "ECHO: \"Battery X=-0.413043 mm; +X right\"",
+        "ECHO: \"Battery target Y=-1.14384; used Y=-1.14384 mm; +Y rear\""
+      ]
+    },
+    {
+      "battery": "750",
+      "lidar": "false",
+      "angle": 40,
+      "pass_empty": true,
+      "echo": [
+        "ECHO: \"ESTIMATE ONLY: mass 171.78 g; CG [0,0,-15.552] mm\"",
+        "ECHO: \"Battery X=-0.413043 mm; +X right\"",
+        "ECHO: \"Battery target Y=-1.14384; used Y=-1.14384 mm; +Y rear\""
+      ]
+    },
+    {
+      "battery": "750",
+      "lidar": "true",
+      "angle": 0,
+      "pass_empty": true,
+      "echo": [
+        "ECHO: \"ESTIMATE ONLY: mass 224.724 g; CG [0,0,-2.50566] mm\"",
+        "ECHO: \"Battery X=-0.413043 mm; +X right\"",
+        "ECHO: \"Battery target Y=-1.15119; used Y=-1.15119 mm; +Y rear\""
+      ]
+    },
+    {
+      "battery": "750",
+      "lidar": "true",
+      "angle": 20,
+      "pass_empty": true,
+      "echo": [
+        "ECHO: \"ESTIMATE ONLY: mass 224.724 g; CG [0,0,-2.50566] mm\"",
+        "ECHO: \"Battery X=-0.413043 mm; +X right\"",
+        "ECHO: \"Battery target Y=-1.15119; used Y=-1.15119 mm; +Y rear\""
+      ]
+    },
+    {
+      "battery": "750",
+      "lidar": "true",
+      "angle": 40,
+      "pass_empty": true,
+      "echo": [
+        "ECHO: \"ESTIMATE ONLY: mass 224.724 g; CG [0,0,-2.50566] mm\"",
+        "ECHO: \"Battery X=-0.413043 mm; +X right\"",
+        "ECHO: \"Battery target Y=-1.15119; used Y=-1.15119 mm; +Y rear\""
+      ]
+    },
+    {
+      "battery": "550",
+      "lidar": "false",
+      "angle": 0,
+      "pass_empty": true,
+      "echo": [
+        "ECHO: \"ESTIMATE ONLY: mass 159.78 g; CG [0,0,-13.96] mm\"",
+        "ECHO: \"Battery X=-0.5 mm; +X right\"",
+        "ECHO: \"Battery target Y=-1.38465; used Y=-1.38465 mm; +Y rear\""
+      ]
+    },
+    {
+      "battery": "550",
+      "lidar": "false",
+      "angle": 20,
+      "pass_empty": true,
+      "echo": [
+        "ECHO: \"ESTIMATE ONLY: mass 159.78 g; CG [0,0,-13.96] mm\"",
+        "ECHO: \"Battery X=-0.5 mm; +X right\"",
+        "ECHO: \"Battery target Y=-1.38465; used Y=-1.38465 mm; +Y rear\""
+      ]
+    },
+    {
+      "battery": "550",
+      "lidar": "false",
+      "angle": 40,
+      "pass_empty": true,
+      "echo": [
+        "ECHO: \"ESTIMATE ONLY: mass 159.78 g; CG [0,0,-13.96] mm\"",
+        "ECHO: \"Battery X=-0.5 mm; +X right\"",
+        "ECHO: \"Battery target Y=-1.38465; used Y=-1.38465 mm; +Y rear\""
+      ]
+    },
+    {
+      "battery": "550",
+      "lidar": "true",
+      "angle": 0,
+      "pass_empty": true,
+      "echo": [
+        "ECHO: \"ESTIMATE ONLY: mass 212.724 g; CG [0,0,-0.573896] mm\"",
+        "ECHO: \"Battery X=-0.5 mm; +X right\"",
+        "ECHO: \"Battery target Y=-1.39355; used Y=-1.39355 mm; +Y rear\""
+      ]
+    },
+    {
+      "battery": "550",
+      "lidar": "true",
+      "angle": 20,
+      "pass_empty": true,
+      "echo": [
+        "ECHO: \"ESTIMATE ONLY: mass 212.724 g; CG [0,0,-0.573896] mm\"",
+        "ECHO: \"Battery X=-0.5 mm; +X right\"",
+        "ECHO: \"Battery target Y=-1.39355; used Y=-1.39355 mm; +Y rear\""
+      ]
+    },
+    {
+      "battery": "550",
+      "lidar": "true",
+      "angle": 40,
+      "pass_empty": true,
+      "echo": [
+        "ECHO: \"ESTIMATE ONLY: mass 212.724 g; CG [0,0,-0.573896] mm\"",
+        "ECHO: \"Battery X=-0.5 mm; +X right\"",
+        "ECHO: \"Battery target Y=-1.39355; used Y=-1.39355 mm; +Y rear\""
+      ]
+    }
+  ],
+  "additional_checks": [
+    {
+      "case": "frame_heads_bridge",
+      "collision": true,
+      "volume_mm3": 1.833363,
+      "assumed_frame_head_mm": [
+        3.8,
+        1.4
+      ]
+    },
+    {
+      "case": "gps_base",
+      "collision": true,
+      "volume_mm3": 19.920884,
+      "assumed_frame_head_mm": null
+    },
+    {
+      "case": "gps_antenna",
+      "collision": true,
+      "volume_mm3": 2.577493,
+      "assumed_frame_head_mm": null
+    }
+  ],
+  "baseline_negative_control_detects_collision": true
+}

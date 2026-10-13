@@ -21,3 +21,6 @@ __pycache__/
 /terrain/
 .artifact_pub/
 cad_pavo20/*.png
+
+# Downloaded Printables model too big for git (ASCII STL, 43 MB); fetch again from the link in model/stazene/README.md
+/model/stazene/pavo20-ascent-cockpit/

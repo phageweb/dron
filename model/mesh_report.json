@@ -1,0 +1,80 @@
+[
+  {
+    "file": "/home/phage/neprace/dron/model/1-base.stl",
+    "triangles": 10954,
+    "closed": true,
+    "components": 1,
+    "volume_mm3": 5908.3274,
+    "centroid_mm": [
+      0.0,
+      13.72201,
+      2.98528
+    ],
+    "bounds_mm": [
+      [
+        -16.5,
+        16.5
+      ],
+      [
+        -38.0,
+        60.0
+      ],
+      [
+        0.0,
+        18.0
+      ]
+    ]
+  },
+  {
+    "file": "/home/phage/neprace/dron/model/2-camera_insert.stl",
+    "triangles": 944,
+    "closed": true,
+    "components": 1,
+    "volume_mm3": 784.2796,
+    "centroid_mm": [
+      0.0,
+      0.0,
+      3.2
+    ],
+    "bounds_mm": [
+      [
+        -9.899999998509884,
+        9.899999998509884
+      ],
+      [
+        -7.549999997019768,
+        7.549999997019768
+      ],
+      [
+        0.0,
+        6.4
+      ]
+    ]
+  },
+  {
+    "file": "/home/phage/neprace/dron/model/3-d500_module.stl",
+    "triangles": 5670,
+    "closed": true,
+    "components": 1,
+    "volume_mm3": 4790.8959,
+    "centroid_mm": [
+      -0.0,
+      -0.08474,
+      6.29451
+    ],
+    "bounds_mm": [
+      [
+        -26.9,
+        26.9
+      ],
+      [
+        -26.895,
+        21.0
+      ],
+      [
+        0.0,
+        21.8
+      ]
+    ]
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "fileFormatVersion": "1",
+  "parameterSets": {
+    "Dron s D500 - 750mAh": {"part": "drone", "lidar_enabled": "true", "battery_variant": "750"},
+    "Dron bez D500 - 750mAh": {"part": "drone", "lidar_enabled": "false", "battery_variant": "750"},
+    "Dron s D500 - 550mAh": {"part": "drone", "lidar_enabled": "true", "battery_variant": "550"},
+    "Drzak s D500": {"part": "assembly", "lidar_enabled": "true", "show_hardware": "false"},
+    "Drzak bez D500": {"part": "assembly", "lidar_enabled": "false", "show_hardware": "false"},
+    "Tisk zakladny": {"part": "base"},
+    "Tisk objimky kamery": {"part": "insert"},
+    "Tisk modulu D500": {"part": "lidar"}
+  }
+}

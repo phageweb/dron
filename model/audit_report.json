@@ -1,0 +1,303 @@
+{
+  "sha256": {
+    "1-base.stl": "c3bed421cdbada543082ad15d6725e1203ba6091a58aef246844bec1d795cd57",
+    "2-camera_insert.stl": "d2c332c3091779392fb3436fbbd11b4ae716d6fbef8b4ccc5d036548ac102ec4",
+    "3-d500_module.stl": "6c891bdffd93f75a0445d994d2cf9e4c9b284b9445ca2b3512ecfac3e1c60d9f",
+    "pavo20_pro_assembly.scad": "8027705e674c7c372e446dd8ffb01b61c56e354c763761773e8858865689ead8",
+    "camera_insert.scad": "32a6dc0186e5cf11bc167ced3cbeed642f8a10daafb40a3599deb889c9c0a453",
+    "print_mass_properties.scad": "e827168995a170d4c0fae1cc8d2de21ff41bc4fdab2aedd20f4dcce5749712f1"
+  },
+  "checks": [
+    {
+      "battery": "750",
+      "lidar": false,
+      "angle": 0,
+      "pass_empty": true
+    },
+    {
+      "battery": "750",
+      "lidar": false,
+      "angle": 20,
+      "pass_empty": true
+    },
+    {
+      "battery": "750",
+      "lidar": false,
+      "angle": 40,
+      "pass_empty": true
+    },
+    {
+      "battery": "750",
+      "lidar": true,
+      "angle": 0,
+      "pass_empty": true
+    },
+    {
+      "battery": "750",
+      "lidar": true,
+      "angle": 20,
+      "pass_empty": true
+    },
+    {
+      "battery": "750",
+      "lidar": true,
+      "angle": 40,
+      "pass_empty": true
+    },
+    {
+      "battery": "550",
+      "lidar": false,
+      "angle": 0,
+      "pass_empty": true
+    },
+    {
+      "battery": "550",
+      "lidar": false,
+      "angle": 20,
+      "pass_empty": true
+    },
+    {
+      "battery": "550",
+      "lidar": false,
+      "angle": 40,
+      "pass_empty": true
+    },
+    {
+      "battery": "550",
+      "lidar": true,
+      "angle": 0,
+      "pass_empty": true
+    },
+    {
+      "battery": "550",
+      "lidar": true,
+      "angle": 20,
+      "pass_empty": true
+    },
+    {
+      "battery": "550",
+      "lidar": true,
+      "angle": 40,
+      "pass_empty": true
+    },
+    {
+      "case": "frame_heads_bridge",
+      "uses_exported_stl": true,
+      "pass_empty": true
+    },
+    {
+      "case": "gps_base",
+      "uses_exported_stl": true,
+      "pass_empty": true
+    },
+    {
+      "case": "gps_antenna",
+      "uses_exported_stl": true,
+      "pass_empty": true
+    },
+    {
+      "case": "gps_cable_base",
+      "uses_exported_stl": true,
+      "pass_empty": true
+    },
+    {
+      "case": "rotor",
+      "negative_control_detects_collision": true,
+      "volume_mm3": 1006.4592143555699
+    },
+    {
+      "case": "old_bridge_pitch",
+      "negative_control_detects_collision": true,
+      "volume_mm3": 14.748464093849872
+    },
+    {
+      "case": "old_gps_position",
+      "negative_control_detects_collision": true,
+      "volume_mm3": 94.50546700604168
+    },
+    {
+      "case": "manual_centered_battery",
+      "balance": {
+        "mass_g": 227.395,
+        "cg_mm": [
+          0.125332,
+          1.05973,
+          -2.43052
+        ],
+        "battery_xy_mm": [
+          0,
+          0
+        ],
+        "battery_target_xy_mm": [
+          -0.413043,
+          -3.49241
+        ],
+        "cg_with_centered_battery_mm": [
+          0.1253324795831412,
+          1.0597255602117768,
+          -2.4305213147107976
+        ],
+        "items": [
+          {
+            "name": "frame",
+            "mass_g": 28.7,
+            "cg_mm": [
+              0,
+              0,
+              -8
+            ]
+          },
+          {
+            "name": "motors",
+            "mass_g": 24.8,
+            "cg_mm": [
+              0,
+              0,
+              -8
+            ]
+          },
+          {
+            "name": "props",
+            "mass_g": 2.32,
+            "cg_mm": [
+              0,
+              0,
+              -15.5
+            ]
+          },
+          {
+            "name": "FC",
+            "mass_g": 10,
+            "cg_mm": [
+              0,
+              0,
+              -7
+            ]
+          },
+          {
+            "name": "RX",
+            "mass_g": 1.6,
+            "cg_mm": [
+              0,
+              0,
+              -13.5
+            ]
+          },
+          {
+            "name": "MTF-02P",
+            "mass_g": 1.5,
+            "cg_mm": [
+              19,
+              0,
+              -21.25
+            ]
+          },
+          {
+            "name": "GPS",
+            "mass_g": 4.3,
+            "cg_mm": [
+              0,
+              49,
+              6.5
+            ]
+          },
+          {
+            "name": "wiring_except_GPS_tape",
+            "mass_g": 13.16,
+            "cg_mm": [
+              0,
+              0,
+              -4
+            ]
+          },
+          {
+            "name": "GPS_tape",
+            "mass_g": 0.2,
+            "cg_mm": [
+              0,
+              49,
+              3.7
+            ]
+          },
+          {
+            "name": "base",
+            "mass_g": 7.38541,
+            "cg_mm": [
+              0,
+              13.722,
+              2.98528
+            ]
+          },
+          {
+            "name": "camera_insert",
+            "mass_g": 0.941136,
+            "cg_mm": [
+              0,
+              -32,
+              14
+            ]
+          },
+          {
+            "name": "camera",
+            "mass_g": 2,
+            "cg_mm": [
+              0,
+              -34.8191,
+              15.0261
+            ]
+          },
+          {
+            "name": "VTX",
+            "mass_g": 8,
+            "cg_mm": [
+              0,
+              0,
+              10.4
+            ]
+          },
+          {
+            "name": "antenna",
+            "mass_g": 0.5,
+            "cg_mm": [
+              0,
+              36.7619,
+              17.4009
+            ]
+          },
+          {
+            "name": "D500_bridge",
+            "mass_g": 5.98862,
+            "cg_mm": [
+              0,
+              0.08474,
+              18.7055
+            ]
+          },
+          {
+            "name": "D500",
+            "mass_g": 47,
+            "cg_mm": [
+              0,
+              0,
+              42.5
+            ]
+          },
+          {
+            "name": "battery",
+            "mass_g": 69,
+            "cg_mm": [
+              0,
+              0,
+              -32
+            ]
+          }
+        ],
+        "independent_arithmetic_pass": true
+      }
+    },
+    {
+      "case": "camera_and_bridge_transforms",
+      "passed": true
+    }
+  ]
+}

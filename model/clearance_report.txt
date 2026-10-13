@@ -1,0 +1,7 @@
+PASS: 12 battery/lidar/camera configurations including GPS, reserved connector and frame heads.
+PASS: 4 regression checks against exported STL.
+PASS: old bridge pitch, old GPS position and raised rotor plane trigger volume collisions.
+PASS: independent mass/moment arithmetic, centered manual battery and camera/bridge transforms.
+Frame heads: diameter 4.2 mm, height 2 mm, additional radial clearance 0.4 mm.
+Coplanar carbon/head seating excludes only 0.02 mm; cable envelope is an estimate.
+No physical fit, strength, vibration or flight validation.

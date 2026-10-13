@@ -1,0 +1,39 @@
+Nejvhodnější modely pro Pavo20 Pro s Walksnail Ascent Lite+
+Stav k 12. 10. 2026. Ascent Lite+: kamera 12 x 14 x 15,8 mm,
+VTX 23,5 x 23,5 x 8 mm, díry 20 x 20 M2, anténa IPEX-1.
+Hotový díl, který sedí beze změny, jsem nenašel.
+
+1. Pavo 20 pro canopy (Fenouil), stažen
+   https://www.printables.com/model/1577601-pavo-20-pro-canopy
+   Licence CC Public Domain. Pro O4 Lite, ale obsahuje STEP.
+   Nejlepší základ pro vlastní věž: úchyty k rámu Pavo20 Pro,
+   sklony kamery 7-47°, zasouvací anténa. Dokreslit 20 x 20 M2
+   pro VTX, 14mm klec kamery a plošinu pro LD06.
+
+2. Pavo20 Ascent Cockpit (Kurukuru), stažen, ale není v gitu (43 MB)
+   https://www.printables.com/model/1689368-pavo20-ascent-cockpit
+   Licence Open Community License v1. Přímo na rám Pavo20 Pro
+   a kameru Ascent. VTX má díry 25 mm (pro Lite), Lite+ potřebuje
+   20 x 20, takže díry přesunout. ~8 g, tvrdý plast, 8 M2 vložek.
+   Jen STL. Hodí se jako vzor nebo dočasný držák.
+
+3. Walksnail Ascent Lite Tinywhoop Canopy (P3D), stažen
+   https://www.printables.com/model/1525645-walksnail-ascent-lite-tinywhoop-canopy
+   Licence CC BY-SA. TPU, 0,76 g, sklon 25°. Obecný pro whoopy,
+   ne pro Pavo20. Vzor lehké TPU klece pro kameru Ascent.
+
+4. Moonlight canopy pro Pavo20 Pro, nestaženy
+   https://www.printables.com/model/1274356-2-material-moonlight-canopy-for-pavo-20-pro
+   https://www.printables.com/model/1032867-betafpv-pavo-20-pro-canopy-for-walksnail-moonlight
+   https://www.printables.com/model/1281344
+   https://cults3d.com/en/3d-model/gadget/pavo20-pro-walksnail-moonlight-canopy-bracket-camera-mount
+   Na rám sedí a VTX 20 x 20 přišroubovat jde. Kamera Moonlight má
+   ale 19 mm, takže 14mm Lite+ potřebuje vložku 14 -> 19 mm.
+   1032867 má i variantu s držákem GPS WS-M181 (netestovanou).
+
+Nevhodné:
+   Ascent Lite+ Swappable Mounting Pod
+   https://www.printables.com/model/1829653
+   Výměnný pod pro letadla a auta, ASA, šrouby M3, lišta na pásky.
+
+Žádný z modelů nemá plošinu pro LD06 (38,6 x 38,6 mm, 42 g).

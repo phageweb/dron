@@ -1,0 +1,682 @@
+[
+  {
+    "battery": "750",
+    "lidar": false,
+    "mass_g": 174.407,
+    "cg_mm": [
+      0,
+      0,
+      -15.2644
+    ],
+    "battery_xy_mm": [
+      -0.413043,
+      -3.48506
+    ],
+    "battery_target_xy_mm": [
+      -0.413043,
+      -3.48506
+    ],
+    "cg_with_centered_battery_mm": [
+      0.16341129764705048,
+      1.37878422304172,
+      -15.264386516978554
+    ],
+    "items": [
+      {
+        "name": "frame",
+        "mass_g": 28.7,
+        "cg_mm": [
+          0,
+          0,
+          -8
+        ]
+      },
+      {
+        "name": "motors",
+        "mass_g": 24.8,
+        "cg_mm": [
+          0,
+          0,
+          -8
+        ]
+      },
+      {
+        "name": "props",
+        "mass_g": 2.32,
+        "cg_mm": [
+          0,
+          0,
+          -15.5
+        ]
+      },
+      {
+        "name": "FC",
+        "mass_g": 10,
+        "cg_mm": [
+          0,
+          0,
+          -7
+        ]
+      },
+      {
+        "name": "RX",
+        "mass_g": 1.6,
+        "cg_mm": [
+          0,
+          0,
+          -13.5
+        ]
+      },
+      {
+        "name": "MTF-02P",
+        "mass_g": 1.5,
+        "cg_mm": [
+          19,
+          0,
+          -21.25
+        ]
+      },
+      {
+        "name": "GPS",
+        "mass_g": 4.3,
+        "cg_mm": [
+          0,
+          49,
+          6.5
+        ]
+      },
+      {
+        "name": "wiring_except_GPS_tape",
+        "mass_g": 13.16,
+        "cg_mm": [
+          0,
+          0,
+          -4
+        ]
+      },
+      {
+        "name": "GPS_tape",
+        "mass_g": 0.2,
+        "cg_mm": [
+          0,
+          49,
+          3.7
+        ]
+      },
+      {
+        "name": "base",
+        "mass_g": 7.38541,
+        "cg_mm": [
+          0,
+          13.722,
+          2.98528
+        ]
+      },
+      {
+        "name": "camera_insert",
+        "mass_g": 0.941136,
+        "cg_mm": [
+          0,
+          -32,
+          14
+        ]
+      },
+      {
+        "name": "camera",
+        "mass_g": 2,
+        "cg_mm": [
+          0,
+          -34.8191,
+          15.0261
+        ]
+      },
+      {
+        "name": "VTX",
+        "mass_g": 8,
+        "cg_mm": [
+          0,
+          0,
+          10.4
+        ]
+      },
+      {
+        "name": "antenna",
+        "mass_g": 0.5,
+        "cg_mm": [
+          0,
+          36.7619,
+          17.4009
+        ]
+      },
+      {
+        "name": "battery",
+        "mass_g": 69,
+        "cg_mm": [
+          -0.413043,
+          -3.48506,
+          -32
+        ]
+      }
+    ],
+    "independent_arithmetic_pass": true
+  },
+  {
+    "battery": "750",
+    "lidar": true,
+    "mass_g": 227.395,
+    "cg_mm": [
+      0,
+      0,
+      -2.43052
+    ],
+    "battery_xy_mm": [
+      -0.413043,
+      -3.49241
+    ],
+    "battery_target_xy_mm": [
+      -0.413043,
+      -3.49241
+    ],
+    "cg_with_centered_battery_mm": [
+      0.1253324795831412,
+      1.0597255602117768,
+      -2.4305213147107976
+    ],
+    "items": [
+      {
+        "name": "frame",
+        "mass_g": 28.7,
+        "cg_mm": [
+          0,
+          0,
+          -8
+        ]
+      },
+      {
+        "name": "motors",
+        "mass_g": 24.8,
+        "cg_mm": [
+          0,
+          0,
+          -8
+        ]
+      },
+      {
+        "name": "props",
+        "mass_g": 2.32,
+        "cg_mm": [
+          0,
+          0,
+          -15.5
+        ]
+      },
+      {
+        "name": "FC",
+        "mass_g": 10,
+        "cg_mm": [
+          0,
+          0,
+          -7
+        ]
+      },
+      {
+        "name": "RX",
+        "mass_g": 1.6,
+        "cg_mm": [
+          0,
+          0,
+          -13.5
+        ]
+      },
+      {
+        "name": "MTF-02P",
+        "mass_g": 1.5,
+        "cg_mm": [
+          19,
+          0,
+          -21.25
+        ]
+      },
+      {
+        "name": "GPS",
+        "mass_g": 4.3,
+        "cg_mm": [
+          0,
+          49,
+          6.5
+        ]
+      },
+      {
+        "name": "wiring_except_GPS_tape",
+        "mass_g": 13.16,
+        "cg_mm": [
+          0,
+          0,
+          -4
+        ]
+      },
+      {
+        "name": "GPS_tape",
+        "mass_g": 0.2,
+        "cg_mm": [
+          0,
+          49,
+          3.7
+        ]
+      },
+      {
+        "name": "base",
+        "mass_g": 7.38541,
+        "cg_mm": [
+          0,
+          13.722,
+          2.98528
+        ]
+      },
+      {
+        "name": "camera_insert",
+        "mass_g": 0.941136,
+        "cg_mm": [
+          0,
+          -32,
+          14
+        ]
+      },
+      {
+        "name": "camera",
+        "mass_g": 2,
+        "cg_mm": [
+          0,
+          -34.8191,
+          15.0261
+        ]
+      },
+      {
+        "name": "VTX",
+        "mass_g": 8,
+        "cg_mm": [
+          0,
+          0,
+          10.4
+        ]
+      },
+      {
+        "name": "antenna",
+        "mass_g": 0.5,
+        "cg_mm": [
+          0,
+          36.7619,
+          17.4009
+        ]
+      },
+      {
+        "name": "D500_bridge",
+        "mass_g": 5.98862,
+        "cg_mm": [
+          0,
+          0.08474,
+          18.7055
+        ]
+      },
+      {
+        "name": "D500",
+        "mass_g": 47,
+        "cg_mm": [
+          0,
+          0,
+          42.5
+        ]
+      },
+      {
+        "name": "battery",
+        "mass_g": 69,
+        "cg_mm": [
+          -0.413043,
+          -3.49241,
+          -32
+        ]
+      }
+    ],
+    "independent_arithmetic_pass": true
+  },
+  {
+    "battery": "550",
+    "lidar": false,
+    "mass_g": 162.407,
+    "cg_mm": [
+      0,
+      1.75003e-16,
+      -13.6768
+    ],
+    "battery_xy_mm": [
+      -0.5,
+      -4.21876
+    ],
+    "battery_target_xy_mm": [
+      -0.5,
+      -4.21876
+    ],
+    "cg_with_centered_battery_mm": [
+      0.17548553738714448,
+      1.480660724229675,
+      -13.676843599858344
+    ],
+    "items": [
+      {
+        "name": "frame",
+        "mass_g": 28.7,
+        "cg_mm": [
+          0,
+          0,
+          -8
+        ]
+      },
+      {
+        "name": "motors",
+        "mass_g": 24.8,
+        "cg_mm": [
+          0,
+          0,
+          -8
+        ]
+      },
+      {
+        "name": "props",
+        "mass_g": 2.32,
+        "cg_mm": [
+          0,
+          0,
+          -15.5
+        ]
+      },
+      {
+        "name": "FC",
+        "mass_g": 10,
+        "cg_mm": [
+          0,
+          0,
+          -7
+        ]
+      },
+      {
+        "name": "RX",
+        "mass_g": 1.6,
+        "cg_mm": [
+          0,
+          0,
+          -13.5
+        ]
+      },
+      {
+        "name": "MTF-02P",
+        "mass_g": 1.5,
+        "cg_mm": [
+          19,
+          0,
+          -21.25
+        ]
+      },
+      {
+        "name": "GPS",
+        "mass_g": 4.3,
+        "cg_mm": [
+          0,
+          49,
+          6.5
+        ]
+      },
+      {
+        "name": "wiring_except_GPS_tape",
+        "mass_g": 13.16,
+        "cg_mm": [
+          0,
+          0,
+          -4
+        ]
+      },
+      {
+        "name": "GPS_tape",
+        "mass_g": 0.2,
+        "cg_mm": [
+          0,
+          49,
+          3.7
+        ]
+      },
+      {
+        "name": "base",
+        "mass_g": 7.38541,
+        "cg_mm": [
+          0,
+          13.722,
+          2.98528
+        ]
+      },
+      {
+        "name": "camera_insert",
+        "mass_g": 0.941136,
+        "cg_mm": [
+          0,
+          -32,
+          14
+        ]
+      },
+      {
+        "name": "camera",
+        "mass_g": 2,
+        "cg_mm": [
+          0,
+          -34.8191,
+          15.0261
+        ]
+      },
+      {
+        "name": "VTX",
+        "mass_g": 8,
+        "cg_mm": [
+          0,
+          0,
+          10.4
+        ]
+      },
+      {
+        "name": "antenna",
+        "mass_g": 0.5,
+        "cg_mm": [
+          0,
+          36.7619,
+          17.4009
+        ]
+      },
+      {
+        "name": "battery",
+        "mass_g": 57,
+        "cg_mm": [
+          -0.5,
+          -4.21876,
+          -31
+        ]
+      }
+    ],
+    "independent_arithmetic_pass": true
+  },
+  {
+    "battery": "550",
+    "lidar": true,
+    "mass_g": 215.395,
+    "cg_mm": [
+      0,
+      1.31951e-16,
+      -0.51853
+    ],
+    "battery_xy_mm": [
+      -0.5,
+      -4.22766
+    ],
+    "battery_target_xy_mm": [
+      -0.5,
+      -4.22766
+    ],
+    "cg_with_centered_battery_mm": [
+      0.13231494712374373,
+      1.1187645208286614,
+      -0.5185297325809067
+    ],
+    "items": [
+      {
+        "name": "frame",
+        "mass_g": 28.7,
+        "cg_mm": [
+          0,
+          0,
+          -8
+        ]
+      },
+      {
+        "name": "motors",
+        "mass_g": 24.8,
+        "cg_mm": [
+          0,
+          0,
+          -8
+        ]
+      },
+      {
+        "name": "props",
+        "mass_g": 2.32,
+        "cg_mm": [
+          0,
+          0,
+          -15.5
+        ]
+      },
+      {
+        "name": "FC",
+        "mass_g": 10,
+        "cg_mm": [
+          0,
+          0,
+          -7
+        ]
+      },
+      {
+        "name": "RX",
+        "mass_g": 1.6,
+        "cg_mm": [
+          0,
+          0,
+          -13.5
+        ]
+      },
+      {
+        "name": "MTF-02P",
+        "mass_g": 1.5,
+        "cg_mm": [
+          19,
+          0,
+          -21.25
+        ]
+      },
+      {
+        "name": "GPS",
+        "mass_g": 4.3,
+        "cg_mm": [
+          0,
+          49,
+          6.5
+        ]
+      },
+      {
+        "name": "wiring_except_GPS_tape",
+        "mass_g": 13.16,
+        "cg_mm": [
+          0,
+          0,
+          -4
+        ]
+      },
+      {
+        "name": "GPS_tape",
+        "mass_g": 0.2,
+        "cg_mm": [
+          0,
+          49,
+          3.7
+        ]
+      },
+      {
+        "name": "base",
+        "mass_g": 7.38541,
+        "cg_mm": [
+          0,
+          13.722,
+          2.98528
+        ]
+      },
+      {
+        "name": "camera_insert",
+        "mass_g": 0.941136,
+        "cg_mm": [
+          0,
+          -32,
+          14
+        ]
+      },
+      {
+        "name": "camera",
+        "mass_g": 2,
+        "cg_mm": [
+          0,
+          -34.8191,
+          15.0261
+        ]
+      },
+      {
+        "name": "VTX",
+        "mass_g": 8,
+        "cg_mm": [
+          0,
+          0,
+          10.4
+        ]
+      },
+      {
+        "name": "antenna",
+        "mass_g": 0.5,
+        "cg_mm": [
+          0,
+          36.7619,
+          17.4009
+        ]
+      },
+      {
+        "name": "D500_bridge",
+        "mass_g": 5.98862,
+        "cg_mm": [
+          0,
+          0.08474,
+          18.7055
+        ]
+      },
+      {
+        "name": "D500",
+        "mass_g": 47,
+        "cg_mm": [
+          0,
+          0,
+          42.5
+        ]
+      },
+      {
+        "name": "battery",
+        "mass_g": 57,
+        "cg_mm": [
+          -0.5,
+          -4.22766,
+          -31
+        ]
+      }
+    ],
+    "independent_arithmetic_pass": true
+  }
+]
