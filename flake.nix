@@ -45,8 +45,21 @@
             launch-testing-ros
           ];
         };
+
+        # The Walksnail VRX Pro picture with OSD on the PC: nix run .#vrx [-- --record]
+        # Plain nixpkgs: with the ROS overlay ffmpeg and SDL miss the binary
+        # cache and build from source.
+        plainPkgs = nixpkgs.legacyPackages.${system};
+        vrxView = plainPkgs.writeShellApplication {
+          name = "vrx";
+          runtimeInputs = [ (plainPkgs.python3.withPackages (p: [ p.pygame-ce ])) plainPkgs.ffmpeg ];
+          text = ''exec python3 ${./vrx}/vrx.py "$@"'';
+        };
       in
       {
+        packages.vrx = vrxView;
+        apps.vrx = flake-utils.lib.mkApp { drv = vrxView; };
+
         devShells.default = pkgs.mkShell {
           packages = [
             rosEnv
