@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>openipc_vrx</name>
+  <version>0.1.0</version>
+  <description>Ground bridge from the Walksnail VRX Pro over USB into ROS 2: the picture,
+    the lidar scan carried in the OSD, and the temperatures of the VRX and the VTX.</description>
+  <maintainer email="phage@example.invalid">phage</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <!-- otra.py and osdscan.py are symlinks to vrx/ and lidar/osd/, so the
+       standalone tools and this node share one copy. ffmpeg reads the UVC. -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>diagnostic_msgs</exec_depend>
+  <exec_depend>vision_msgs</exec_depend>
+  <exec_depend>rcl_interfaces</exec_depend>
+  <!-- detector_node: YOLO in ONNX on the CPU, no PyTorch -->
+  <exec_depend>python3-onnxruntime</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-pil</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+
+  <test_depend>pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
