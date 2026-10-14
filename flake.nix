@@ -43,10 +43,82 @@
             demo-nodes-py
             launch-testing
             launch-testing-ros
+            vision-msgs
           ];
         };
+
+        # Live web view of the D500 lidar and player of the phone recordings: nix run .#lidar [-- --port /dev/ttyUSB0]
+        lidarWeb = pkgs.writeShellApplication {
+          name = "lidar-web";
+          runtimeInputs = [ pkgs.python3 pkgs.android-tools ];
+          text = ''exec python3 ${./lidar}/lidar_web.py "$@"'';
+        };
+
+        # The Walksnail VRX Pro picture with OSD on the PC: nix run .#vrx [-- --record]
+        # Plain nixpkgs: with the ROS overlay ffmpeg and SDL miss the binary
+        # cache and build from source.
+        plainPkgs = nixpkgs.legacyPackages.${system};
+        vrxView = plainPkgs.writeShellApplication {
+          name = "vrx";
+          runtimeInputs = [ (plainPkgs.python3.withPackages (p: [ p.pygame-ce p.numpy ])) plainPkgs.ffmpeg ];
+          # lidar/osd for reading the scan out of the OSD rows (osdvideo.py)
+          text = ''
+            export PYTHONPATH=${./lidar/osd}
+            exec python3 ${./vrx}/vrx.py "$@"
+          '';
+        };
+
+        # The lidar scan out of a VRX recording, for the lidar page:
+        # nix run .#osdvideo -- ~/Videos/vrx/vrx_....mkv --session lidar/sessions
+        osdVideo = plainPkgs.writeShellApplication {
+          name = "osdvideo";
+          runtimeInputs = [ (plainPkgs.python3.withPackages (p: [ p.numpy ])) plainPkgs.ffmpeg ];
+          text = ''exec python3 ${./lidar/osd}/osdvideo.py "$@"'';
+        };
+
+        # A Lua script onto the flight controller over USB (MAVFTP), scripting restarted:
+        # nix run .#fc-upload [-- other.lua]
+        fcUpload = plainPkgs.writeShellApplication {
+          name = "fc-upload";
+          runtimeInputs = [ (plainPkgs.python3.withPackages (p: [ p.pymavlink p.pyserial ])) ];
+          text = ''exec python3 ${./lidar/osd}/upload.py "$@"'';
+        };
+
+        # The phone recorder in android/lidarcam: nix develop .#android
+        androidPkgs = import nixpkgs {
+          inherit system;
+          config = {
+            allowUnfree = true;
+            android_sdk.accept_license = true;
+          };
+        };
+        androidSdk = (androidPkgs.androidenv.composeAndroidPackages {
+          platformVersions = [ "35" ];
+          buildToolsVersions = [ "35.0.0" ];
+          includeEmulator = false;
+          includeNDK = false;
+        }).androidsdk;
+        androidHome = "${androidSdk}/libexec/android-sdk";
       in
       {
+        packages.lidar = lidarWeb;
+        packages.vrx = vrxView;
+        packages.osdvideo = osdVideo;
+        packages.fc-upload = fcUpload;
+
+        devShells.android = pkgs.mkShell {
+          packages = [ androidSdk pkgs.gradle pkgs.jdk17 pkgs.android-tools ];
+          ANDROID_HOME = androidHome;
+          ANDROID_SDK_ROOT = androidHome;
+          JAVA_HOME = pkgs.jdk17.home;
+          # The aapt2 that Gradle downloads from Maven does not run on NixOS.
+          GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidHome}/build-tools/35.0.0/aapt2";
+        };
+        apps.lidar = flake-utils.lib.mkApp { drv = lidarWeb; };
+        apps.vrx = flake-utils.lib.mkApp { drv = vrxView; };
+        apps.osdvideo = flake-utils.lib.mkApp { drv = osdVideo; };
+        apps.fc-upload = flake-utils.lib.mkApp { drv = fcUpload; };
+
         devShells.default = pkgs.mkShell {
           packages = [
             rosEnv
@@ -78,6 +150,12 @@
             pkgs.python3Packages.pexpect
             pkgs.python3Packages.pytest
             pkgs.ripgrep
+            # openipc_vrx reads the VRX's UVC through ffmpeg and finds people
+            # with YOLO in ONNX; plain nixpkgs so they come from the binary cache.
+            plainPkgs.ffmpeg
+            pkgs.python3Packages.onnxruntime
+            pkgs.python3Packages.numpy
+            pkgs.python3Packages.pillow
           ];
 
           shellHook = ''
