@@ -1,0 +1,717 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D500 Lidar</title>
+<style>
+  :root { --bg:#0b0e12; --fg:#d7dde4; --dim:#5b6673; --grid:#1d242d; --accent:#4cc2ff; --warn:#ff6b5b; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--fg);
+    font:13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; overflow:hidden; }
+  canvas { display:block; width:100vw; height:100vh; cursor:grab; }
+  canvas:active { cursor:grabbing; }
+  #hud { position:fixed; top:12px; left:12px; background:#0b0e12cc; border:1px solid var(--grid);
+    border-radius:8px; padding:10px 12px; min-width:220px; }
+  #hud b { color:var(--accent); font-weight:600; }
+  #hud .row { display:flex; justify-content:space-between; gap:16px; }
+  #hud .k { color:var(--dim); }
+  #near { color:var(--warn) !important; }
+  #ctl { position:fixed; top:12px; right:12px; background:#0b0e12cc; border:1px solid var(--grid);
+    border-radius:8px; padding:10px 12px; display:grid; gap:6px; }
+  #ctl label { display:flex; justify-content:space-between; gap:10px; align-items:center; }
+  #ctl input[type=range] { width:110px; }
+  button, select { background:#18202a; color:var(--fg); border:1px solid #2a3440; border-radius:6px;
+    padding:4px 8px; font:inherit; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  #status { position:fixed; bottom:12px; left:12px; color:var(--dim); }
+  #cursor { position:fixed; bottom:12px; right:12px; color:var(--dim); }
+  #replay { position:fixed; left:12px; right:12px; bottom:12px; display:none; gap:10px; align-items:center;
+    background:#0b0e12cc; border:1px solid var(--grid); border-radius:8px; padding:8px 12px; }
+  #replay input[type=range] { flex:1; }
+  #video { position:fixed; right:12px; bottom:64px; max-width:min(38vw, 560px); max-height:calc(100vh - 360px); display:none;
+    border:1px solid var(--grid); border-radius:8px; background:#000; }
+  body.replay #replay { display:flex; }
+  body.replay #status { display:none; }
+  body:not(.replay) .rep { display:none !important; }
+  @media (max-width:600px) { #ctl { top:auto; bottom:40px; } #video { width:calc(100vw - 24px); top:12px; bottom:auto; } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud">
+  <div class="row"><span class="k">otáčky</span><span><b id="hz">–</b> Hz</span></div>
+  <div class="row"><span class="k">bodů / otáčku</span><b id="n">–</b></div>
+  <div class="row"><span class="k">snímků / s</span><b id="fps">–</b></div>
+  <div class="row"><span class="k">nejbližší</span><b id="near">–</b></div>
+  <div class="row"><span class="k">CRC chyby</span><b id="crc">–</b></div>
+  <div class="row rep"><span class="k">půdorys</span><b id="mapinfo">–</b></div>
+</div>
+<div id="ctl">
+  <label>stopa <input id="trail" type="range" min="1" max="30" value="1"><span id="trailv">1</span></label>
+  <label>min. intenzita <input id="minq" type="range" min="0" max="255" value="0"><span id="minqv">0</span></label>
+  <label>otočení <input id="rot" type="range" min="0" max="359" value="0"><span id="rotv">0°</span></label>
+  <label>zrcadlit <input id="mirror" type="checkbox"></label>
+  <label>spojit body <input id="lines" type="checkbox"></label>
+  <div style="display:flex; gap:6px">
+    <button id="pause">pauza</button><button id="fit">vycentrovat</button><button id="save">uložit JSON</button>
+  </div>
+  <div class="srv" style="display:flex; gap:6px">
+    <select id="sess" style="flex:1"><option value="">záznamy…</option></select><button id="pull">stáhnout z telefonu</button>
+  </div>
+  <div style="display:flex; gap:6px">
+    <button id="open">otevřít složku…</button><button id="live" style="display:none">živě</button>
+  </div>
+  <label class="rep">půdorys <input id="map" type="checkbox"></label>
+  <input id="dir" type="file" webkitdirectory multiple hidden>
+</div>
+<div id="status">připojuji…</div>
+<div id="cursor"></div>
+<video id="video" playsinline muted></video>
+<div id="replay">
+  <button id="rplay">▶</button>
+  <input id="rseek" type="range" min="0" max="1000" step="1" value="0">
+  <span id="rtime">00:00.0 / 00:00.0</span>
+</div>
+<script>
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const $ = id => document.getElementById(id);
+let W, H, dpr;
+let view = { scale: 0.08, ox: 0, oy: 0 };   // px per mm, pan offset in px
+let scans = [], paused = false, latest = null, frames = [];
+
+function resize() {
+  dpr = window.devicePixelRatio || 1;
+  W = innerWidth; H = innerHeight;
+  cv.width = W * dpr; cv.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  draw();
+}
+addEventListener('resize', resize);
+
+function fit() {
+  view.ox = 0; view.oy = 0;
+  view.scale = Math.min(W, H) / 2 / 4000 * 0.9;  // 4 m radius on screen
+  draw();
+}
+
+// lidar frame: angle clockwise from forward, forward drawn up
+function toScreen(aDeg, d) {
+  let a = (aDeg + +$('rot').value) * Math.PI / 180;
+  if ($('mirror').checked) a = -a;
+  return [W / 2 + view.ox + Math.sin(a) * d * view.scale,
+          H / 2 + view.oy - Math.cos(a) * d * view.scale];
+}
+function fromScreen(x, y) {
+  const dx = (x - W / 2 - view.ox) / view.scale, dy = -(y - H / 2 - view.oy) / view.scale;
+  let a = Math.atan2(dx, dy) * 180 / Math.PI;
+  if ($('mirror').checked) a = -a;
+  a = ((a - +$('rot').value) % 360 + 360) % 360;
+  return [Math.hypot(dx, dy), a];
+}
+
+function niceStep(mmPerPx) {
+  const target = mmPerPx * 120;
+  for (const s of [100, 250, 500, 1000, 2000, 5000, 10000]) if (s >= target) return s;
+  return 20000;
+}
+
+function color(q, alpha) {
+  // intensity 0..255 → blue..cyan..yellow..white
+  const t = Math.min(q / 200, 1);
+  const h = 210 - t * 160, l = 45 + t * 25;
+  return `hsla(${h},90%,${l}%,${alpha})`;
+}
+
+function draw() {
+  if (!W) return;
+  if (rec && $('map').checked) return drawMap();
+  ctx.fillStyle = '#0b0e12';
+  ctx.fillRect(0, 0, W, H);
+  const cx = W / 2 + view.ox, cy = H / 2 + view.oy;
+
+  // range rings
+  const step = niceStep(1 / view.scale);
+  const maxR = Math.hypot(W, H) / view.scale;
+  ctx.lineWidth = 1;
+  ctx.font = '11px ui-monospace, monospace';
+  for (let r = step; r < maxR; r += step) {
+    ctx.strokeStyle = '#1d242d';
+    ctx.beginPath(); ctx.arc(cx, cy, r * view.scale, 0, 2 * Math.PI); ctx.stroke();
+    ctx.fillStyle = '#5b6673';
+    ctx.fillText((r / 1000).toFixed(r % 1000 ? 2 : 0) + ' m', cx + 4, cy - r * view.scale - 3);
+  }
+  // spokes every 30°
+  for (let a = 0; a < 360; a += 30) {
+    const [x, y] = toScreen(a, maxR);
+    ctx.strokeStyle = a === 0 ? '#2b5570' : '#161c23';
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x, y); ctx.stroke();
+  }
+
+  // scans, oldest first
+  const minq = +$('minq').value, lines = $('lines').checked;
+  const r = Math.max(1.2, Math.min(3, view.scale * 25));
+  scans.forEach((s, i) => {
+    const age = scans.length - 1 - i;
+    const alpha = age === 0 ? 1 : 0.5 * (1 - age / scans.length);
+    const p = s.pts;
+    if (lines && age === 0) {
+      ctx.strokeStyle = 'rgba(76,194,255,0.35)';
+      ctx.beginPath();
+      let prev = null;
+      for (let k = 0; k < p.length; k += 3) {
+        if (!p[k + 1] || p[k + 2] < minq) { prev = null; continue; }
+        const [x, y] = toScreen(p[k], p[k + 1]);
+        if (prev && Math.hypot(x - prev[0], y - prev[1]) < 40) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+        prev = [x, y];
+      }
+      ctx.stroke();
+    }
+    for (let k = 0; k < p.length; k += 3) {
+      const d = p[k + 1], q = p[k + 2];
+      if (!d || q < minq) continue;
+      const [x, y] = toScreen(p[k], d);
+      ctx.fillStyle = color(q, alpha);
+      ctx.fillRect(x - r / 2, y - r / 2, r, r);
+    }
+  });
+
+  // nearest point
+  if (latest && latest.near) {
+    const [x, y] = toScreen(latest.near[0], latest.near[1]);
+    ctx.strokeStyle = '#ff6b5b';
+    ctx.beginPath(); ctx.arc(x, y, 7, 0, 2 * Math.PI); ctx.stroke();
+  }
+
+  // the lidar itself, arrow = forward (0°)
+  const [fx, fy] = toScreen(0, 14 / view.scale);
+  ctx.fillStyle = '#4cc2ff';
+  ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 2 * Math.PI); ctx.fill();
+  ctx.strokeStyle = '#4cc2ff'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(fx, fy); ctx.stroke();
+  ctx.lineWidth = 1;
+}
+
+function onScan(s) {
+  const now = performance.now();
+  frames.push(now);
+  while (frames.length && now - frames[0] > 1000) frames.shift();
+  $('fps').textContent = frames.length;
+  if (paused || rec) return;
+  scans.push(s);
+  const keep = +$('trail').value;
+  while (scans.length > keep) scans.shift();
+  showLatest(s);
+}
+
+function nearest(s) {
+  const minq = +$('minq').value;
+  let near = null;
+  for (let k = 0; k < s.pts.length; k += 3) {
+    const d = s.pts[k + 1];
+    if (d && s.pts[k + 2] >= minq && (!near || d < near[1])) near = [s.pts[k], d];
+  }
+  return near;
+}
+
+function showLatest(s) {
+  s.near = nearest(s);
+  latest = s;
+  $('hz').textContent = s.hz.toFixed(1);
+  $('n').textContent = s.n;
+  $('crc').textContent = s.crc_errors ?? '–';
+  $('near').textContent = s.near ? `${(s.near[1] / 1000).toFixed(2)} m @ ${s.near[0].toFixed(0)}°` : '–';
+  requestAnimationFrame(draw);
+}
+
+let es = null;
+function connect() {
+  if (location.protocol === 'file:') { $('status').textContent = 'otevřeno ze souboru – jen přehrávání záznamů'; return; }
+  es = new EventSource('/stream');
+  es.onopen = () => $('status').textContent = 'připojeno';
+  es.onmessage = e => onScan(JSON.parse(e.data));
+  es.onerror = () => $('status').textContent = 'spojení ztraceno, zkouším znovu…';
+}
+
+// pan & zoom
+let drag = null;
+cv.addEventListener('pointerdown', e => { drag = [e.clientX, e.clientY]; cv.setPointerCapture(e.pointerId); });
+cv.addEventListener('pointerup', () => drag = null);
+cv.addEventListener('pointermove', e => {
+  if (drag) {
+    view.ox += e.clientX - drag[0]; view.oy += e.clientY - drag[1];
+    drag = [e.clientX, e.clientY]; draw();
+  }
+  if (rec && $('map').checked) {
+    const [x, y] = mapFromScreen(e.clientX, e.clientY);
+    $('cursor').textContent = `kurzor: x ${(x / 1000).toFixed(2)} m, y ${(y / 1000).toFixed(2)} m`;
+    return;
+  }
+  const [d, a] = fromScreen(e.clientX, e.clientY);
+  $('cursor').textContent = `kurzor: ${(d / 1000).toFixed(2)} m @ ${a.toFixed(0)}°`;
+});
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  const k = Math.exp(-e.deltaY * 0.0015);
+  const mx = e.clientX - W / 2, my = e.clientY - H / 2;
+  view.ox = mx - (mx - view.ox) * k; view.oy = my - (my - view.oy) * k;
+  view.scale *= k; draw();
+}, { passive: false });
+
+for (const id of ['trail', 'minq', 'rot']) {
+  $(id).addEventListener('input', () => {
+    $(id + 'v').textContent = $(id).value + (id === 'rot' ? '°' : '');
+    while (scans.length > +$('trail').value) scans.shift();
+    shownIdx = -2;
+    if (id === 'rot') dropMap();
+    draw();
+  });
+}
+$('mirror').addEventListener('change', () => { dropMap(); draw(); });
+$('map').addEventListener('change', () => $('map').checked ? (rec && rec.map ? fitMap() : draw()) : fit());
+$('lines').addEventListener('change', draw);
+$('pause').onclick = () => { paused = !paused; $('pause').textContent = paused ? 'pokračovat' : 'pauza'; };
+$('fit').onclick = () => rec && $('map').checked ? fitMap() : fit();
+$('save').onclick = () => {
+  if (rec && $('map').checked) {
+    const a = document.createElement('a');
+    a.href = cv.toDataURL('image/png');
+    a.download = `pudorys_${rec.name}.png`;
+    a.click();
+    return;
+  }
+  if (!latest) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(latest)], { type: 'application/json' }));
+  a.download = `lidar_scan_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+  a.click();
+};
+
+// --- replay of a recording from the phone (folder with video.mp4, lidar.jsonl, meta.json) ---
+let rec = null;   // { times: [s], scans: [...], dur, video, clock: { playing, base, at } }
+const video = $('video');
+
+$('open').onclick = () => $('dir').click();
+$('live').onclick = () => location.reload();
+$('dir').onchange = async () => {
+  const files = [...$('dir').files];
+  const find = name => files.find(f => f.name === name);
+  const jsonl = find('lidar.jsonl'), metaF = find('meta.json'), mp4 = find('video.mp4');
+  if (!jsonl || !metaF) { alert('Vyber složku záznamu (musí obsahovat lidar.jsonl a meta.json).'); return; }
+  const name = files[0].webkitRelativePath.split('/')[0] || 'záznam';
+  openRecording(name, JSON.parse(await metaF.text()), await jsonl.text(), mp4 ? URL.createObjectURL(mp4) : null);
+};
+
+// recordings in lidar/sessions/, served by lidar_web.py
+async function listSessions(select) {
+  const list = await (await fetch('/sessions/')).json();
+  const sel = $('sess');
+  sel.length = 1;
+  sel.options[0].textContent = list.length ? `záznamy (${list.length})…` : 'žádné záznamy';
+  for (const s of list) {
+    const o = new Option(`${s.name} · ${s.scans ?? '?'} ot. · ${s.mb} MB${s.video ? '' : ' · bez videa'}`, s.name);
+    sel.add(o);
+  }
+  if (select) sel.value = select;
+}
+$('sess').onchange = async () => {
+  const name = $('sess').value;
+  if (!name) return;
+  const base = `/sessions/${encodeURIComponent(name)}/`;
+  history.replaceState(null, '', '#' + name + ($('map').checked ? '&map' : ''));
+  const meta = await (await fetch(base + 'meta.json')).json();
+  const text = await (await fetch(base + 'lidar.jsonl')).text();
+  openRecording(name, meta, text, meta.video ? base + 'video.mp4' : null);
+};
+$('pull').onclick = async () => {
+  const b = $('pull');
+  b.disabled = true; b.textContent = 'stahuji…';
+  try {
+    const r = await (await fetch('/pull', { method: 'POST' })).json();
+    await listSessions($('sess').value);
+    if (!r.ok) alert(r.log);
+    else b.title = r.log;
+    const last = r.log.match(/nových záznamů: (\d+)/);
+    b.textContent = last ? `staženo nových: ${last[1]}` : 'stáhnout z telefonu';
+  } catch (e) {
+    alert('Stažení selhalo: ' + e);
+    b.textContent = 'stáhnout z telefonu';
+  }
+  b.disabled = false;
+  setTimeout(() => b.textContent = 'stáhnout z telefonu', 4000);
+};
+
+function openRecording(name, meta, text, videoSrc) {
+  const start = BigInt(meta.video_start_ns);
+  const lines = text.split('\n').filter(l => l.trim());
+  const times = [], recScans = [];
+  for (const l of lines) {
+    // t_ns does not fit a double exactly; take it as text and subtract in BigInt.
+    const tns = BigInt(l.match(/"t_ns":(\d+)/)[1]);
+    const o = JSON.parse(l);
+    times.push(Number(tns - start) / 1e9);
+    recScans.push({ hz: o.hz, n: o.n, pts: o.pts });
+  }
+  if (es) { es.close(); es = null; }
+  if (rec) video.pause();
+  mapGen++;
+  rec = { name, times, scans: recScans, dur: times.length ? times[times.length - 1] : 0,
+          video: null, clock: { playing: false, base: 0, at: 0 }, map: null, mapProgress: 0, mapBuilding: false };
+  shownIdx = -2;
+  document.body.classList.add('replay');
+  $('live').style.display = '';
+  $('status').textContent = '';
+  $('fps').textContent = '–';
+  $('mapinfo').textContent = '–';
+  $('rplay').textContent = '▶';
+  if (videoSrc) {
+    video.src = videoSrc;
+    video.style.display = 'block';
+    rec.video = video;
+    const r = rec;
+    video.onloadedmetadata = () => { r.dur = Math.max(r.dur, video.duration); };
+    video.onended = () => $('rplay').textContent = '▶';
+  } else {
+    video.removeAttribute('src');
+    video.style.display = 'none';
+  }
+  document.title = 'D500 Lidar · ' + name;
+  if (!replayRunning) { replayRunning = true; replayTick(); }
+  draw();
+}
+let replayRunning = false;
+
+function recTime() {
+  if (rec.video) return rec.video.currentTime;
+  const c = rec.clock;
+  return c.playing ? Math.min(rec.dur, c.base + (performance.now() - c.at) / 1000) : c.base;
+}
+function recPlay(on) {
+  if (rec.video) { on ? rec.video.play() : rec.video.pause(); }
+  else {
+    const t = recTime();
+    rec.clock = { playing: on, base: on && t >= rec.dur ? 0 : t, at: performance.now() };
+  }
+  $('rplay').textContent = on ? '❚❚' : '▶';
+}
+function recSeek(t) {
+  if (rec.video) rec.video.currentTime = t;
+  else rec.clock = { ...rec.clock, base: t, at: performance.now() };
+}
+const fmtT = t => `${String(Math.floor(t / 60)).padStart(2, '0')}:${(t % 60).toFixed(1).padStart(4, '0')}`;
+
+let shownIdx = -2;
+function replayTick() {
+  if (!rec) return;
+  const t = recTime();
+  if (!rec.video && rec.clock.playing && t >= rec.dur) recPlay(false);
+  // last turn finished at or before t
+  let lo = 0, hi = rec.times.length - 1, idx = -1;
+  while (lo <= hi) { const m = (lo + hi) >> 1; if (rec.times[m] <= t) { idx = m; lo = m + 1; } else hi = m - 1; }
+  if (idx !== shownIdx) {
+    shownIdx = idx;
+    rec.idx = idx;
+    const keep = +$('trail').value;
+    scans = idx < 0 ? [] : rec.scans.slice(Math.max(0, idx - keep + 1), idx + 1);
+    if (idx >= 0) showLatest(rec.scans[idx]); else { latest = null; draw(); }
+  }
+  if (!seekDrag) $('rseek').value = rec.dur ? Math.round(t / rec.dur * 1000) : 0;
+  $('rtime').textContent = `${fmtT(t)} / ${fmtT(rec.dur)}`;
+  requestAnimationFrame(replayTick);
+}
+
+let seekDrag = false;
+$('rseek').addEventListener('pointerdown', () => seekDrag = true);
+$('rseek').addEventListener('pointerup', () => seekDrag = false);
+$('rseek').addEventListener('input', () => recSeek($('rseek').value / 1000 * rec.dur));
+$('rplay').onclick = () => recPlay(rec.video ? rec.video.paused : !rec.clock.playing);
+addEventListener('keydown', e => {
+  if (!rec || e.target.tagName === 'INPUT') return;
+  if (e.code === 'Space') { e.preventDefault(); $('rplay').click(); }
+  if (e.code === 'ArrowLeft') recSeek(Math.max(0, recTime() - 0.1));
+  if (e.code === 'ArrowRight') recSeek(Math.min(rec.dur, recTime() + 0.1));
+});
+
+// --- floor plan: every turn aligned onto the map built so far (point-to-line ICP) ---
+// Map frame in mm: x = forward of the first turn, y = left. Points closer than minD are
+// the person carrying the lidar, so they stay out.
+const MAP = { voxel: 30, cell: 250, minD: 500, maxD: 12000, normalR: 100 };
+const vkey = (x, y, size) => (Math.floor(x / size) + 32768) * 65536 + (Math.floor(y / size) + 32768);
+let mapGen = 0;
+
+// a turn as [x, y, x, y, …] in the lidar frame (with the rotation and mirror set on the page)
+function turnXY(s, voxel) {
+  const rot = +$('rot').value, mir = $('mirror').checked, p = s.pts, out = [], seen = new Set();
+  for (let k = 0; k < p.length; k += 3) {
+    const d = p[k + 1];
+    if (d < MAP.minD || d > MAP.maxD) continue;
+    let a = (p[k] + rot) * Math.PI / 180;
+    if (mir) a = -a;
+    const x = d * Math.cos(a), y = -d * Math.sin(a);
+    if (voxel) {
+      const v = vkey(x, y, voxel);
+      if (seen.has(v)) continue;
+      seen.add(v);
+    }
+    out.push(x, y);
+  }
+  return out;
+}
+
+class FloorMap {
+  constructor() {
+    this.x = []; this.y = []; this.nx = []; this.ny = []; this.hits = [];
+    this.vox = new Map();     // voxel → point, one point per voxel
+    this.cells = new Map();   // coarse cell → points, for neighbour search
+  }
+  add(x, y, dirty) {
+    const v = vkey(x, y, MAP.voxel), i = this.vox.get(v);
+    if (i !== undefined) { this.hits[i]++; return; }
+    const n = this.x.length;
+    this.vox.set(v, n);
+    this.x.push(x); this.y.push(y); this.nx.push(0); this.ny.push(0); this.hits.push(1);
+    const c = vkey(x, y, MAP.cell);
+    let list = this.cells.get(c);
+    if (!list) this.cells.set(c, list = []);
+    list.push(n);
+    dirty.add(c);
+  }
+  nearest(x, y, gate) {
+    const C = MAP.cell, ci = Math.floor(x / C), cj = Math.floor(y / C), rr = Math.ceil(gate / C);
+    let best = -1, bd = gate * gate;
+    for (let i = ci - rr; i <= ci + rr; i++) for (let j = cj - rr; j <= cj + rr; j++) {
+      const list = this.cells.get((i + 32768) * 65536 + (j + 32768));
+      if (!list) continue;
+      for (const k of list) {
+        const dx = this.x[k] - x, dy = this.y[k] - y, d = dx * dx + dy * dy;
+        if (d < bd) { bd = d; best = k; }
+      }
+    }
+    return best;
+  }
+  // wall direction around each point of the touched cells, from its neighbours' spread
+  refreshNormals(dirty) {
+    const R2 = MAP.normalR * MAP.normalR, C = MAP.cell;
+    for (const c of dirty) for (const k of this.cells.get(c)) {
+      const px = this.x[k], py = this.y[k], ci = Math.floor(px / C), cj = Math.floor(py / C);
+      let n = 0, sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0;
+      for (let i = ci - 1; i <= ci + 1; i++) for (let j = cj - 1; j <= cj + 1; j++) {
+        const list = this.cells.get((i + 32768) * 65536 + (j + 32768));
+        if (!list) continue;
+        for (const m of list) {
+          const dx = this.x[m] - px, dy = this.y[m] - py;
+          if (dx * dx + dy * dy > R2) continue;
+          n++; sx += dx; sy += dy; sxx += dx * dx; syy += dy * dy; sxy += dx * dy;
+        }
+      }
+      if (n < 3) { this.nx[k] = this.ny[k] = 0; continue; }
+      const mx = sx / n, my = sy / n;
+      const t = 0.5 * Math.atan2(2 * (sxy / n - mx * my), (sxx / n - mx * mx) - (syy / n - my * my));
+      this.nx[k] = -Math.sin(t); this.ny[k] = Math.cos(t);
+    }
+  }
+}
+
+function solve3(A, b) {
+  // A = [a00 a01 a02 a11 a12 a22], damped a little so a featureless corridor does not blow up
+  const l = 1e-3;
+  const a = A[0] * (1 + l), d = A[1], e = A[2], f = A[3] * (1 + l), g = A[4], h = A[5] * (1 + l);
+  const det = a * (f * h - g * g) - d * (d * h - g * e) + e * (d * g - f * e);
+  if (!det) return [0, 0, 0];
+  const x = (b[0] * (f * h - g * g) - d * (b[1] * h - g * b[2]) + e * (b[1] * g - f * b[2])) / det;
+  const y = (a * (b[1] * h - g * b[2]) - b[0] * (d * h - g * e) + e * (d * b[2] - b[1] * e)) / det;
+  const z = (a * (f * b[2] - b[1] * g) - d * (d * b[2] - b[1] * e) + b[0] * (d * g - f * e)) / det;
+  return [x, y, z];
+}
+
+// one turn onto the map, from a guessed pose [x, y, heading rad]; returns [pose, share of points that fit]
+function align(map, pts, pose) {
+  let [tx, ty, th] = pose, fit = 0;
+  for (const gate of [500, 200, 80]) {
+    for (let it = 0; it < 10; it++) {
+      const c = Math.cos(th), s = Math.sin(th), A = [0, 0, 0, 0, 0, 0], b = [0, 0, 0];
+      let used = 0;
+      for (let k = 0; k < pts.length; k += 2) {
+        const px = c * pts[k] - s * pts[k + 1] + tx, py = s * pts[k] + c * pts[k + 1] + ty;
+        const j = map.nearest(px, py, gate);
+        if (j < 0) continue;
+        const nx = map.nx[j], ny = map.ny[j];
+        if (!nx && !ny) continue;
+        // n·(p + dθ·perp(p − t) + dt − q) = 0, linearised
+        const J2 = ny * (px - tx) - nx * (py - ty);
+        const r = -(nx * (px - map.x[j]) + ny * (py - map.y[j]));
+        A[0] += nx * nx; A[1] += nx * ny; A[2] += nx * J2; A[3] += ny * ny; A[4] += ny * J2; A[5] += J2 * J2;
+        b[0] += nx * r; b[1] += ny * r; b[2] += J2 * r;
+        used++;
+      }
+      fit = used / (pts.length / 2);
+      if (used < 30) return [[tx, ty, th], 0];
+      const [dx, dy, dth] = solve3(A, b);
+      tx += dx; ty += dy; th += dth;
+      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5 && Math.abs(dth) < 2e-4) break;
+    }
+  }
+  return [[tx, ty, th], fit];
+}
+
+async function buildMap(r) {
+  const gen = ++mapGen;
+  r.mapBuilding = true;
+  const map = new FloorMap(), n = r.scans.length, path = new Array(n);
+  let pose = null, prev = null, weak = 0, last = performance.now();
+  for (let i = 0; i < n; i++) {
+    const pts = turnXY(r.scans[i], MAP.voxel);
+    if (pts.length < 100) { path[i] = pose; continue; }
+    if (!pose) pose = prev = [0, 0, 0];
+    else {
+      const guess = pose.map((v, k) => 2 * v - prev[k]);   // keep moving as before
+      const [p, fit] = align(map, pts, guess);
+      if (fit < 0.5) weak++;
+      prev = pose; pose = p;
+    }
+    path[i] = pose;
+    const c = Math.cos(pose[2]), s = Math.sin(pose[2]), dirty = new Set();
+    for (let k = 0; k < pts.length; k += 2)
+      map.add(c * pts[k] - s * pts[k + 1] + pose[0], s * pts[k] + c * pts[k + 1] + pose[1], dirty);
+    map.refreshNormals(dirty);
+    if (performance.now() - last > 50) {
+      r.mapProgress = i / n;
+      draw();
+      await new Promise(res => setTimeout(res));
+      if (gen !== mapGen) { r.mapBuilding = false; return; }
+      last = performance.now();
+    }
+  }
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, walked = 0, p0 = null;
+  for (let k = 0; k < map.x.length; k++) {
+    x0 = Math.min(x0, map.x[k]); x1 = Math.max(x1, map.x[k]);
+    y0 = Math.min(y0, map.y[k]); y1 = Math.max(y1, map.y[k]);
+  }
+  for (const p of path) { if (p && p0) walked += Math.hypot(p[0] - p0[0], p[1] - p0[1]); if (p) p0 = p; }
+  r.mapBuilding = false;
+  if (!map.x.length) {
+    r.map = { map, path, box: null };
+    $('mapinfo').textContent = 'bez dat z lidaru';
+    draw();
+    return;
+  }
+  r.map = { map, path, box: [x0, x1, y0, y1] };
+  $('mapinfo').textContent = `${((x1 - x0) / 1000).toFixed(1)} × ${((y1 - y0) / 1000).toFixed(1)} m · cesta ${(walked / 1000).toFixed(1)} m`
+    + (weak ? ` · ${weak} otáček nesedí` : '');
+  if (rec === r && $('map').checked) fitMap();
+}
+
+function dropMap() {
+  if (!rec) return;
+  mapGen++;
+  rec.map = null;
+  rec.mapBuilding = false;
+  $('mapinfo').textContent = '–';
+}
+
+// map frame → screen: forward of the first turn up, left left
+function mapToScreen(x, y) {
+  return [W / 2 + view.ox - (y - view.my) * view.scale, H / 2 + view.oy - (x - view.mx) * view.scale];
+}
+function mapFromScreen(sx, sy) {
+  return [view.mx + (H / 2 + view.oy - sy) / view.scale, view.my + (W / 2 + view.ox - sx) / view.scale];
+}
+function fitMap() {
+  const m = rec && rec.map;
+  if (!m || !m.box) return draw();
+  const [x0, x1, y0, y1] = m.box;
+  view.mx = (x0 + x1) / 2; view.my = (y0 + y1) / 2; view.ox = 0; view.oy = 0;
+  view.scale = 0.92 * Math.min(W / (y1 - y0 + 1), H / (x1 - x0 + 1));
+  draw();
+}
+
+function drawMap() {
+  ctx.fillStyle = '#0b0e12';
+  ctx.fillRect(0, 0, W, H);
+  const m = rec.map;
+  if (!m || !m.box) {
+    if (!m && !rec.mapBuilding) buildMap(rec);
+    ctx.fillStyle = '#5b6673';
+    ctx.font = '14px ui-monospace, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(m ? 'v záznamu nejsou data z lidaru' : `skládám půdorys… ${Math.round(rec.mapProgress * 100)} %`, W / 2, H / 2);
+    ctx.textAlign = 'start';
+    return;
+  }
+  const sc = view.scale;
+
+  // grid
+  const step = niceStep(1 / sc);
+  const [xa, ya] = mapFromScreen(W, H), [xb, yb] = mapFromScreen(0, 0);
+  ctx.lineWidth = 1;
+  ctx.font = '11px ui-monospace, monospace';
+  for (let g = Math.ceil(Math.min(xa, xb) / step) * step; g < Math.max(xa, xb); g += step) {
+    const y = mapToScreen(g, 0)[1];
+    ctx.strokeStyle = '#1d242d'; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    ctx.fillStyle = '#5b6673'; ctx.fillText((g / 1000).toFixed(step % 1000 ? 2 : 0) + ' m', 4, y - 3);
+  }
+  for (let g = Math.ceil(Math.min(ya, yb) / step) * step; g < Math.max(ya, yb); g += step) {
+    const x = mapToScreen(0, g)[0];
+    ctx.strokeStyle = '#1d242d'; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+
+  // walls: voxels seen once are often people or noise, so they are faint
+  const M = m.map, r = Math.max(1.5, MAP.voxel * sc);
+  for (const strong of [false, true]) {
+    ctx.fillStyle = strong ? '#c9d3dd' : 'rgba(201,211,221,0.25)';
+    for (let k = 0; k < M.x.length; k++) {
+      if ((M.hits[k] > 1) !== strong) continue;
+      const [x, y] = mapToScreen(M.x[k], M.y[k]);
+      if (x < -r || y < -r || x > W + r || y > H + r) continue;
+      ctx.fillRect(x - r / 2, y - r / 2, r, r);
+    }
+  }
+
+  // path: all of it dim, up to now bright
+  const idx = rec.idx ?? -1;
+  for (const [upto, color] of [[m.path.length - 1, 'rgba(255,107,91,0.3)'], [idx, '#ff6b5b']]) {
+    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath();
+    let started = false;
+    for (let i = 0; i <= upto; i++) {
+      const p = m.path[i];
+      if (!p) continue;
+      const [x, y] = mapToScreen(p[0], p[1]);
+      started ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      started = true;
+    }
+    ctx.stroke();
+  }
+  ctx.lineWidth = 1;
+
+  // the current turn where it was taken
+  const pose = idx >= 0 && m.path[idx];
+  if (pose) {
+    const s = rec.scans[idx], pts = turnXY(s, 0), c = Math.cos(pose[2]), sn = Math.sin(pose[2]);
+    ctx.fillStyle = '#4cc2ff';
+    const rr = Math.max(2, r);
+    for (let k = 0; k < pts.length; k += 2) {
+      const [x, y] = mapToScreen(c * pts[k] - sn * pts[k + 1] + pose[0], sn * pts[k] + c * pts[k + 1] + pose[1]);
+      ctx.fillRect(x - rr / 2, y - rr / 2, rr, rr);
+    }
+    const [x, y] = mapToScreen(pose[0], pose[1]);
+    const [fx, fy] = mapToScreen(pose[0] + c * 14 / sc, pose[1] + sn * 14 / sc);
+    ctx.fillStyle = '#4cc2ff'; ctx.beginPath(); ctx.arc(x, y, 5, 0, 2 * Math.PI); ctx.fill();
+    ctx.strokeStyle = '#4cc2ff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(fx, fy); ctx.stroke();
+    ctx.lineWidth = 1;
+  }
+}
+
+resize(); fit(); connect();
+if (location.protocol !== 'file:') {
+  // #<recording>[&map] opens that recording straight away
+  const [name, opt] = decodeURIComponent(location.hash.slice(1)).split('&');
+  listSessions(name).then(() => {
+    if (opt === 'map') $('map').checked = true;
+    if (name) $('sess').onchange();
+  }).catch(() => {});
+}
+else document.querySelector('.srv').style.display = 'none';
+</script>
+</body>
+</html>

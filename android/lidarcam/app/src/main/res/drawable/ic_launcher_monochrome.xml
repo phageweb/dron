@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A mug of beer; drawn in 108 x 108 with the content inside the 66 dp safe circle. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:translateX="-2">
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M68,52 h4 a9,9 0 0,1 9,9 v6 a9,9 0 0,1 -9,9 h-4 v-6 h4 a3,3 0 0,0 3,-3 v-6 a3,3 0 0,0 -3,-3 h-4 Z" />
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M34,44 h34 v34 a5,5 0 0,1 -5,5 h-24 a5,5 0 0,1 -5,-5 Z" />
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M31,42 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0 ZM38,36 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0 ZM49.5,37 a7.5,7.5 0 1,0 15.0,0 a7.5,7.5 0 1,0 -15.0,0 ZM59.5,42 a5.5,5.5 0 1,0 11.0,0 a5.5,5.5 0 1,0 -11.0,0 ZM31,42 v6 h40 v-6 ZM37,50 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 ZM59.5,49 a2.5,2.5 0 1,0 5.0,0 a2.5,2.5 0 1,0 -5.0,0 Z" />
+    </group>
+</vector>

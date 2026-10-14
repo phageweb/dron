@@ -22,5 +22,17 @@ __pycache__/
 .artifact_pub/
 cad_pavo20/*.png
 
+# Android phone recorder (android/lidarcam) build state and pulled recordings
+android/lidarcam/.gradle/
+android/lidarcam/.kotlin/
+android/lidarcam/build/
+android/lidarcam/app/build/
+android/lidarcam/local.properties
+/lidar/sessions/
+
 # Downloaded Printables model too big for git (ASCII STL, 43 MB); fetch again from the link in model/stazene/README.md
 /model/stazene/pavo20-ascent-cockpit/
+
+# nix build outputs (gcroots)
+result
+result-*

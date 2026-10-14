@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- CP2102 USB-UART bridge on the LDRobot D500 adapter board -->
+    <usb-device vendor-id="4292" product-id="60000" />
+</resources>
