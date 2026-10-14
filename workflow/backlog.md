@@ -164,30 +164,42 @@
       so a publisher over it would carry eight numbers, not a scan; and
       **ROS on the ground on its own is not a path at all**, because nothing
       onboard can send the raw scan down once the autopilot only offers those
-      eight sectors. What is left is a companion computer, or the fourth option
-      below. The bill of materials cannot be finished before this is decided
-- [ ] Try forwarding the LD06 UART through the video unit before buying anything.
-      The OpenIPC unit is already a Linux computer in the parts list, it has
-      spare UARTs, `OpenIPC/mavfwd` is a serial-to-UDP forwarder in pure C, and
-      OpenIPC's supported baud rates include the LD06's 230400. Zero grams and
-      zero crowns, which matters because 294 g has no room for a companion
-      computer: the build is 227.2 g with the battery and no lidar, and the
-      LD06's ~42 g plus mounts spends the rest. A board that genuinely runs
-      ROS 2 Jazzy is 20-30 g with cooling - more than the 11 g between the
-      Wyvern and the RunCam. Open: whether the chosen unit has a UART broken
-      out and reachable in the assembled frame, whether it holds 230400 baud
-      beside the video encoder without overheating, and whether its OpenIPC
-      build ships those tools at all
-- [ ] Measure the scan's share of the radio link, now that the arithmetic is
-      tighter than it looked. The LD06 packs 12 points into 47 bytes at 4500
-      measurements per second: 375 packets/s, **141 kbit/s** of payload, not the
-      108 kbit/s this list used to say. wfb-ng at its default MCS1 and 20 MHz
-      carries about 7 Mbit/s for **both directions together**, not 8 Mbit/s
-      down, and 720p video already takes ~4. So the scan is 2.0 per cent of the
-      link and 4.7 per cent of what is left after video - it fits, with less
-      headroom than assumed. It has to ride a raw UDP stream: wfb-ng's own docs
-      say the IPv4 tunnel has a worse coding rate and belongs to SSH, not to
-      data streams. Nobody has configured or measured any of it
+      eight sectors. The video-unit option fell with the Walksnail purchase.
+      What is left is a companion computer, or the one link on parts already
+      bought - the Walksnail OSD, below; the AIO has no Bluetooth after all -
+      with a bought Bluetooth module behind it. An ESP32 bridge is out for
+      good (2026-10-12): Wi-Fi range is too small.
+      The bill of materials cannot be finished before this is decided
+- [x] Check for Bluetooth on the MicoAir AIO. It has none. A seller listing
+      said it does, and the MicoAir743v2 manual describes a module on UART8,
+      but that manual is for the stand-alone FC; the AIO shares only the
+      firmware target, which is why `SERIAL8` defaults to MAVLink2 at 115200.
+      Two `bluetoothctl` scans on 2026-10-07 next to the board, one with BOOT
+      held, found nothing, and MicoAir's own AIO page lists one BOOT0 button
+      and UART8 on pads. Those pads are where a bought serial Bluetooth module
+      would go if the OSD route below fails
+- [ ] Test the Walksnail OSD as a downlink for the scan - the only link on parts
+      already bought.
+      The VTX relays MSP DisplayPort characters and the VRX Pro renders them, so
+      a strip of OSD rows can carry a binned scan that a decoder reads back from
+      the VRX Pro's UVC output. Estimate 4-8 scans/s at 2.5 degrees on the 50 x
+      18 canvas ArduPilot reports. Downlink only, and `osd:write` for Lua is in
+      master, not 4.7.1. Phase 2 of `15_test_linky_skenu.md` measures it with
+      the notebook emulating the FC; it decides on whether the OSD reaches UVC
+      at all
+      15. 10. 2026, on the bench with the real FC, Lite+ and VRX Pro: it does.
+      `osdvideo.py` reads 479 of 479 pictures with the rows, but only 1.9
+      turns/s: the VRX shows ~5.7 distinct frames/s and a third of the
+      pictures lack our rows (the second DRAW). Left: in flight, and faster.
+- [x] Write both ends of the OSD link before the VTX arrives (`lidar/osd/`).
+      `scan_osd.lua` bins each turn into 144 x 2.5 degrees, codes the distance
+      in 9 logarithmic bits and writes three 77-character CRC-checked frames a
+      turn; `osdscan.py` reads them back from MSP DisplayPort. On real D500
+      bytes the Lua frames equal the Python ones character for character, and
+      the recorded sessions come back within 10 mm for 95 per cent of bins. In
+      SITL the whole chain carries 3.17 turns/s of 3.33 possible, with no bad
+      frames. Needs master for `osd:write`; reading the frames from UVC video
+      waits for the VTX
 - [x] Lean the vehicle in the simulator and assert the floor is not reported
       (`scripts/check_leaning_scan.sh`, in baseline CI). `leaning_test.sdf` holds
       the model static at 30 degrees nose-down and 0.60 m up, where the forward

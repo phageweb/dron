@@ -141,3 +141,32 @@ tah/váha, doba letu na 750 mAh i gainy, které
 - Jestli OpenIPC build pro zvolenou jednotku ty nástroje vůbec obsahuje —
   OpenIPC používá jen podmnožinu wfb-ng.
 - Kolik LD06 skutečně váží. Číslo 42 g je z katalogu, ne z váhy.
+
+## Dodatek 7. 10. 2026: Walksnail a současné čipy
+
+**Cesta přes video jednotku padla nákupem.** Místo OpenIPC jednotky se koupil
+Walksnail Ascent Lite+ ([Nakoupeno](./13_nakoupeno.md)). Systém je zavřený:
+root na VTX Caddx po prvním nálezu zašifroval a jediný vstup dat je
+**MSP DisplayPort** — znaky OSD, které VTX přenáší rádiem a obrazovku z nich
+skládá až přijímač. Žádný UART, IP ani `mavfwd`.
+
+Zbývající cesty se tím přeskládaly. Na čipech, které už jsou koupené, jede
+**jen OSD**; Bluetooth, který prodejce u AIO uvádí, na desce není:
+
+| Cesta | Gramy | Peníze | Dá SLAM? | Co ji drží zpátky |
+| --- | ---: | ---: | :-: | --- |
+| Bluetooth modul na padech UART8, `OBSTACLE_DISTANCE` z Lua | +1–2 | stovky Kč | ano, po 2,5–5° | **AIO vlastní Bluetooth nemá** (ověřeno 7. 10.), modul se musí přikoupit; dosah |
+| **Znaky v OSD Walksnailu**, čtené z UVC výstupu VRX Pro | **0** | **0** | ano, po 2,5°, ~4–8 Hz | jestli VRX dává OSD do UVC; jen dolů |
+| ~~ESP32 most na vlastní desce~~ | | | | vyřazeno 12. 10. 2026: Wi-Fi má malý dosah |
+| Palubní počítač | +10 až +30 | +1 000 až 2 500 Kč | ano | hmotnostní rozpočet, viz výš |
+| Fork AP_DDS | 0 | 0 | ne | osm sektorů |
+| ~~ROS na zemi, sken přes video jednotku~~ | | | | Walksnail nemá datový kanál |
+
+OSD i Bluetooth mají společné to, že **H743 sken přečte a zmenší sám** — Lua
+skript, ne fork: `serial:find_serial`, `readstring` a `mavlink:send_chan`
+v ArduCopteru 4.7.1 jsou. Tentýž skript krmí `AP_Proximity` přes Scripting
+backend, takže palubní vyhýbání podle osmi sektorů zůstává i při výpadku linky.
+
+Plán testu, konektory a kritéria jsou v
+[Test linky pro sken](./15_test_linky_skenu.md). Pořadí: OSD první (nula dílů),
+přikoupený Bluetooth modul druhý. ESP32 most je vyřazený.

@@ -49,8 +49,15 @@ Deska se napájí z USB, baterie ani zdroj nejsou potřeba.
       mezeru zvonu proti ductu** — A1204 je o 1,2 mm širší než 1104, na který
       je rám dělaný. Drhne-li, dál se nejde.
 - [ ] Délka šroubů motoru: šroub nesmí sáhnout do vinutí. Změřit, ne odhadnout.
-- [ ] AIO na rozteč 25,5 × 25,5 se soft-mounty, šipka dopředu. USB-C musí být
-      v sestaveném rámu dostupný.
+- [ ] AIO na soft-mountech, šipkou nahoru. Díry 26 × 26 v karbonu a vložky
+      v ductu tvoří kosočtverec (vpředu, vzadu, po stranách), takže deska je
+      **natočená o 45°**. USB-C šikmo dozadu vlevo, k motoru 2: pady baterie
+      pak míří dozadu vpravo, konektor HD VTX dopředu vpravo a šipka vlevo
+      dopředu, tedy `AHRS_ORIENTATION 7` (Yaw315). Odvozeno z výkresů BetaFPV
+      a MicoAir, ověřit na kusu. USB-C musí být v sestaveném rámu dostupný.
+- [ ] Šroub M2×14 shora: karbon, matka, tlumič AIO delším koncem nahoru, AIO,
+      kratší konec, matka, mosazná vložka v ductu. Pod spodní maticí aspoň
+      3–4 mm závitu, jinak spodní matku vynechat.
 - [ ] Zkusmo umístit: XR1, GPS, MTF-02P (dolů, **mimo půdorys baterie**),
       kameru Lite+ a VTX. Kde co bude, rozhoduje o délkách vodičů v kroku 3.
 - [ ] Baterii 750 mAh zasunout do slotu a zkontrolovat, že sedí a nic netlačí.
@@ -111,7 +118,8 @@ Teď už z baterie (nebo ze zdroje s limitem zvýšeným na 2–3 A). Dron přid
 
 - [ ] Kalibrace v 6 polohách na hranách rámu, pak level na rovném stole.
       Bez ní ArduPilot neodjistí (`3D Accel calibration needed`).
-- [ ] Šipka na AIO míří dopředu: při nose-down musí X ukazovat −1 g.
+- [ ] Natočení desky sedí s `AHRS_ORIENTATION`: při nose-down ukazuje
+      umělý horizont nos dolů, při náklonu doprava náklon doprava.
 
 **MTF-02P** (optical flow + dolní rangefinder):
 

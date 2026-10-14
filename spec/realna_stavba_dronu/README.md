@@ -60,11 +60,12 @@ Všechny bench testy flight controlleru, ESC, motorů, ArduPilot konfigurace a R
 - [Kde se co koupí](./06_nakup.md) - nákupní seznam, ceny a dostupnost
 - [Alternativy a zkušenosti](./07_alternativy_a_zkusenosti.md) - k čemu se dá u každého dílu sáhnout a co s tím lidé zažili
 - [Kalkulace dopravy](./08_kalkulace_dopravy.md) - co se vyplatí dovézt a co ne, CZ vs AliExpress vs Allegro
-- [Kudy se sken dostane do ROS 2](./09_kudy_do_ros.md) - čtyři cesty a proč dvě z nich padly
+- [Kudy se sken dostane do ROS 2](./09_kudy_do_ros.md) - cesty ven, které padly, a co zbývá: OSD na koupených čipech
 - [Pavo20 jako nosič LD06](./10_pavo20.md) - co by stálo dostat lidar i video pod 250 g
 - [Kusovník Pavo20 Pro](./11_kusovnik_pavo20.md) - co koupit, kde a za kolik, rozdělené na dvě etapy
 - [Nakoupeno](./13_nakoupeno.md) - co už je zaplacené, za kolik, a co z kusovníku chybí
 - [Postup stavby Pavo20 Pro](./14_postup_stavby_pavo20.md) - od firmwaru po první let, s piny a parametry
+- [Test linky pro sken](./15_test_linky_skenu.md) - OSD Walksnailu a Bluetooth modul: co se měří a co kam zapojit; AIO vlastní Bluetooth nemá
 
 ## Návaznost na simulaci
 

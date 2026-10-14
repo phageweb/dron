@@ -112,7 +112,8 @@ v [Kalkulaci dopravy](./08_kalkulace_dopravy.md).
   [Pavo20 jako nosič LD06](./10_pavo20.md#pro-versus-pro-ii).
 - **Palubní počítač** zatím ne — ale pozor: s Walksnailem **padá cesta poslat
   UART z LD06 dolů přes video jednotku**. Ascent přenáší jen obraz a OSD, IP ani
-  datový kanál nemá. Kudy teď sken do ROS 2, je otevřené, viz
+  datový kanál nemá. Zbývají znaky v OSD Walksnailu — na koupených
+  čipech — nebo přikoupený Bluetooth modul — viz [Test linky pro sken](./15_test_linky_skenu.md) a
   [Kudy se sken dostane do ROS 2](./09_kudy_do_ros.md).
 - **LD19 ani D300.** Ověřeno: LD19 je tentýž senzor jako LD06, jen s montážní
   deskou navíc — o 5 g těžší, jinak beze změny, a doběhový. D300 je LD19 plus
@@ -146,5 +147,5 @@ stropem, takže před připojením VTX změřit, kolik BEC skutečně dává.
 | **Publikováno** | Všechny hmotnosti jsou vendorové nebo prodejcovy, žádná zvážená. |
 | **Odvozeno** | Tah 202 g/motor Flashhobby nepublikuje. Dopočítaný stejnou metodou jako v modelu: stejný Ct vrtule 2218, otáčky z KV při 61 % nezatížených. |
 | **Odhad** | Doprava mimo Rotoramu, u Caddx neznámá. Cena Lite+ je výrobcova v dolarech, ne česká. TPU věž 11 g a kabeláž 13,36 g. |
-| **Otevřené** | TPU věž není navržená. Kudy teď sken z LD06 do ROS 2, když Walksnail datový kanál nemá. Kolik skutečně dává 12V BEC H743, Lite+ má strop 12,6 V. Výdrž 4,0 a 3,2 min je ideální výkon poměrem proti referenci, bez spotřeby Lite+. A1204 je o 1,2 mm širší než 1104, na který je rám dělaný — patka sedí, zvon je potřeba přeměřit. Baterie trčí 28 mm pod ducty, takže na ní dron přistává; stock pack je menší. Těch 28 mm platilo pro 850mAh pack vysoký 32 mm — 750 má 28 mm, a 77 mm délky proti 73. |
+| **Otevřené** | TPU věž není navržená. Kudy teď sken z LD06 do ROS 2, když Walksnail datový kanál nemá — kandidát OSD, záloha přikoupený Bluetooth, [test](./15_test_linky_skenu.md) neproběhl. Kolik skutečně dává 12V BEC H743, Lite+ má strop 12,6 V. Výdrž 4,0 a 3,2 min je ideální výkon poměrem proti referenci, bez spotřeby Lite+. A1204 je o 1,2 mm širší než 1104, na který je rám dělaný — patka sedí, zvon je potřeba přeměřit. Baterie trčí 28 mm pod ducty, takže na ní dron přistává; stock pack je menší. Těch 28 mm platilo pro 850mAh pack vysoký 32 mm — 750 má 28 mm, a 77 mm délky proti 73. |
 | **Nezměřeno** | Spotřeba Walksnail Ascent Lite+ — Caddx ji nepublikuje a je to největší spotřebič mimo motory. |
