@@ -11,6 +11,9 @@ v kořeni repa.
 | Zdroj | `firmware.ardupilot.org/Copter/stable-4.7.1/MicoAir743v2/` |
 | Commit | `dbe792162d06cab66c3475fd5556bf7a120f119e` |
 
+Vedle něj je připnutý i **master (4.8.0-dev)**, nejnovější noční build, viz
+[Master na desce](#master-na-desce).
+
 Soubory jsou připnuté hashem, takže každé nahrání zapíše stejné bajty.
 Simulace běží na ArduPilotu 4.8.0-dev z `external/ardupilot` — deska dostává
 stable, ne to, co se letělo v SITL.
@@ -107,6 +110,48 @@ zastavit ho (`sudo systemctl stop ModemManager`) nebo na stole vypnout.
 Dál pokračuje [postup stavby, krok 1](../spec/realna_stavba_dronu/14_postup_stavby_pavo20.md#1-firmware--jen-přes-usb):
 `FRAME_CLASS 1`, `FRAME_TYPE 1`, restart, parametry uložit do souboru, kalibrace.
 
+## Master na desce
+
+`lidar/osd/scan_osd.lua` potřebuje z Lua psát do OSD (`osd:write`) a to 4.7.1
+neumí. Umí to master. Flake proto má i druhý build:
+
+| | |
+| --- | --- |
+| Firmware | ArduCopter **4.8.0-dev**, oficiální noční build z 12. 10. 2026 |
+| Zdroj | `firmware.ardupilot.org/Copter/2026-10/2026-10-12-07:10/MicoAir743v2/` |
+| Commit | `113108bd69954dfe9faed49f025601ffcaff2886` |
+| Board ID | 1179, stejné jako 4.7.1, takže uploader ho na desku pustí |
+
+V buildu jsou ověřené, podle `features.txt` a symbolů v `arducopter.elf`, Lua
+(`AP_SCRIPTING_ENABLED`), funkce pro OSD z Lua (`osd:write`, `flush`,
+`draw_screen`), MSP DisplayPort, proximity ze skriptu a ovladač LD06.
+
+```sh
+nix build ./firmware#firmware-master     # result/ — stejné soubory jako u 4.7.1
+nix run ./firmware#flash-master          # deska s ArduPilotem, cesta 2a
+nix run ./firmware#flash-dfu-master      # DFU, cesta 2b
+```
+
+Před nahráním **uložit parametry** do `params/`. Přechod z 4.7.1 na master
+by je měl zachovat, ale vývojová verze může některé přejmenovat. QGroundControl
+má po nahrání ukázat **ArduCopter V4.8.0-dev**. Zpátky na 4.7.1 vede
+`nix run ./firmware#flash` a nahrání uložených parametrů.
+
+Je to vývojová verze, ne vydání. Až vyjde 4.8 stable, přepnout na ni
+(4.7.2 z 11. 10. `draw_screen` pořád nemá).
+
+**Noční buildy server po zhruba měsíci maže.** Původní pin, `8b9ea70` z 9. 9.
+— stejný commit jako `external/ardupilot` a SITL — 14. 10. už nešel stáhnout,
+proto je pin posunutý a deska teď běží na novějším masteru než simulace.
+Aby se soubory neztratily i z Nix store, nechat `nix build ./firmware#firmware-master
+-o firmware/result-master`: symlink je gcroot. Až build ze serveru zmizí,
+posunout pin na nejnovější `Copter/<rok-měsíc>/…` podle
+[Nová verze](#nová-verze).
+
+Master mezi 9. 9. a 12. 10. přejmenoval další parametry: `SYSID_THISMAV` →
+`MAV_SYSID`, `SYSID_MYGCS` → `MAV_GCS_SYSID`, `SRn_*` → `MAVn_*`,
+`TELEM_DELAY` → `MAV_TELEM_DELAY`.
+
 ## Zálohy parametrů
 
 `params/` — co bylo na desce, vyčtené přes MAVLink:
@@ -116,6 +161,19 @@ Dál pokračuje [postup stavby, krok 1](../spec/realna_stavba_dronu/14_postup_st
 - `po_flashi_4.7.1_2026-10-02.parm` — hned po nahrání 4.7.1, nic nezměněno.
 - `ramec_quadx_2026-10-02.parm` — `FRAME_CLASS 1`, `FRAME_TYPE 1`, po restartu.
   Výchozí stav pro kalibraci.
+- `pred_masterem_4.7.1_2026-10-10.parm` — stav těsně před nahráním masteru.
+  Proti `ramec_quadx` se liší jen teplotou kalibrace gyra.
+- `po_flashi_master_2026-10-10.parm` — hned po nahrání 4.8.0-dev, nic
+  nezměněno. Parametry ze 4.7.1 přechod zachoval.
+- `konfigurace_master_2026-10-10.parm` — porty a výchozí nastavení podle
+  postupu stavby, kroky 4–8: `AHRS_ORIENTATION 7`, RCIN na UART6, MTF-02P na
+  UART4, GPS na UART3, DisplayPort na UART2 s `OSD1_TXT_RES 1`, DShot600,
+  baterie a failsafe. Bez kalibrací.
+- `deska2_tovarni_2026-10-14.parm` — **druhá deska** (USB sériové číslo
+  `49002F000F51333336373039`), z výroby ArduCopter 4.6.2, 1236 parametrů.
+  Proti první desce se liší jen kalibrací gyra, tlakem a počítadly.
+- `deska2_po_flashi_master_2026-10-14.parm` — druhá deska hned po nahrání
+  4.8.0-dev `113108bd`, nic nezměněno.
 
 4.7 přejmenovala část parametrů na jednotky SI (`ANGLE_MAX` → `ATC_ANGLE_MAX`
 ve stupních, `ATC_ACCEL_*_MAX` → `ATC_ACC_*_MAX`, `CIRCLE_RADIUS` →
@@ -139,8 +197,8 @@ Brát z něj jednotlivé hodnoty tak, jak je postup stavby uvádí.
 
 ## Nová verze
 
-1. Ve `flake.nix` změnit `version` a `commit` (commit je v
-   `…/stable-<verze>/MicoAir743v2/git-version.txt`).
+1. Ve `flake.nix` v `builds.stable` (nebo `builds.master`) změnit `version`,
+   `commit` a `base` (commit je v `…/MicoAir743v2/git-version.txt`).
 2. Nové hashe: `nix store prefetch-file <url>` pro `arducopter.apj`,
    `arducopter_with_bl.hex` a `uploader.py` z toho commitu.
 3. `nix build ./firmware`, pak nahrát a **parametry si předtím uložit.**
