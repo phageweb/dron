@@ -76,6 +76,14 @@ def cell_positions():
 POSITIONS = cell_positions()
 
 
+def frame_cells(X):
+    """The cells of the frame: all of them, or without the attitude when those
+    cells are blank (a frame from before 15. 10. 2026, FRAME_CHARS_V1)."""
+    if (X[O.FRAME_CHARS_V1:].mean(1) < INK_EMPTY).all():
+        return X[:O.FRAME_CHARS_V1]
+    return X
+
+
 def cells(strip):
     """Grey STRIP rows of the picture -> (FRAME_CHARS, 360) white masks at half size."""
     out = np.empty((O.FRAME_CHARS, CELL_H // 2 * CELL_W // 2), np.float32)
@@ -189,10 +197,12 @@ def calibrate(pictures, alphabet=O.ALPHABET, base=None):
     it) stay out. Returns (Glyphs, share of the clean pictures that then
     read) or None.
     """
-    X = np.asarray(pictures, np.float32)
-    P = len(X)
-    if P == 0:
+    pictures = [frame_cells(np.asarray(x, np.float32)) for x in pictures]
+    if not pictures:
         return None
+    n = max(set(len(x) for x in pictures), key=[len(x) for x in pictures].count)
+    X = np.array([x for x in pictures if len(x) == n])     # one frame length
+    P = len(X)
     flat = X.reshape(-1, X.shape[-1])
     # the shapes from a sample of the cells, then every cell to its nearest
     sample = flat[np.random.default_rng(0).choice(len(flat), min(len(flat), 20000), replace=False)]
@@ -201,10 +211,10 @@ def calibrate(pictures, alphabet=O.ALPHABET, base=None):
     lab = d.argmin(1).reshape(P, -1)
     dist = np.sqrt(np.maximum(d.min(1), 0)).reshape(P, -1)
     K = len(cen)
-    z = [0] * O.FRAME_CHARS
+    z = [0] * n
     w0 = _crc_word(z)
     col = []
-    for k in range(O.FRAME_CHARS):
+    for k in range(n):
         col.append([])
         for b in range(6):
             z[k] = 1 << b
@@ -219,7 +229,7 @@ def calibrate(pictures, alphabet=O.ALPHABET, base=None):
             continue
         seen.add(key)
         coef = [0] * 16
-        for k in range(O.FRAME_CHARS):
+        for k in range(n):
             c = int(lab[p, k])
             for b in range(6):
                 v = col[k][b]
@@ -302,10 +312,11 @@ class VideoDecoder:
         """Frame text from one picture strip; '' when the rows are not drawn, None when unreadable."""
         self.stats["pictures"] += 1
         X = cells(strip)
-        ink = X.mean(1)
-        if (ink < INK_EMPTY).all():
+        if (X.mean(1) < INK_EMPTY).all():
             self.stats["empty"] += 1
             return ""
+        X = frame_cells(X)
+        ink = X.mean(1)
         if (ink < INK_EMPTY).sum() > PARTIAL_CELLS:
             self.stats["partial"] += 1   # the rows half drawn, or torn
             return None
@@ -398,14 +409,16 @@ def write_session(dest, name, turns, recording):
     d.mkdir(parents=True, exist_ok=True)
     with open(d / "lidar.jsonl", "w") as f:
         prev = None
-        for t, codes in turns:
+        for t, codes, att in turns:
             pts = []
             for a, mm in points(codes):
                 pts += [round(a, 2), round(mm), 200]
             hz = 0 if prev is None or t <= prev else round(1 / (t - prev), 2)
             prev = t
-            f.write(json.dumps({"t_ns": int(t * 1e9), "hz": hz, "n": len(pts) // 3, "pts": pts},
-                               separators=(",", ":")) + "\n")
+            o = {"t_ns": int(t * 1e9), "hz": hz, "n": len(pts) // 3, "pts": pts}
+            if att:     # the FC's attitude when the turn was finished, degrees
+                o.update(yaw=round(att[0], 2), roll=att[1], pitch=att[2])
+            f.write(json.dumps(o, separators=(",", ":")) + "\n")
     print(f"převádím video do {d / 'video.mp4'}", file=sys.stderr)
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(recording), "-vf", "scale=1280:-2",
                     "-c:v", "libx264", "-preset", "veryfast", "-crf", "24", "-pix_fmt", "yuv420p",
@@ -462,9 +475,11 @@ def main():
     for t, strip in recording_strips(args.recording):
         codes = dec.feed(strip)
         if codes is not None:
-            turns.append((t, codes))
+            att = dec.asm.attitude
+            turns.append((t, codes, att))
             if args.print:
-                print(f"{t:.2f} " + " ".join(f"{a:.2f}:{mm:.0f}" for a, mm in points(codes)), flush=True)
+                print(f"{t:.2f} " + (f"yaw={att[0]:.1f} " if att else "")
+                      + " ".join(f"{a:.2f}:{mm:.0f}" for a, mm in points(codes)), flush=True)
     s, a = dec.stats, dec.asm.stats
     span = turns[-1][0] - turns[0][0] if len(turns) > 1 else 0
     print(f"{s['pictures']} pictures: {s['empty']} without the rows, {s['partial']} half drawn, "

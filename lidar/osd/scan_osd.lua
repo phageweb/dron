@@ -29,7 +29,10 @@ M.LOG_STEP = math.log(M.DMAX / M.DMIN) / (M.CODE_MAX - 1)
 -- the Walksnail font draws s-y like b, d, f, h, j, l, n (the same arrows),
 -- so those are < > [ ] % @ /. Keep in step with osdscan.py.
 M.ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqr<>[]%@/z-+"
-M.FRAME_CHARS = 2 + M.PER_PART * 9 // 6 + 3  -- id, part, payload, crc = 77
+-- id, part, payload, attitude, crc = 81. Before 15. 10. 2026 there was no
+-- attitude and a frame was 77; the ground reads both.
+M.ATT_CHARS = 4    -- yaw 12 bits (360/4096 deg), roll 6, pitch 6 (1.5 deg, -48..46.5)
+M.FRAME_CHARS = 2 + M.PER_PART * 9 // 6 + M.ATT_CHARS + 3
 M.COLS = 50        -- HD canvas, OSD1_TXT_RES 1
 M.ROWS = 18
 M.WRITE_MAX = 25   -- MSP DisplayPort takes at most 30 characters a write
@@ -76,9 +79,21 @@ function M.crc16(syms)
   return c
 end
 
--- frame `part` of a turn: dist[1..BINS] in mm (nil = no return) -> string
--- of FRAME_CHARS. Coded here, a part at a time, to stay inside SCR_VM_I_COUNT.
-function M.frame(scan_id, part, dist)
+-- attitude in radians (ArduPilot: yaw clockwise from north) -> the 4 symbols
+function M.attitude(yaw, roll, pitch)
+  local y = math.floor(math.deg(yaw) % 360 / 360 * 4096 + 0.5) % 4096
+  local function tilt(a)
+    local v = math.floor(math.deg(a) / 1.5 + 0.5) + 32
+    if v < 0 then v = 0 elseif v > 63 then v = 63 end
+    return v
+  end
+  return { y >> 6, y & 63, tilt(roll), tilt(pitch) }
+end
+
+-- frame `part` of a turn: dist[1..BINS] in mm (nil = no return) and its
+-- attitude symbols (nil = level, north) -> string of FRAME_CHARS. Coded
+-- here, a part at a time, to stay inside SCR_VM_I_COUNT.
+function M.frame(scan_id, part, dist, att)
   local syms = { scan_id & 63, part }
   local acc, n = 0, 0
   local first = part * M.PER_PART
@@ -91,6 +106,8 @@ function M.frame(scan_id, part, dist)
     end
     acc = acc & ((1 << n) - 1)
   end
+  att = att or { 0, 0, 32, 32 }
+  for i = 1, M.ATT_CHARS do syms[#syms + 1] = att[i] end
   local c = M.crc16(syms)
   syms[#syms + 1] = (c >> 12) & 15
   syms[#syms + 1] = (c >> 6) & 63
@@ -201,8 +218,10 @@ if prx and prx:type() ~= 15 then prx = nil end
 
 local scan_id = 0
 local turn = nil            -- the turn on screen, mm per bin
+local turn_att = nil        -- its attitude when it was finished
 local part = M.PARTS        -- its next part to show; PARTS = all shown
 local latest = nil          -- newest whole turn, shown when `turn` is out
+local latest_att = nil
 local to_prx = nil          -- newest turn not yet given to the proximity backend
 local turns, sent = 0, 0
 local last_osd, last_report = 0, 0
@@ -210,6 +229,7 @@ local last_osd, last_report = 0, 0
 local parse = M.new_parser(function(bins)
   turns = turns + 1
   latest = bins
+  latest_att = M.attitude(ahrs:get_yaw_rad(), ahrs:get_roll_rad(), ahrs:get_pitch_rad())
   to_prx = prx and bins
 end)
 
@@ -232,11 +252,11 @@ local function update()
   local now = millis():toint()
   if part >= M.PARTS and latest then
     scan_id = (scan_id + 1) & 63
-    turn, latest, part = latest, nil, 0
+    turn, turn_att, latest, part = latest, latest_att, nil, 0
   end
   if now - last_osd >= OSD_PERIOD_MS and part < M.PARTS then
     last_osd = now
-    local text = M.frame(scan_id, part, turn)
+    local text = M.frame(scan_id, part, turn, turn_att)
     part = part + 1
     osd:draw_screen()           -- the normal OSD, so the pilot keeps it
     for _, w in ipairs(M.layout(text)) do osd:write(w[1], w[2], w[3]) end

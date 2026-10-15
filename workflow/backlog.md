@@ -191,16 +191,19 @@
       `osdvideo.py` reads 479 of 479 pictures with the rows, but only 1.9
       turns/s: the VRX shows ~5.7 distinct frames/s and a third of the
       pictures lack our rows (the second DRAW). Left: in flight, and faster.
-- [ ] Send the vehicle's heading (and roll, pitch) with every turn, so the
-      ground can stitch turns into a floor plan. A 51 s walk through the flat
+- [ ] Fly or walk with the heading on: `scan_osd.lua` (81-character frames)
+      is not on the board yet, so no recording has it
+- [x] Send the vehicle's heading (and roll, pitch) with every turn, so the
+      ground can stitch turns into a floor plan. 4 characters before the CRC,
+      both lengths read; SITL 0 bad frames, and on a made-up flat the path
+      with the heading comes back within 3.3 mm against 4.3 m without. A 51 s walk through the flat
       (VRX recording of 15. 10. 2026 01:51, 96 turns) stitched by ICP alone
       shows the path but the rooms in several rotated copies: between turns
       the heading changes by 30-100 degrees, with gaps of up to 3 s. With the
       FC's yaw only the translation is left to ICP
-- [ ] Put the stitching into the repo: the ICP that made
-      `~/Videos/vrx/vrx_2026-10-15_01-51-21_mapa.png` lives only in a
-      scratchpad, and the lidar page's floor plan drops points closer than
-      0.5 m, which in these rooms is most of them
+- [x] Put the stitching into the repo: `lidar/osd/stitch.py`, `nix run
+      .#lidar-map`, point to line ICP. The lidar page's floor plan still has
+      its own, without the heading, and drops points closer than 0.5 m
 - [ ] Get more turns through: the VRX shows ~5.7 distinct frames/s, a third
       of the pictures lack our rows, and one lost frame loses the whole turn.
       Write the rows in the first DRAW too, or assemble turns from parts of

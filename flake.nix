@@ -76,6 +76,14 @@
           text = ''exec python3 ${./lidar/osd}/osdvideo.py "$@"'';
         };
 
+        # A floor plan, map.png, stitched from the turns of a recording:
+        # nix run .#lidar-map -- lidar/sessions/vrx_...
+        lidarMap = plainPkgs.writeShellApplication {
+          name = "lidar-map";
+          runtimeInputs = [ (plainPkgs.python3.withPackages (p: [ p.numpy ])) ];
+          text = ''exec python3 ${./lidar/osd}/stitch.py "$@"'';
+        };
+
         # A Lua script onto the flight controller over USB (MAVFTP), scripting restarted:
         # nix run .#fc-upload [-- other.lua]
         fcUpload = plainPkgs.writeShellApplication {
@@ -105,6 +113,7 @@
         packages.vrx = vrxView;
         packages.osdvideo = osdVideo;
         packages.fc-upload = fcUpload;
+        packages.lidar-map = lidarMap;
 
         devShells.android = pkgs.mkShell {
           packages = [ androidSdk pkgs.gradle pkgs.jdk17 pkgs.android-tools ];
@@ -118,6 +127,7 @@
         apps.vrx = flake-utils.lib.mkApp { drv = vrxView; };
         apps.osdvideo = flake-utils.lib.mkApp { drv = osdVideo; };
         apps.fc-upload = flake-utils.lib.mkApp { drv = fcUpload; };
+        apps.lidar-map = flake-utils.lib.mkApp { drv = lidarMap; };
 
         devShells.default = pkgs.mkShell {
           packages = [

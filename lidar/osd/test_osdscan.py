@@ -43,6 +43,10 @@ io.write("bad ", bad, "\n")
 for _, w in ipairs(M.layout(M.frame(1, 0, (function() local t = {} for i = 1, M.BINS do t[i] = 80 * i end return t end)()))) do
   io.write("layout ", w[1], " ", w[2], " ", w[3], "\n")
 end
+for _, a in ipairs({ { 0, 0, 0 }, { 359.99, 10, -20 }, { 123.4, -60, 60 }, { -90, 3, -3 } }) do
+  local t = M.attitude(math.rad(a[1]), math.rad(a[2]), math.rad(a[3]))
+  io.write("att ", a[1], " ", a[2], " ", a[3], " ", table.concat(t, " "), "\n")
+end
 """
 
 
@@ -91,6 +95,28 @@ class Codec(unittest.TestCase):
             back = o.distance(o.code(d))
             self.assertLess(abs(back - d) / d, 0.006, d)
 
+    def test_attitude_roundtrip(self):
+        for yaw, roll, pitch in ((0, 0, 0), (359.9, 10.5, -20.3), (123.45, -47, 46)):
+            text = o.encode(5, 2, list(range(o.BINS)), (yaw, roll, pitch))
+            y, r, p = o.decode_full(text)[3]
+            self.assertLess(abs((y - yaw + 180) % 360 - 180), 360 / 4096)
+            self.assertLessEqual(abs(r - roll), 0.75)
+            self.assertLessEqual(abs(p - pitch), 0.75)
+
+    def test_reads_v1_frames(self):
+        codes = list(range(o.BINS))
+        v1 = o.encode(4, 1, codes, att=None)
+        self.assertEqual(len(v1), o.FRAME_CHARS_V1)
+        self.assertEqual(o.decode_full(v1), (4, 1, codes[o.PER_PART:2 * o.PER_PART], None))
+        self.assertEqual(o.decode(v1 + " " * o.ATT_CHARS)[0], 4)    # as a screen reads it
+
+    def test_assembler_keeps_the_attitude(self):
+        codes = list(range(o.BINS))
+        a = o.Assembler()
+        for part in range(o.PARTS):
+            a.add(o.encode(9, part, codes, (90, 3, -1.5)))
+        self.assertEqual(a.attitude, (90.0, 3.0, -1.5))
+
     def test_assembler_needs_all_three_parts(self):
         codes = list(range(o.BINS))
         a = o.Assembler()
@@ -115,7 +141,8 @@ class LuaAgainstPython(unittest.TestCase):
         finally:
             h.unlink()
         lines = out.splitlines()
-        cls.frames = [ln for ln in lines if not ln.startswith(("bad ", "layout "))]
+        cls.frames = [ln for ln in lines if not ln.startswith(("bad ", "layout ", "att "))]
+        cls.att = [ln.split()[1:] for ln in lines if ln.startswith("att ")]
         cls.bad = int(next(ln for ln in lines if ln.startswith("bad "))[4:])
         cls.layout = [ln.split(" ", 3)[1:] for ln in lines if ln.startswith("layout ")]
         cls.turns = python_turns(SAMPLE.read_bytes())
@@ -124,6 +151,12 @@ class LuaAgainstPython(unittest.TestCase):
         self.assertGreater(len(self.turns), 0)
         self.assertEqual(len(self.frames), o.PARTS * len(self.turns))
         self.assertEqual(self.bad, 0)
+
+    def test_lua_attitude_equals_python(self):
+        self.assertEqual(len(self.att), 4)
+        for row in self.att:
+            yaw, roll, pitch = map(float, row[:3])
+            self.assertEqual(list(map(int, row[3:])), o.attitude(yaw, roll, pitch), row)
 
     def test_lua_frames_equal_python(self):
         for n, bins in enumerate(self.turns, start=1):

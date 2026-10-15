@@ -40,4 +40,4 @@ for _ in $(seq 50); do
 done
 # the script starts once the vehicle is up
 sleep 5
-python3 "$here/osdscan.py" --msp tcp:127.0.0.1:5772 --seconds "$seconds"
+python3 "$here/osdscan.py" --msp tcp:127.0.0.1:5772 --seconds "$seconds" ${OSDSCAN_ARGS:-}

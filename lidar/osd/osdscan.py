@@ -31,7 +31,9 @@ LOG_STEP = math.log(DMAX / DMIN) / (CODE_MAX - 1)
 # s-y look like b, d, f, h, j, l, n in the Walksnail font; see scan_osd.lua
 ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqr<>[]%@/z-+"
 SYM = {c: i for i, c in enumerate(ALPHABET)}
-FRAME_CHARS = 2 + PER_PART * 9 // 6 + 3
+ATT_CHARS = 4      # yaw 12 bits, roll 6, pitch 6; see attitude()
+FRAME_CHARS = 2 + PER_PART * 9 // 6 + ATT_CHARS + 3    # 81
+FRAME_CHARS_V1 = FRAME_CHARS - ATT_CHARS               # 77, before 15. 10. 2026: no attitude
 COLS, ROWS = 50, 18
 
 
@@ -57,8 +59,20 @@ def crc16(syms):
     return c
 
 
-def encode(scan_id, part, codes):
-    """Python twin of M.frame in scan_osd.lua, for tests."""
+def attitude(yaw, roll, pitch):
+    """Attitude in degrees -> the 4 symbols (Python twin of M.attitude)."""
+    y = math.floor(yaw % 360 / 360 * 4096 + 0.5) % 4096
+    tilt = lambda a: min(63, max(0, math.floor(a / 1.5 + 0.5) + 32))
+    return [y >> 6, y & 63, tilt(roll), tilt(pitch)]
+
+
+def attitude_deg(syms):
+    """The 4 symbols -> (yaw, roll, pitch) in degrees."""
+    return ((syms[0] << 6 | syms[1]) * 360 / 4096, (syms[2] - 32) * 1.5, (syms[3] - 32) * 1.5)
+
+
+def encode(scan_id, part, codes, att=(0, 0, 0)):
+    """Python twin of M.frame in scan_osd.lua, for tests. att in degrees, None = a v1 frame."""
     syms = [scan_id & 63, part]
     acc = n = 0
     for v in codes[part * PER_PART:(part + 1) * PER_PART]:
@@ -68,29 +82,44 @@ def encode(scan_id, part, codes):
             n -= 6
             syms.append((acc >> n) & 63)
         acc &= (1 << n) - 1
+    if att is not None:
+        syms += attitude(*att)
     c = crc16(syms)
     syms += [(c >> 12) & 15, (c >> 6) & 63, c & 63]
     return "".join(ALPHABET[s] for s in syms)
 
 
-def decode(text):
-    """Frame text -> (scan_id, part, [PER_PART codes]), or None if it is not one."""
-    if len(text) != FRAME_CHARS or any(ch not in SYM for ch in text):
+def decode_full(text):
+    """Frame text -> (scan_id, part, [PER_PART codes], (yaw, roll, pitch) or None), or None.
+
+    Both lengths: FRAME_CHARS, and FRAME_CHARS_V1 (no attitude), also as
+    FRAME_CHARS with the last cells blank, the way a screen reads.
+    """
+    text = text.rstrip(" ")
+    if len(text) not in (FRAME_CHARS, FRAME_CHARS_V1) or any(ch not in SYM for ch in text):
         return None
     syms = [SYM[ch] for ch in text]
     c = crc16(syms[:-3])
     if syms[-3:] != [(c >> 12) & 15, (c >> 6) & 63, c & 63] or syms[1] >= PARTS:
         return None
+    pay = 2 + PER_PART * 9 // 6
     acc = n = 0
     codes = []
-    for s in syms[2:-3]:
+    for s in syms[2:pay]:
         acc = (acc << 6) | s
         n += 6
         if n >= 9:
             n -= 9
             codes.append((acc >> n) & 511)
             acc &= (1 << n) - 1
-    return syms[0], syms[1], codes
+    att = attitude_deg(syms[pay:pay + ATT_CHARS]) if len(syms) == FRAME_CHARS else None
+    return syms[0], syms[1], codes, att
+
+
+def decode(text):
+    """Frame text -> (scan_id, part, [PER_PART codes]), or None if it is not one."""
+    f = decode_full(text)
+    return f and f[:3]
 
 
 def frame_from_screen(screen):
@@ -111,6 +140,7 @@ class Assembler:
         self.id = None
         self.stats = {"frames": 0, "bad": 0, "empty": 0, "repeats": 0, "turns": 0, "incomplete": 0}
         self.last = None
+        self.attitude = None     # (yaw, roll, pitch) of the last finished turn, None in v1
 
     def add(self, text):
         """Returns the codes of a finished turn, else None."""
@@ -121,12 +151,12 @@ class Assembler:
             self.stats["repeats"] += 1   # same frame drawn again
             return None
         self.last = text
-        f = decode(text)
+        f = decode_full(text)
         if f is None:
             self.stats["bad"] += 1
             return None
         self.stats["frames"] += 1
-        scan_id, part, codes = f
+        scan_id, part, codes, att = f
         if scan_id != self.id:
             if self.parts:
                 self.stats["incomplete"] += 1
@@ -134,6 +164,7 @@ class Assembler:
         self.parts[part] = codes
         if len(self.parts) == PARTS:
             self.stats["turns"] += 1
+            self.attitude = att
             out = sum((self.parts[p] for p in range(PARTS)), [])
             self.parts = {}
             return out
@@ -218,7 +249,9 @@ def main():
             codes = asm.add(frame_from_screen(screen))
             if codes is not None and args.print:
                 pts = [f"{(i + 0.5) * BIN_DEG:.2f}:{distance(v):.0f}" for i, v in enumerate(codes) if v]
-                print(" ".join(pts), flush=True)
+                att = asm.attitude
+                print((f"yaw={att[0]:.1f} roll={att[1]:.1f} pitch={att[2]:.1f} " if att else "")
+                      + " ".join(pts), flush=True)
     dt = time.monotonic() - t0
     s = asm.stats
     print(f"{dt:.1f} s, {draws} draws, {s['frames']} frames ok, {s['bad']} bad, "

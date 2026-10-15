@@ -384,6 +384,7 @@ class ScanView:
         self.ok = osdvideo is not None
         self.store = out_dir / "glyphs_vrx.npz"
         self.turn = None
+        self.attitude = None        # (yaw, roll, pitch) of the turn, from the FC
         self.turn_time = 0.0
         self.times = []
         if not self.ok:
@@ -402,6 +403,7 @@ class ScanView:
         if codes is not None:
             now = time.monotonic()
             self.turn, self.turn_time = osdvideo.points(codes), now
+            self.attitude = self.dec.asm.attitude
             self.times.append(now)
         while self.times and time.monotonic() - self.times[0] > 5:
             self.times.pop(0)
@@ -438,7 +440,8 @@ class ScanView:
             x = c + math.sin(r) * mm / 1000 * scale
             y = c - math.cos(r) * mm / 1000 * scale
             panel.fill(color, (int(x) - 2, int(y) - 2, 4, 4))
-        label = font.render(f"lidar  rings {rng / 4:g}/{rng / 2:g}/{rng:g} m" if self.turn
+        heading = f"  heading {self.attitude[0]:.0f}°" if self.attitude else ""
+        label = font.render(f"lidar  rings {rng / 4:g}/{rng / 2:g}/{rng:g} m{heading}" if self.turn
                             else "lidar: no turn read yet", True, (255, 255, 255))
         panel.blit(label, (8, n + 2))
         sw, sh = screen.get_size()

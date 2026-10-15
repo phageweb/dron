@@ -11,6 +11,8 @@ Proč tahle cesta a jak se změří linka: [Test linky pro sken](../../spec/real
 | `osdvideo.py` | zem | totéž z obrazu VRX: živě ve `vrx.py`, nebo ze záznamu `.mkv` |
 | `glyphs_vrx_btfl.npz` | zem | šablony znaků Betaflight fontu, jak ho kreslí VRX (výchozí, `MSP_OPTIONS 4`) |
 | `glyphs_vrx_ardu.npz` | zem | šablony ArduPilot fontu, pro záznamy do 14. 10. 2026 |
+| `stitch.py` | zem | z otáček záznamu poskládá půdorys (`map.png`), natočení z kurzu FC |
+| `test_stitch.py` | notebook | půdorys na vymyšleném bytě se známou trasou |
 | `upload.py` | notebook | nahraje skript na SD kartu FC přes USB a restartuje skripty |
 | `test_osdscan.py` | notebook | Lua kodér proti Python dekodéru na reálných datech z D500 |
 | `test_osdvideo.py` | notebook | čtení z obrazu na třech skutečných snímcích z VRX (`vrx_frames.npz`) |
@@ -28,7 +30,16 @@ python3 lidar/osd/test_osdvideo.py  # potřebuje numpy
 nix run .#vrx                       # radar vpravo v okně, klávesa L ho skryje
 nix run .#osdvideo -- ~/Videos/vrx/vrx_….mkv --session lidar/sessions
 nix run .#lidar                     # záznam je pak v seznamu „záznamy…“ i s videem
+nix run .#lidar-map -- lidar/sessions/vrx_…   # půdorys do map.png v té složce
 ```
+
+**Půdorys** (`stitch.py`) poskládá otáčky záznamu za sebe: každou natočí
+podle kurzu z FC a ICP bod–přímka dopočítá posun proti posledním 25
+otáčkám. Bez kurzu (záznamy do 15. 10. 2026) natočení odhaduje
+z tvarů a přitom se občas splete: na záznamu z 01:51 je pokoj vidět
+i v pootočených kopiích. Na vymyšleném bytě s otočkami až o 90° mezi
+otáčkami (`test_stitch.py`) je trasa s kurzem přesná na 3,3 mm, bez kurzu
+ujede o 4,3 m. Body blíž než 0,4 m vynechává, to je ten, kdo dron nese.
 
 `--session` udělá ze záznamu VRX stejný záznam, jaký dělá telefon
 (`video.mp4`, `lidar.jsonl`, `meta.json`), takže ho webová stránka lidaru
@@ -88,7 +99,7 @@ stupnice od 50 mm do 12 m s krokem asi 1,1 %. To je zhruba 1 cm na 1 m a 9 cm
 na 8 m. Úhel je v rámci lidaru, tedy od předku po směru hodinových ručiček;
 výseč *i* má střed v (*i* + 0,5) · 2,5°.
 
-Jedna otáčka se pošle jako **tři rámce** po 48 výsečích. Rámec má 77 znaků
+Jedna otáčka se pošle jako **tři rámce** po 48 výsečích. Rámec má 81 znaků
 z abecedy 64 znaků, 6 bitů na znak:
 
 ```text
@@ -99,17 +110,26 @@ Malá písmena kreslí font Walksnailu pro ArduPilot jako šipky a ikony
 a `s t u v w x y` vypadají přesně jako `b d f h j l n`. Proto jsou na jejich
 místech `< > [ ] % @ /`. Hodnoty znaků zůstaly stejné. `osd:write` z Lua
 posílá text tak, jak je, `%` tedy nic neformátuje. Ověřeno v SITL
-15. 10. 2026: 189 rámců, 0 vadných, 3,1 otáčky/s.
+15. 10. 2026: 189 rámců, 0 vadných, 3,1 otáčky/s, a znovu s kurzem
+(81 znaků): 189 rámců, 0 vadných, 3,1 otáčky/s, kurz ze SITL.
 
 | znaky | obsah |
 | --- | --- |
 | 1 | číslo otáčky 0–63 |
 | 1 | číslo rámce 0–2 |
 | 72 | 48 × 9 bitů, od nejvyšších bitů |
-| 3 | CRC-16/CCITT-FALSE přes hodnoty předchozích 74 znaků (4 + 6 + 6 bitů) |
+| 2 | kurz 0–4095 (12 bitů, 360/4096 = 0,09°, po směru hodinových ručiček od severu) |
+| 1 | náklon (roll): 32 + úhel / 1,5°, tedy −48 až +46,5° |
+| 1 | klopení (pitch), stejně |
+| 3 | CRC-16/CCITT-FALSE přes hodnoty předchozích 78 znaků (4 + 6 + 6 bitů) |
+
+Náklon a kurz jsou z AHRS letového počítače ve chvíli, kdy se otáčka
+dokončila, a všechny tři rámce otáčky nesou stejné. Do 15. 10. 2026 rámec
+náklon neměl a měl 77 znaků; `osdscan.py` i `osdvideo.py` čtou obě délky
+(staré poznají podle délky, v obraze podle čtyř prázdných buněk na konci).
 
 Na obrazovce zabírá rámec **řádky 16 a 17** plátna 50 × 18 (`OSD1_TXT_RES 1`).
-Řádek 16 je celý, na řádku 17 jsou znaky 51–77 od levého okraje. Zápis je po
+Řádek 16 je celý, na řádku 17 jsou znaky 51–81 od levého okraje. Zápis je po
 nejvýš 25 znacích, protože MSP DisplayPort jich vezme nanejvýš 30.
 
 Skript posílá jeden rámec za 100 ms, protože tak často ArduPilot překresluje
@@ -162,4 +182,5 @@ Deska proto potřebuje master: `nix run ./firmware#flash-master`, viz
   různých otáček.
 - **Rychlejší přenos:** se čtyřmi řádky by šly dva rámce na jedno překreslení,
   tedy ~6,6 otáčky/s.
-- **Náklon dronu v hlavičce**, aby šly skládat nakloněné řezy do 3D.
+- **Náklon do 3D:** roll a pitch už v rámci jsou, nakloněné řezy ale zatím
+  nic neskládá.
