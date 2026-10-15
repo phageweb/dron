@@ -31,7 +31,7 @@ class RealPictures(unittest.TestCase):
         self.assertEqual(self.strips.shape[1:], (V.STRIP[1] - V.STRIP[0], V.WIDTH))
 
     def test_reads_the_turn(self):
-        dec = V.VideoDecoder(alphabet=V.OLD_ALPHABET)
+        dec = V.VideoDecoder(V.Glyphs.load(V.GLYPHS_ARDU), V.OLD_ALPHABET)
         out = [dec.feed(s) for s in self.strips[:3]]
         self.assertEqual([dec.read(s) for s in self.strips[:3]], self.texts)
         self.assertEqual(out[:2], [None, None])
@@ -46,7 +46,7 @@ class RealPictures(unittest.TestCase):
         self.assertTrue(any(c in twins for t in self.texts for c in t))
 
     def test_learning_keeps_reading(self):
-        g = V.Glyphs.load()
+        g = V.Glyphs.load(V.GLYPHS_ARDU)
         dec = V.VideoDecoder(g, V.OLD_ALPHABET, learn=True)
         for _ in range(3):
             for s in self.strips[:3]:

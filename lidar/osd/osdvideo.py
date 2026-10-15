@@ -14,6 +14,11 @@ search).
                                          # a recording the lidar page plays, video included
     python3 lidar/osd/osdvideo.py REC.mkv --learn            # refit the glyph templates from it
 
+When the VRX draws the OSD with a different font (it did after a restart on
+15. 10. 2026: other arrows on a-o, a gauge on p), whole pictures stop
+reading; after a run of them the font is fitted anew from the pictures
+themselves, see calibrate(). --learn keeps the result.
+
 Recordings made before the alphabet change of 15. 10. 2026 need --old-alphabet.
 Needs numpy and ffmpeg.
 """
@@ -35,14 +40,23 @@ WIDTH, HEIGHT = 1920, 1080
 # recording of 14. 10. 2026: 36 x 54 pixel cells.
 X0, DX, Y0, DY = 27.3, 36.0, 36, 54
 CELL_W, CELL_H = 36, 40         # the part of a cell that is looked at
-WHITE = 200                     # glyphs are white with a dark outline
+WHITE = 200                     # glyphs are bright with a dark outline (brightest channel)
 ROWS_USED = -(-O.FRAME_CHARS // O.COLS)
 STRIP = (Y0 + DY * (O.ROWS - ROWS_USED) - CELL_H // 2,
          Y0 + DY * (O.ROWS - 1) + CELL_H // 2)   # picture rows the frame is in
 INK_EMPTY = 0.01                # less white than this in a cell: nothing drawn
+PARTIAL_CELLS = 8               # more empty cells than this: the rows are half drawn. Fewer
+                                # can be a glyph with no ink in the middle (Betaflight font)
 MAX_UNSURE = 22                 # cells that get a second guess
 LEARN_RATE = 0.02
-GLYPHS = Path(__file__).with_name("glyphs_vrx.npz")
+CLUSTER_RADIUS = 1.5            # cells of one glyph lie closer than this (L2 of the masks)
+RECALIBRATE_AFTER = 20          # unreadable whole pictures in a row: the font has changed
+CALIBRATE_PICTURES = 60         # distinct pictures collected for a new calibration
+# The VRX draws the OSD with the font of the FC it thinks it talks to. With
+# MSP_OPTIONS 4 ArduPilot says Betaflight, so the Betaflight font it is;
+# the ArduPilot one is for recordings made before 15. 10. 2026.
+GLYPHS = Path(__file__).with_name("glyphs_vrx_btfl.npz")
+GLYPHS_ARDU = Path(__file__).with_name("glyphs_vrx_ardu.npz")
 
 # Before 15. 10. 2026 the alphabet ended in s-y, which the Walksnail font
 # draws exactly like b, d, f, h, j, l, n (the same arrows).
@@ -71,9 +85,13 @@ def cells(strip):
     return out
 
 
-def grey_strip_from_rgb(rgb):
-    """(w, h, 3) or (h, w, 3) RGB of the strip rows -> grey like ffmpeg's."""
-    return (rgb[..., 0] * 0.299 + rgb[..., 1] * 0.587 + rgb[..., 2] * 0.114).astype(np.uint8)
+def strip_from_rgb(rgb):
+    """RGB of the strip rows -> the brightest channel of each pixel.
+
+    Not the luma: the Betaflight font has red icons (a gauge, a
+    thermometer), whose luma is lower than a lit wall's.
+    """
+    return rgb.max(axis=-1)
 
 
 class Glyphs:
@@ -134,18 +152,151 @@ def _crc_word(syms):
     return O.crc16(syms[:-3]) ^ ((syms[-3] << 12) | (syms[-2] << 6) | syms[-1])
 
 
+def _cluster(X, radius=CLUSTER_RADIUS):
+    """Cells of the same glyph together: (label per cell, centres, distance to it)."""
+    cen, n = [], []
+    lab = np.empty(len(X), np.int64)
+    for i, x in enumerate(X):
+        if cen:
+            C = np.array(cen)
+            d = np.sqrt(((C - x) ** 2).sum(1))
+            j = int(d.argmin())
+            if d[j] < radius:
+                n[j] += 1
+                cen[j] = cen[j] + (x - cen[j]) / n[j]
+                lab[i] = j
+                continue
+        cen.append(x.astype(np.float32).copy())
+        n.append(1)
+        lab[i] = len(cen) - 1
+    # A glyph turns up again and again; a cell over a busy background is a
+    # shape of its own. Those are dropped, so its picture stays out.
+    n = np.array(n)
+    C = np.array(cen)[n >= max(3, len(X) // 2000)]
+    d = (X * X).sum(1)[:, None] - 2 * X @ C.T + (C * C).sum(1)[None]
+    lab = d.argmin(1)
+    return lab, C, np.sqrt(np.maximum(d.min(1), 0))
+
+
+def calibrate(pictures, alphabet=O.ALPHABET, base=None):
+    """Glyph templates from frame rows alone, for a font never seen before.
+
+    pictures: cells() of pictures with all the frame's cells drawn. The cells
+    are grouped by shape; which character each shape is follows from the
+    CRC, which is linear over GF(2): every picture gives 16 equations in the
+    6 bits of every shape, and some 30 distinct pictures pin all of them
+    down. Pictures with a cell unlike every shape (a busy background behind
+    it) stay out. Returns (Glyphs, share of the clean pictures that then
+    read) or None.
+    """
+    X = np.asarray(pictures, np.float32)
+    P = len(X)
+    if P == 0:
+        return None
+    flat = X.reshape(-1, X.shape[-1])
+    # the shapes from a sample of the cells, then every cell to its nearest
+    sample = flat[np.random.default_rng(0).choice(len(flat), min(len(flat), 20000), replace=False)]
+    _, cen, _ = _cluster(sample)
+    d = (flat * flat).sum(1)[:, None] - 2 * flat @ cen.T + (cen * cen).sum(1)[None]
+    lab = d.argmin(1).reshape(P, -1)
+    dist = np.sqrt(np.maximum(d.min(1), 0)).reshape(P, -1)
+    K = len(cen)
+    z = [0] * O.FRAME_CHARS
+    w0 = _crc_word(z)
+    col = []
+    for k in range(O.FRAME_CHARS):
+        col.append([])
+        for b in range(6):
+            z[k] = 1 << b
+            col[k].append(_crc_word(z) ^ w0)
+        z[k] = 0
+    piv = {}
+    seen = set()
+    clean = [p for p in range(P) if dist[p].max() <= 2 * CLUSTER_RADIUS]
+    for p in clean:
+        key = lab[p].tobytes()
+        if key in seen:
+            continue
+        seen.add(key)
+        coef = [0] * 16
+        for k in range(O.FRAME_CHARS):
+            c = int(lab[p, k])
+            for b in range(6):
+                v = col[k][b]
+                for e in range(16):
+                    if v >> e & 1:
+                        coef[e] ^= 1 << (6 * c + b)
+        for e in range(16):
+            m, r = coef[e], w0 >> e & 1
+            for q in sorted(piv, reverse=True):
+                if m >> q & 1:
+                    m ^= piv[q][0]
+                    r ^= piv[q][1]
+            if m:
+                piv[m.bit_length() - 1] = (m, r)
+    sol = 0
+    for q in sorted(piv):
+        m, r = piv[q]
+        if r ^ (bin(m & sol).count("1") & 1):
+            sol |= 1 << q
+    fixed = [all(6 * c + b in piv for b in range(6)) for c in range(K)]
+    char = [alphabet[(sol >> (6 * c)) & 63] if fixed[c] else None for c in range(K)]
+    good = sum(1 for p in clean if all(char[c] for c in lab[p])
+               and O.decode("".join(O.ALPHABET[alphabet.index(char[c])] for c in lab[p])))
+    if not clean or good < 0.8 * len(clean):
+        return None
+    g = base or Glyphs.load()
+    chars, tmpl, cnt = list(g.chars), g.tmpl.copy(), g.seen.copy()
+    counts = np.bincount(lab.ravel(), minlength=K)
+    for ch in set(c for c in char if c):
+        key = LOOKALIKE.get(ch, ch) if alphabet == OLD_ALPHABET else ch
+        ks = [c for c in range(K) if char[c] == ch]
+        w = counts[ks].astype(np.float32)
+        t = (cen[ks] * w[:, None]).sum(0) / w.sum()
+        if key in chars:
+            tmpl[chars.index(key)], cnt[chars.index(key)] = t, int(w.sum())
+        else:
+            chars.append(key)
+            tmpl = np.vstack([tmpl, t])
+            cnt = np.append(cnt, int(w.sum()))
+    return Glyphs("".join(chars), tmpl, cnt), good / len(clean)
+
+
 class VideoDecoder:
     """Picture strips in, finished turns out."""
 
-    def __init__(self, glyphs=None, alphabet=O.ALPHABET, learn=False):
-        self.glyphs = glyphs or Glyphs.load()
+    def __init__(self, glyphs=None, alphabet=O.ALPHABET, learn=False, recalibrate=True):
         self.alphabet = alphabet
         self.learn = learn
-        self.glyph_of = np.array([self.glyphs.index(LOOKALIKE.get(c, c) if alphabet == OLD_ALPHABET else c)
-                                  for c in alphabet])
+        self.recalibrate = recalibrate
+        self.use(glyphs or Glyphs.load())
         self.asm = O.Assembler()
         self.last_codes = {}
-        self.stats = {"pictures": 0, "empty": 0, "partial": 0, "unread": 0, "read": 0, "guessed": 0}
+        self.unread_run = 0
+        self.pending = []           # whole pictures kept for a calibration
+        self.stats = {"pictures": 0, "empty": 0, "partial": 0, "unread": 0, "read": 0, "guessed": 0,
+                      "calibrated": 0}
+
+    def use(self, glyphs):
+        self.glyphs = glyphs
+        self.glyph_of = np.array([glyphs.index(LOOKALIKE.get(c, c) if self.alphabet == OLD_ALPHABET else c)
+                                  for c in self.alphabet])
+
+    def _unreadable(self, X):
+        """A whole picture that did not read; enough of them in a row and the font is fitted anew."""
+        self.stats["unread"] += 1
+        self.unread_run += 1
+        if not self.recalibrate or self.unread_run < RECALIBRATE_AFTER:
+            return
+        if not self.pending or (X != self.pending[-1]).any():
+            self.pending.append(X)
+        if len(self.pending) >= CALIBRATE_PICTURES:
+            got = calibrate(self.pending, self.alphabet, self.glyphs)
+            self.pending = []
+            if got:
+                self.use(got[0])
+                self.stats["calibrated"] += 1
+                self.unread_run = 0
 
     def read(self, strip):
         """Frame text from one picture strip; '' when the rows are not drawn, None when unreadable."""
@@ -155,7 +306,7 @@ class VideoDecoder:
         if (ink < INK_EMPTY).all():
             self.stats["empty"] += 1
             return ""
-        if (ink < INK_EMPTY).any():
+        if (ink < INK_EMPTY).sum() > PARTIAL_CELLS:
             self.stats["partial"] += 1   # the rows half drawn, or torn
             return None
         T = self.glyphs.tmpl[self.glyph_of]
@@ -189,10 +340,12 @@ class VideoDecoder:
             cont = 0 if prev is None else int(np.abs(np.array(f[2]) - prev).sum())
             cands.append((round(cost, 1), cont, mask != 0, text, s2, f))
         if not cands:
-            self.stats["unread"] += 1
+            self._unreadable(X)
             return None
         cands.sort(key=lambda c: c[:2])
         _, _, guessed, text, s2, f = cands[0]
+        self.unread_run = 0
+        self.pending = []
         self.stats["read"] += 1
         self.stats["guessed"] += guessed
         self.last_codes[f[1]] = np.array(f[2])
@@ -218,23 +371,23 @@ def points(codes):
 
 
 def recording_strips(path):
-    """(seconds from the first frame, grey strip) for every picture of a recording."""
+    """(seconds from the first frame, strip) for every picture of a recording."""
     pts = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0",
                           "-show_entries", "packet=pts_time", "-of", "csv=p=0", str(path)],
                          capture_output=True, text=True, check=True).stdout.split()
     times = sorted(float(t) for t in pts if t not in ("", "N/A"))
     h = STRIP[1] - STRIP[0]
     proc = subprocess.Popen(["ffmpeg", "-v", "fatal", "-i", str(path), "-fps_mode", "passthrough",
-                             "-vf", f"crop={WIDTH}:{h}:0:{STRIP[0]}", "-f", "rawvideo", "-pix_fmt", "gray", "-"],
+                             "-vf", f"crop={WIDTH}:{h}:0:{STRIP[0]}", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
                             stdout=subprocess.PIPE)
     n = 0
-    size = WIDTH * h
+    size = WIDTH * h * 3
     while True:
         buf = proc.stdout.read(size)
         if len(buf) < size:
             break
         t = times[n] - times[0] if n < len(times) else times[-1] - times[0]
-        yield t, np.frombuffer(buf, np.uint8).reshape(h, WIDTH)
+        yield t, strip_from_rgb(np.frombuffer(buf, np.uint8).reshape(h, WIDTH, 3))
         n += 1
     proc.wait()
 
@@ -264,6 +417,30 @@ def write_session(dest, name, turns, recording):
     return d
 
 
+def fit_recording(path, glyphs, alphabet, pictures=2000):
+    """Fit the font to the recording first when most of its pictures do not read."""
+    dec = VideoDecoder(glyphs, alphabet, recalibrate=False)
+    whole, read = [], 0
+    for _, strip in recording_strips(path):
+        X = cells(strip)
+        empty = (X.mean(1) < INK_EMPTY).sum()
+        if empty <= PARTIAL_CELLS and empty < len(X):
+            if len(whole) < 100:
+                read += dec.read(strip) is not None
+            whole.append(np.round(X * 4).astype(np.uint8))   # cells are quarters
+            if len(whole) >= pictures:
+                break
+    if not whole or read >= min(len(whole), 100) / 2:
+        return None
+    got = calibrate([w / 4 for w in whole], alphabet, glyphs)
+    if got is None:
+        print("the font does not read and could not be fitted", file=sys.stderr)
+        return None
+    print(f"font fitted to this recording ({len(whole)} pictures, {got[1]:.0%} of the clean ones read)",
+          file=sys.stderr)
+    return got[0]
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("recording", type=Path, help=".mkv from vrx.py")
@@ -275,7 +452,12 @@ def main():
     ap.add_argument("--print", action="store_true", help="print every turn as angle:mm pairs")
     args = ap.parse_args()
 
-    dec = VideoDecoder(Glyphs.load(args.glyphs), OLD_ALPHABET if args.old_alphabet else O.ALPHABET, args.learn)
+    alphabet = OLD_ALPHABET if args.old_alphabet else O.ALPHABET
+    glyphs = Glyphs.load(args.glyphs)
+    fitted = fit_recording(args.recording, glyphs, alphabet)
+    if fitted:
+        glyphs = fitted
+    dec = VideoDecoder(glyphs, alphabet, args.learn)
     turns = []
     for t, strip in recording_strips(args.recording):
         codes = dec.feed(strip)
@@ -289,7 +471,8 @@ def main():
           f"{s['read']} read ({s['guessed']} with a second guess), {s['unread']} unreadable; "
           f"{a['frames']} frames, {a['turns']} turns"
           + (f" in {span:.1f} s ({(len(turns) - 1) / span:.2f}/s)" if span else "")
-          + f", {a['incomplete']} incomplete", file=sys.stderr)
+          + f", {a['incomplete']} incomplete"
+          + (f"; font fitted anew {s['calibrated']}x" if s["calibrated"] else ""), file=sys.stderr)
     if args.learn:
         dec.glyphs.save(args.glyphs)
         print(f"glyphs saved to {args.glyphs}", file=sys.stderr)

@@ -398,7 +398,7 @@ class ScanView:
         if not self.ok or frame.get_size() != (WIDTH, HEIGHT):
             return
         rgb = pygame.surfarray.array3d(frame.subsurface(self.strip)).transpose(1, 0, 2)
-        codes = self.dec.feed(osdvideo.grey_strip_from_rgb(rgb))
+        codes = self.dec.feed(osdvideo.strip_from_rgb(rgb))
         if codes is not None:
             now = time.monotonic()
             self.turn, self.turn_time = osdvideo.points(codes), now

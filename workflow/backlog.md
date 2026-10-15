@@ -191,6 +191,34 @@
       `osdvideo.py` reads 479 of 479 pictures with the rows, but only 1.9
       turns/s: the VRX shows ~5.7 distinct frames/s and a third of the
       pictures lack our rows (the second DRAW). Left: in flight, and faster.
+- [ ] Send the vehicle's heading (and roll, pitch) with every turn, so the
+      ground can stitch turns into a floor plan. A 51 s walk through the flat
+      (VRX recording of 15. 10. 2026 01:51, 96 turns) stitched by ICP alone
+      shows the path but the rooms in several rotated copies: between turns
+      the heading changes by 30-100 degrees, with gaps of up to 3 s. With the
+      FC's yaw only the translation is left to ICP
+- [ ] Put the stitching into the repo: the ICP that made
+      `~/Videos/vrx/vrx_2026-10-15_01-51-21_mapa.png` lives only in a
+      scratchpad, and the lidar page's floor plan drops points closer than
+      0.5 m, which in these rooms is most of them
+- [ ] Get more turns through: the VRX shows ~5.7 distinct frames/s, a third
+      of the pictures lack our rows, and one lost frame loses the whole turn.
+      Write the rows in the first DRAW too, or assemble turns from parts of
+      neighbouring turns
+- [ ] Read pictures with a bright background (the camera on a lit ceiling or
+      the laptop screen): treat a cell unlike every glyph as an erasure, six
+      unknown bits the CRC can solve for, instead of losing the picture
+- [ ] Make `vrx.py` notice a capture that delivers no frames (the VRX's UVC
+      wedged, `probe control -71`) and say so in the window, instead of a
+      frozen picture
+- [ ] Why the VRX switched to the Betaflight font after a restart on
+      15. 10. 2026 is not known; `MSP_OPTIONS 4` pins it. An ArduPilot font
+      on an SD card in the VRX (`userfont/`) is the other way, untried: the
+      VRX has no card
+- [x] Read the scan out of the VRX picture (`lidar/osd/osdvideo.py`, live in
+      `vrx.py`, recordings into the lidar page with `--session`). The
+      alphabet lost s-y, which the Walksnail font draws like b, d, f, h, j,
+      l, n; the decoder fits an unknown font from the CRC alone
 - [x] Write both ends of the OSD link before the VTX arrives (`lidar/osd/`).
       `scan_osd.lua` bins each turn into 144 x 2.5 degrees, codes the distance
       in 9 logarithmic bits and writes three 77-character CRC-checked frames a

@@ -150,6 +150,17 @@ Tím je zodpovězená hlavní otázka fáze 2 v
 překryv VRX v UVC je. Že tam bude i OSD z letového počítače, se ověří
 až s Lite+ a MSP DisplayPort.
 
+## Když VRX nedává obraz (15. 10. 2026)
+
+Když se VRX restartuje se zapojeným USB, nebo se kabel pohne, UVC ve VRX
+se zasekne. Kernel pak každou sekundu hlásí
+`uvcvideo: Failed to set UVC probe control : -71` (nebo `-110`) a ffmpeg
+v `vrx.py` visí bez jediného snímku. Restart programu ani nové otevření
+zařízení nepomůže. Pomohlo jen **vytáhnout USB-C, nechat VRX úplně
+nabootovat a teprve pak kabel zapojit**, přímo do notebooku, ne přes hub.
+Při `device not accepting address … error -71` už notebook VRX ani
+nepřipojí; to byl kabel nebo port.
+
 ## Lite+ přímo na USB (13. 10. 2026)
 
 USB `1d76:0101` „Vendor SerialGadget“, sériové číslo `CX24`, uvnitř Linux

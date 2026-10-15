@@ -9,7 +9,8 @@ Proč tahle cesta a jak se změří linka: [Test linky pro sken](../../spec/real
 | `scan_osd.lua` | H743, ArduPilot Lua | čte LD06/D500, skládá otáčky, píše rámce do OSD, plní proximity backend |
 | `osdscan.py` | zem | z MSP DisplayPort složí plátno, dekóduje rámce a skládá otáčky |
 | `osdvideo.py` | zem | totéž z obrazu VRX: živě ve `vrx.py`, nebo ze záznamu `.mkv` |
-| `glyphs_vrx.npz` | zem | šablony znaků fontu VRX, naučené ze záznamu 14. 10. 2026 |
+| `glyphs_vrx_btfl.npz` | zem | šablony znaků Betaflight fontu, jak ho kreslí VRX (výchozí, `MSP_OPTIONS 4`) |
+| `glyphs_vrx_ardu.npz` | zem | šablony ArduPilot fontu, pro záznamy do 14. 10. 2026 |
 | `upload.py` | notebook | nahraje skript na SD kartu FC přes USB a restartuje skripty |
 | `test_osdscan.py` | notebook | Lua kodér proti Python dekodéru na reálných datech z D500 |
 | `test_osdvideo.py` | notebook | čtení z obrazu na třech skutečných snímcích z VRX (`vrx_frames.npz`) |
@@ -44,14 +45,40 @@ rozhodne CRC: je lineární nad GF(2), takže stačí vyřešit soustavu
 šablony průběžně doučují. `vrx.py` si naučené šablony ukládá do
 `~/Videos/vrx/glyphs_vrx.npz`, `osdvideo.py --learn` je přepočítá ze záznamu.
 
+### Font ve VRX
+
+VRX kreslí OSD fontem podle toho, za jaký FC se ArduPilot vydává. 15. 10.
+2026 po restartu VRX začal kreslit **Betaflight font**, i když FC hlásil
+ArduPilot: šipky na jiných písmenech, `p` budík, `z` teploměr, místo
+desetinných čísel žluté čárky. Pořadí zapnutí FC a VTX to nespravilo.
+`MSP_OPTIONS 4` (EnableBTFLFonts) to vyřešilo: ArduPilot se pak VTX hlásí
+jako `BTFL` a ikony posílá na místa Betaflight fontu, takže OSD je čisté
+a font je pokaždé stejný.
+
+V Betaflight fontu jsou některé znaky abecedy barevné ikony nebo skoro
+prázdné (dvě čárky v rozích). Dekodér proto bere nejjasnější barevný
+kanál, ne jas, a snímek zahodí jako nedokreslený až při víc než 8 prázdných
+buňkách.
+
+**Kalibrace fontu.** Když se nepřečte většina snímků, `osdvideo.py` font
+nejdřív zkalibruje z celého záznamu: buňky seskupí podle tvaru a který tvar
+je který znak, spočítá z CRC jako soustavu rovnic nad GF(2), každý snímek
+dá 16 rovnic. Nic o fontu předem vědět nemusí. Na Betaflight fontu z ~250
+různých snímků vychází jednoznačně skoro všech 72 tvarů a přečte se 100 %
+čistých snímků. `vrx.py` totéž dělá živě po 20 nečitelných snímcích za sebou.
+
+Na záznamu z 15. 10. 2026 01:51 (51 s chůze bytem) se přečetlo 871 snímků
+a 96 otáček (1,9/s). Nečitelné zůstávají snímky, kde je za písmem jasné
+pozadí: kamera mířící na obrazovku notebooku nebo na osvětlený strop.
+
 Na záznamu z 14. 10. 2026 (92 s, stará abeceda, dron na stole) se přečetlo
 1 313 snímků s řádky a 3 ne. Vyšlo z nich 542 různých rámců a 130 celých
 otáček za 68 s. Jeden snímek trvá v `vrx.py` asi 10 ms.
 
 S novou abecedou (`scan_osd.lua` nahraný přes MAVFTP 15. 10. 2026, 25 s
-z VRX): přečteno 479 snímků s řádky ze 479, druhý odhad potřebovalo jen 11
-z nich a po doučení šablon žádný. Vyšlo 197 rámců a 47 otáček (1,9/s).
-Šablony v `glyphs_vrx.npz` jsou z obou záznamů.
+z VRX, ještě ArduPilot font): přečteno 479 snímků s řádky ze 479, druhý
+odhad potřebovalo jen 11 z nich a po doučení šablon žádný. Vyšlo 197 rámců
+a 47 otáček (1,9/s).
 
 ## Formát
 
@@ -96,6 +123,7 @@ SCR_ENABLE 1
 SERIAL5_PROTOCOL 28   SERIAL5_BAUD 230    lidar
 SERIAL2_PROTOCOL 42   SERIAL2_BAUD 115    HD VTX
 OSD_TYPE 5            OSD1_TXT_RES 1
+MSP_OPTIONS 4                             VRX pak kreslí vždy Betaflight font
 PRX1_TYPE 15                              vyhýbání ze stejných dat
 ```
 
