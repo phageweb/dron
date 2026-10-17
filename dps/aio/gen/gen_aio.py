@@ -349,8 +349,8 @@ def new_sheet(name, fname, x, y, w, pins_left, pins_right, page):
     return su
 
 
-VTX_IF = ["VTX_EN", "VTX_TX", "VTX_RX", "RC_RX", "LIDAR_TX", "LIDAR_PWM", "SDA", "SCL"]
-MCU_LEFT = ["IMU_SPI{SCK,MOSI,MISO}", "IMU_CS", "IMU_INT", "ESC_CURRENT", "SDA", "SCL"]
+VTX_IF = ["VTX_EN", "VTX_TX", "VTX_RX", "RC_RX", "LIDAR_TX", "LIDAR_PWM"]
+MCU_LEFT = ["IMU_SPI{SCK,MOSI,MISO}", "IMU_CS", "IMU_INT", "ESC_CURRENT"]
 MCU_RIGHT = ["MOTOR1", "MOTOR2", "MOTOR3", "MOTOR4", "VTX_EN", "VTX_TX", "VTX_RX", "RC_RX", "LIDAR_TX", "LIDAR_PWM"]
 vtx_uuid = new_sheet("VTX a LD06", "vtx.kicad_sch", 236.22, 210.82, 40.64, VTX_IF, [], 8)
 mcu_uuid = new_sheet("MCU H743", "mcu_h743.kicad_sch", 132.08, 101.6, 50.8, MCU_LEFT, MCU_RIGHT, 9)
@@ -362,7 +362,7 @@ for i, net in enumerate(["+BATT", "CSA+", "+4v5", "+10V", "+1.8V_GYRO"]):
 
 root.text("Baterie a motory: U24 = obrys desky s pady (OpenAIO). Obrys 35,4 mm, díry ⌀3 na 25,5: rám Pavo20 má 26 × 26, M2 projde s vůlí 0,15 mm.", 20.32, 25.4, 1.8)
 root.text("Proud všech ESC: Rsense2 0,2 mΩ + INA186A3 (100 V/V) = 20 mV/A → ESC_CURRENT do ADC H743.", 20.32, 33.02, 1.8)
-root.text("Převzato beze změny: 4× esc_channel (OpenESC kanál), fc_power (10 V budiče + 5 V + 3,3 V + 1,8 V gyro), fc_imu (BMI270).\nNové: vtx.kicad_sch (spínaných 10 V pro HD VTX, INA226, LD06), mcu_h743.kicad_sch (H743, senzory, microSD, USB, konektory, LED, bzučák).", 20.32, 236.22, 1.8)
+root.text("Převzato beze změny: 4× esc_channel (OpenESC kanál), fc_power (10 V budiče + 5 V + 3,3 V + 1,8 V gyro), fc_imu (BMI270).\nNové: vtx.kicad_sch (spínaných 10 V pro HD VTX, LD06), mcu_h743.kicad_sch (H743, senzory, microSD, USB, konektory, LED, bzučák).", 20.32, 236.22, 1.8)
 root.write("aio.kicad_sch", "AIO H743 pro Pavo20 Pro", ROOT, comments=[CERN, "Licence: CERN-OHL-S-2.0"])
 
 # ------------------------------------------------------------------ VTX sheet
@@ -374,36 +374,29 @@ v.part("U201", "lib:LMR51420YDDCR", "LMR51430YFDDCR", "lib:SOT-23-6_L2.9-W1.6-P0
        {"1": "GND", "2": "SW_VTX", "3": "+BATT", "4": "FB_VTX", "5": "EN_VTX", "6": "CB_VTX"})
 v.part("C202", "lib:C", "100n", C0201, "C76939", 114.3, 38.1, {"1": "SW_VTX", "2": "CB_VTX"})
 v.part("L201", "lib:XRTC303020D4R7MBCA", "XRTC303020D4R7MBCA", "lib:IND-SMD_L3.0-W3.0_AFE303020S", "C39846837",
-       127, 50.8, {"1": "SW_VTX", "2": "+10V_SW"})
-v.part("R201", "lib:R", "100k", R0201, "C270364", 144.78, 50.8, {"1": "FB_VTX", "2": "+10V_SW"})
+       127, 50.8, {"1": "SW_VTX", "2": "+10V_VTX"})
+v.part("R201", "lib:R", "100k", R0201, "C270364", 144.78, 50.8, {"1": "FB_VTX", "2": "+10V_VTX"})
 v.part("R202", "lib:R", "6.49k", R0201, "C2107920", 154.94, 50.8, {"1": "FB_VTX", "2": "GND"})
-v.part("C203", "lib:C", "22uF", "lib:C_0603_1608Metric", "C2762594", 165.1, 50.8, {"1": "+10V_SW", "2": "GND"})
+v.part("C203", "lib:C", "22uF", "lib:C_0603_1608Metric", "C2762594", 165.1, 50.8, {"1": "+10V_VTX", "2": "GND"})
 v.part("R203", "lib:R", "1k", R0201, "", 50.8, 81.28, {"1": "VTX_EN", "2": "EN_VTX"})
 v.part("R204", "lib:R", "100k", R0201, "C270364", 63.5, 81.28, {"1": "EN_VTX", "2": "GND"})
-v.part("JP201", "Jumper:SolderJumper_2_Open", "VTX vždy zapnutý", "Jumper:SolderJumper-2_P1.3mm_Open_Pad1.0x1.5mm", "",
-       86.36, 81.28, {"1": "EN_VTX", "2": "+5V"})
-v.part("R205", "lib:R", "20m 1%", "Resistor_SMD:R_0805_2012Metric", "", 190.5, 50.8, {"1": "+10V_SW", "2": "+10V_VTX"})
-v.part("U202", "Sensor_Energy:INA226", "INA226AIDGSR", "Package_SO:TSSOP-10_3x3mm_P0.5mm", "", 226.06, 50.8,
-       {"10": "+10V_SW", "9": "+10V_VTX", "8": "+10V_VTX", "6": "+3.3V", "7": "GND", "2": "GND", "1": "GND",
-        "4": "SDA", "5": "SCL", "3": None})
-v.part("C204", "lib:C", "100n", C0201, "C76939", 254, 50.8, {"1": "+3.3V", "2": "GND"})
 v.part("J201", "Connector_Generic:Conn_01x06", "HD VTX",
        "Connector_JST:JST_SH_SM06B-SRSS-TB_1x06-1MP_P1.00mm_Horizontal", "C160405", 203.2, 116.84,
        {"1": "+10V_VTX", "2": "GND", "3": "VTX_TX", "4": "VTX_RX", "5": "GND", "6": "VTX_SBUS"})
 # LD06 on pads as on MicoAir (no room for the ZH1.5 connector): its 5V and GND go to TP320/TP321
-v.part("TP201", "lib:TestPoint", "LD06 TX", "lib:TestPoint_Pad_D1.0mm", "", 203.2, 162.56, {"1": "LIDAR_TX"})
-v.part("TP202", "lib:TestPoint", "LD06 PWM", "lib:TestPoint_Pad_D1.0mm", "", 215.9, 162.56, {"1": "LIDAR_PWM"})
+v.part("TP201", "lib:TestPoint", "LD06 TX", "lib:Pad_1.0x1.4mm", "", 203.2, 162.56, {"1": "LIDAR_TX"})
+v.part("TP202", "lib:TestPoint", "LD06 PWM", "lib:Pad_1.0x1.4mm", "", 215.9, 162.56, {"1": "LIDAR_PWM"})
 v.part("R206", "lib:R", "0R", R0201, "", 231.14, 162.56, {"1": "LIDAR_PWM", "2": "GND"})
 # J201 pin 6 (SBUS from a DJI unit) and the XR1 Nano's TX both want USART6 RX: open by default
 v.part("JP202", "Jumper:SolderJumper_2_Open", "SBUS z DJI", "Jumper:SolderJumper-2_P1.3mm_Open_Pad1.0x1.5mm", "",
        238.76, 132.08, {"1": "VTX_SBUS", "2": "RC_RX"})
-for i, net in enumerate(["+10V_SW", "+10V_VTX", "+5V"]):
+for i, net in enumerate(["+10V_VTX"]):
     v.place(f"#FLG2{i:02d}", "power:PWR_FLAG", "PWR_FLAG", "", "", 50.8 + 15.24 * i, 190.5, power=True,
             ref_at=(50.8 + 15.24 * i, 187), val_at=(50.8 + 15.24 * i, 187.96))
     v.attach(net, 50.8 + 15.24 * i, 190.5, (0, 1), [])
 v.text("Spínaných 10 V pro HD VTX: kopie U3 z fc_power\n(LMR51430, 100k/6,49k = 9,84 V, 3 A). Vlastní buck, protože\n+10V z fc_power napájí budiče ESC a vypínat se nesmí.\nDimenzováno na DJI O3/O4 (12–16 W ≈ 1,6 A).", 38.1, 20.32, 1.8)
-v.text("EN: výchozí vypnuto (R204), MCU spíná přes VTX_EN\n(RELAYn_PIN, RELAYn_DEFAULT 1). JP201 = trvale zapnuto.", 99.06, 83.82)
-v.text("Proud VTX: R205 20 mΩ, INA226 0x40.\nArduPilot: BATT2_MONITOR 21, BATT2_SHUNT 0.02, BATT2_MAX_AMPS 3.\nPull-upy SDA/SCL patří k MCU (mcu_h743), tady nejsou.", 182.88, 20.32, 1.8)
+v.text("EN: výchozí vypnuto (R204), MCU spíná přes VTX_EN\n(RELAYn_PIN, RELAYn_DEFAULT 1).", 99.06, 83.82)
+v.text("Bez měření proudu VTX, jako MicoAir: INA226 a bočník se na desku nevešly (18. 10.).", 182.88, 20.32, 1.8)
 v.text("HD VTX, pinout DJI jako MicoAir: 1 napájení, 2 GND, 3 TX2, 4 RX2, 5 GND, 6 SBUS z DJI. Pro Lite+ redukce 6P → 4P.\nJP202 rozpojená: RX6 patří přijímači na J305. Zapájet jen pro DJI s SBUS a bez přijímače.", 177.8, 101.6, 1.8)
 v.text("LD06/D500 na pady jako u MicoAiru (ZH1.5 se nevešel): TP201 Tx lidaru, TP202 PWM, 5V a GND na TP320/TP321 (rozběh 540 mA).\nPWM uzemněn přes R206; bez něj ho řídí MCU přes LIDAR_PWM.", 177.8, 152.4, 1.8)
 v.write("vtx.kicad_sch", "VTX a LD06", uid(), comments=["Buck: kopie U3 z OpenAIO fc_power (CERN-OHL-S-2.0)", "Licence: CERN-OHL-S-2.0"])
@@ -412,7 +405,7 @@ v.write("vtx.kicad_sch", "VTX a LD06", uid(), comments=["Buck: kopie U3 z OpenAI
 # Pin map: hwdef MicoAir743v2 (same MCU, ArduPilot target exists). Balls: KiCad
 # stock symbol STM32H743VIHx. Supply and decoupling: ST AN4938 rev 6, sec. 2.2.
 rp_src = parse(open(f"{SRC}/fc_rp2350a.kicad_sch").read())
-LIB.update({s[1]: s for s in first(rp_src, "lib_symbols")[1:] if s[1] == "lib:TYPE-C16PQTWT"})
+LIB.update({s[1]: s for s in first(rp_src, "lib_symbols")[1:] if s[1] in ("lib:TYPE-C16PQTWT", "lib:DMN1150UFB-7B")})
 bb_src = parse(open(f"{SRC}/fc_blackbox.kicad_sch").read())
 LIB.update({s[1]: s for s in first(bb_src, "lib_symbols")[1:] if s[1] == "lib:TF-021B-H265"})
 for _lib, _name in [("Sensor_Pressure", "BMP280"), ("Sensor_Motion", "BMI088"), ("Device", "Crystal_GND24"),
@@ -471,7 +464,7 @@ H743 = {
 _balls = pins_of(LIB["MCU_ST_STM32H7:STM32H743VIHx"])
 H743.update({b: None for b in _balls if b not in H743})
 R0201, C0201, C0402 = "lib:R_0201_0603Metric", "lib:C_0201_0603Metric", "lib:C_0402_1005Metric"
-TP = "lib:TestPoint_Pad_D1.0mm"
+TP = "lib:Pad_1.0x1.4mm"
 m.part("U301", "MCU_ST_STM32H7:STM32H743VIHx", "STM32H743VIH6", "Package_BGA:TFBGA-100_8x8mm_Layout10x10_P0.8mm",
        "", 200.66, 139.7, H743)
 cap = [("C301", "100n", C0201, "C76939", "+3.3V"), ("C302", "100n", C0201, "C76939", "+3.3V"),
@@ -551,17 +544,14 @@ for i, (ref, col, val, lcsc, r, rv, net) in enumerate([
     m.part(ref, "lib:LED", val, "lib:LED_0402_1005Metric", lcsc, x, 187.96, {"2": "", "1": net}, rot=90)
     fields_right(m, ref, x, 187.96, 90)
 # buzzer: BUZZ_ON_LVL 1 (active high), external 5 V active buzzer on pads, low side switch.
-# AO3400A: Vgs(th) <= 1.45 V, 48 mOhm at 2.5 V; a 2N7002 (2.5 V) would barely open at 3.3 V.
-m.part("Q301", "Transistor_FET:Q_NMOS_GSD", "AO3400A", "Package_TO_SOT_SMD:SOT-23", "C20917", 96.52, 198.12,
+# AP1606 (OpenAIO's Q1): N-MOSFET, Vgs(th) 1.2 V, 700 mA, DFN 1.0 x 0.6 mm; a SOT-23 did not fit on the board.
+m.part("Q301", "lib:DMN1150UFB-7B", "AP1606", "lib:DFN-3L_L1.0-W0.6-P0.65-BR", "C2849580", 96.52, 198.12,
        {"1": "BUZZER", "2": "GND", "3": "BZ-"})
 m.part("R319", "lib:R", "100k", R0201, "C270364", 81.28, 205.74, {"1": "BUZZER", "2": "GND"})
-m.part("D304", "Device:D", "1N4148WS", "Diode_SMD:D_SOD-323", "C2128", 114.3, 182.88, {"1": "+5V", "2": "BZ-"},
-       rot=270)
-fields_right(m, "D304", 114.3, 182.88, 270)
 m.part("TP322", "lib:TestPoint", "BZ+", TP, "", 127, 182.88, {"1": "+5V"})
 m.part("TP323", "lib:TestPoint", "BZ-", TP, "", 139.7, 182.88, {"1": "BZ-"})
 m.text("""RGB LED aktivní v nule (ArduPilot GPIO_LED_RGB), ~3–5 mA.
-Bzučák: aktivní 5 V na padech BZ+/BZ−, BUZZ_ON_LVL 1.
+Bzučák: aktivní 5 V (piezo) na padech BZ+/BZ−, BUZZ_ON_LVL 1, bez diody jako MicoAir.
 R319 drží Q301 vypnutý, dokud MCU nenastaví PD15.""", 30.48, 167.64, 1.27)
 m.text("""Y301: CL 12 pF, C = 2 × (CL − Cstray) = 2 × (12 − 5) = 14 → 15 pF [AN4938, AN2867].
 gm_crit = 4·ESR·(2πf)²·(C0+CL)² ≈ 0,5 mA/V (ESR 180 Ω, C0 ≤ 5 pF) < Gmcritmax 1,5 mA/V [DS12110].""", 60.96, 106.68, 1.27)
@@ -599,6 +589,9 @@ J304 UART4 (MTF-02P): 1 GND, 2 5V, 3 TX4, 4 RX4.  J305 UART1+UART6: 1 GND, 2 5V,
 Kabely od MicoAiru tak sedí. Pin 1 před prvním zapnutím ověřit multimetrem proti kabelu.""", 30.48, 287.02, 1.27)
 m.place("#FLG301", "power:PWR_FLAG", "PWR_FLAG", "", "", 317.5, 30.48, power=True, ref_at=(317.5, 27), val_at=(317.5, 27.94))
 m.attach("+5V_USB", 317.5, 30.48, (1, 0), [])   # USB VBUS comes in from the connector
+# +5V is made in fc_power; ERC wants a flag on a sheet where the rail has other pins too
+m.place("#FLG302", "power:PWR_FLAG", "PWR_FLAG", "", "", 332.74, 30.48, power=True, ref_at=(332.74, 27), val_at=(332.74, 27.94))
+m.attach("+5V", 332.74, 30.48, (0, 1), [])
 m.write("mcu_h743.kicad_sch", "MCU STM32H743", uid())
 
 # project file from OpenAIO with the new name

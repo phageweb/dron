@@ -9,7 +9,7 @@ mapa pinů ve schématu ([NAVRH.md](../NAVRH.md#mapa-pinů-h743)) a hwdef říka
 | --- | --- |
 | `Pavo20AIO/hwdef.dat` | firmware |
 | `Pavo20AIO/hwdef-bl.dat` | bootloader |
-| `Pavo20AIO/defaults.parm` | výchozí parametry, které plynou ze zapojení: relé VTX, INA226 |
+| `Pavo20AIO/defaults.parm` | výchozí parametry, které plynou ze zapojení: relé VTX |
 
 ## Rozdíly proti MicoAir743v2
 
@@ -26,7 +26,6 @@ mapa pinů ve schématu ([NAVRH.md](../NAVRH.md#mapa-pinů-h743)) a hwdef říka
 | SERIAL7 | telemetrie ESC | bez výchozího protokolu | ESC z OpenESC nemají vodič telemetrie, otáčky jdou přes bidirectional DShot |
 | SERIAL3 | — | GPS | WS-M181 na USART3 |
 | PD13 (PWM8) | výstup | relé VTX: `RELAY1_PIN 57`, `RELAY1_DEFAULT 1`, `SERVO8_FUNCTION -1` | spíná EN bucku U201 |
-| INA226 | — | `BATT2_MONITOR 21`, bus 0, 0x40, 0,02 Ω, 3 A | proud VTX |
 
 ## Sestavení
 

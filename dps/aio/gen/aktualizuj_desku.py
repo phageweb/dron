@@ -3,7 +3,8 @@
     nix develop ./dps -c dps/aio/gen/aktualizuj_desku.sh [--dry-run]
 
 Footprints are matched to symbols by their UUID path. The script
-- removes footprints whose symbol is gone (the sheets dropped from OpenAIO),
+- removes footprints whose symbol is gone (the sheets dropped from OpenAIO), and
+  replaces those whose symbol now asks for another footprint,
 - adds the new ones from lib.pretty or KiCad's library, outside the board on the
   right, one row per sheet,
 - sets every pad's net from the netlist,
@@ -46,6 +47,7 @@ for c in root.iter("comp"):
     fields = {f.get("name"): f.text or "" for f in c.iter("field")}
     comps[path] = dict(ref=c.get("ref"), fp=c.findtext("footprint"), value=c.findtext("value"),
                        sheet=c.find("sheetpath").get("names"), fields=fields,
+                       file=next((p.get("value") for p in c.iter("property") if p.get("name") == "Sheetfile"), ""),
                        no_bom="exclude_from_bom" in props, dnp="dnp" in props)
 pad_net = {}
 for n in root.iter("net"):
@@ -55,9 +57,13 @@ new_nets = {netname(n.get("name")) for n in root.iter("net")}
 
 b = pcbnew.LoadBoard(PCB)
 fps = {f.GetPath().AsString().rstrip("/"): f for f in b.GetFootprints()}
-drop = [f for p, f in fps.items() if p not in comps]
-add = [p for p in comps if p not in fps]
-keep = {p: f for p, f in fps.items() if p in comps}
+# a symbol whose footprint changed: the old one goes and the new one comes in like a new part
+changed = {p for p, f in fps.items() if p in comps and f.GetFPIDAsString() != comps[p]["fp"]}
+for p in sorted(changed, key=lambda p: comps[p]["ref"]):
+    print(f"footprint changed: {comps[p]['ref']} {fps[p].GetFPIDAsString()} -> {comps[p]['fp']}")
+drop = [f for p, f in fps.items() if p not in comps or p in changed]
+add = [p for p in comps if p not in fps or p in changed]
+keep = {p: f for p, f in fps.items() if p in comps and p not in changed}
 print(f"footprints: {len(keep)} kept, {len(drop)} removed, {len(add)} added")
 
 # old net name -> new names, read on the kept pads before they change
@@ -121,6 +127,8 @@ for sheet, paths in sorted(rows.items()):
 
 for p, f in keep.items():
     ref = comps[p]["ref"]
+    f.SetSheetname(comps[p]["sheet"])
+    f.SetSheetfile(comps[p]["file"])
     f.SetExcludedFromBOM(comps[p]["no_bom"])
     f.SetDNP(comps[p]["dnp"])
     for pad in f.Pads():

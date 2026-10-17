@@ -7,9 +7,16 @@ fp=$(nix-store -q --requisites "$(readlink -f "$(command -v kicad-cli)")" | grep
 export PYTHONPATH="$(echo "$base"/lib/python3*/site-packages)"
 export KICAD10_FOOTPRINT_DIR="${KICAD10_FOOTPRINT_DIR:-$fp/share/kicad/footprints}"
 # swig reports every removed item as a leak on exit; that is noise
-run() { "$py" "$@" 2>&1 | grep -v -e "swig/python detected" -e "Font .* not found"; }
-if [ "${1:-}" = "--rozmisti" ]; then
-  run "$(dirname "$0")/rozmisti.py" "$(dirname "$0")/../aio.kicad_pcb"
+run() { "$py" "$@" 2>&1 | grep -v -e "swig/python detected" -e "Font .* not found" -e "Debug: Adding duplicate"; }
+if [ "${1:-}" = "--vycisti" ]; then
+  for i in $(seq 1 30); do
+    out=$(run "$(dirname "$0")/vycisti_med.py" "$(dirname "$0")/../aio.kicad_pcb")
+    echo "round $i: $out"
+    echo "$out" | grep -q "^removed 0 tracks and vias" && break
+  done
+elif [ "${1:-}" = "--rozmisti" ]; then
+  shift
+  run "$(dirname "$0")/rozmisti.py" "$(dirname "$0")/../aio.kicad_pcb" "$@"
 else
   run "$(dirname "$0")/aktualizuj_desku.py" "$@"
 fi

@@ -29,7 +29,7 @@ kicad dps/aio/aio.kicad_pro
 | ESC1–ESC4 | `esc_channel.kicad_sch` | **převzatý beze změny** | OpenAIO = kanál OpenESC: AT32F421 + NSG2065Q + 6× DOY180N03T, AM32 |
 | Power | `fc_power.kicad_sch` | **převzatý beze změny** | +10V pro budiče ESC (stálé), +5V 3 A, USB OR na +4v5, 3,3 V TLV76733 1 A, 1,8 V pro gyro |
 | IMU | `fc_imu.kicad_sch` | **převzatý beze změny** | BMI270 na SPI, napájení 1,8 V |
-| VTX a LD06 | `vtx.kicad_sch` | nový | spínaných 10 V pro HD VTX (kopie bucku U3), INA226, HD VTX SH1.0-6P s pinoutem DJI, LD06 ZH1.5-4P |
+| VTX a LD06 | `vtx.kicad_sch` | nový | spínaných 10 V pro HD VTX (kopie bucku U3), HD VTX SH1.0-6P s pinoutem DJI, pady LD06 |
 | MCU H743 | `mcu_h743.kicad_sch` | nakreslený | H743 s blokováním, krystal, BOOT0, SWD, USB-C, dělič baterie, I2C2 s barometrem, BMI088, microSD, RGB LED, bzučák. Ostatní piny mají štítky podle hwdefu |
 
 Vypuštěné z OpenAIO, protože patří k RP2354A nebo je nepotřebujeme: `fc_rp2350a`
@@ -45,9 +45,9 @@ stejného bucku s EN z MCU.
 `aio.kicad_pcb` vychází z layoutu OpenAIO: 35,4 × 35,4 mm, 8 vrstev HDI 1+6+1, 1 oz.
 Od 18. 10. odpovídá schématu: díly vypuštěných listů a jejich měď jsou pryč,
 ESC, napájení, IMU a kořen zůstaly na místě i s vodiči. Nové díly mají **hrubé
-rozmístění** (`aktualizuj_desku.sh --rozmisti`). Konektory periferií jsou jako na
-MicoAir743-AIO; UART4 (J304) je na desce, GPS (J303) a UART1+6 (J305) se nevešly a
-leží mimo desku ([NAVRH kap. 7](./NAVRH.md#7-deska-pcb)).
+rozmístění** (`aktualizuj_desku.sh --rozmisti --znovu`, pak `--vycisti`). Všechny čtyři
+konektory periferií jako na MicoAir743-AIO jsou na hraně. BMI088 (U303) a buck VTX (U201)
+se nevešly a leží mimo desku, nic není trasované ([NAVRH kap. 7](./NAVRH.md#7-deska-pcb)).
 
 Schéma se do desky propisuje bez GUI (dělá totéž co F8, viz hlavička skriptu):
 
