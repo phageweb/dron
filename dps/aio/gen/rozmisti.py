@@ -30,9 +30,7 @@ ANCHORS = {
     # pads on the spots of OpenAIO's small pads
     "TP301": (69.67, 53.23, 0, "F"), "TP302": (71.67, 53.23, 0, "F"), "TP303": (73.67, 53.23, 0, "F"),
     "TP304": (75.70, 53.26, 0, "F"), "TP305": (77.67, 53.26, 0, "F"), "TP306": (79.67, 53.23, 0, "F"),
-    "TP307": (84.80, 52.95, 0, "F"), "TP308": (84.80, 54.95, 0, "F"), "TP309": (84.80, 56.90, 0, "F"),
-    "TP310": (84.80, 58.90, 0, "F"),
-    "TP311": (90.66, 61.73, 0, "F"), "TP312": (90.66, 63.73, 0, "F"), "TP313": (90.66, 65.73, 0, "F"),
+    "TP313": (90.66, 65.73, 0, "F"),
     "TP314": (91.16, 61.60, 0, "B"),
     "TP315": (86.74, 61.73, 0, "F"), "TP316": (86.74, 63.73, 0, "F"), "TP317": (86.74, 65.72, 0, "F"),
     "TP318": (86.77, 67.72, 0, "F"), "TP319": (87.06, 70.17, 0, "F"),
@@ -43,8 +41,11 @@ ANCHORS = {
 SIDE = {"B": ["C301", "C302", "C303", "C304", "C305", "C306", "C307", "C308", "C309", "C310", "C311", "C312",
               "C313", "R309", "R310", "R311", "R312", "R313", "C320", "C321", "U303", "C318", "C319",
               "U201", "L201", "C201", "C202", "C203", "R201", "R202", "R203", "R204", "R205", "U202", "C204",
-              "JP201", "JP202", "R206", "Q301", "R319", "D304", "J303", "J304", "J202"]}
+              "JP201", "JP202", "R206", "Q301", "R319", "D304", "J304", "J305"]}
 SIDE_OF = {r: s for s, refs in SIDE.items() for r in refs}
+# connectors go to the board edge where MicoAir743-AIO has them: GPS front top, UART1+6 back top, UART4 back right.
+# Their courtyard may stick out 1 mm: the opening faces out over the edge.
+EDGE = {"J303": (80.0, 43.0), "J305": (72.0, 43.0), "J304": (93.0, 70.0)}
 # parts tied to the H743 as a whole (its supply), not to one ball
 TO_MCU = {f"C{n}" for n in range(301, 314)}
 POWER = {"GND", "+3.3V", "+5V", "+BATT", "+4v5", "+10V"}
@@ -96,6 +97,7 @@ for pad in fps["U24"].Pads():
 
 
 def inside(r, inset=0.4):
+    """The rectangle (with inset of margin) lies on the board."""
     l, t, rr, bt = r
     pts = [(l - inset, t - inset), (rr + inset, t - inset), (l - inset, bt + inset), (rr + inset, bt + inset)]
     return all(outline.Contains(pcbnew.VECTOR2I(MM(x), MM(y))) for x, y in pts)
@@ -116,6 +118,8 @@ GRID = [(mm(_bb.GetLeft()) + 0.2 * i, mm(_bb.GetTop()) + 0.2 * j)
 def target(f):
     """Mean position of the placed pads this part shares a signal net with."""
     ref = f.GetReference()
+    if ref in EDGE:
+        return EDGE[ref]
     if ref in TO_MCU and "U301" in placed:
         p = fps["U301"].GetPosition()
         return mm(p.x), mm(p.y)
@@ -145,9 +149,9 @@ for ref, (x, y, rot, side) in ANCHORS.items():
 rest = [f for f in todo if f.GetReference() not in ANCHORS]
 failed = []
 while rest:
-    # the H743's decoupling first (right under it), then big parts, then whatever is most tied to what is placed
-    rest.sort(key=lambda f: (f.GetReference() not in TO_MCU, f.GetReference()[0] not in "UJYL", -links(f),
-                             f.GetReference()))
+    # the H743's decoupling first (right under it), then the edge connectors, then big parts, then whatever is most tied to what is placed
+    rest.sort(key=lambda f: (f.GetReference() not in TO_MCU, f.GetReference() not in EDGE,
+                             f.GetReference()[0] not in "UJYL", -links(f), f.GetReference()))
     f = rest.pop(0)
     tx, ty = target(f)
     pref = SIDE_OF.get(f.GetReference(), "F")
@@ -161,7 +165,7 @@ while rest:
         for x, y in sorted(GRID, key=lambda p: (p[0] - tx) ** 2 + (p[1] - ty) ** 2):
             for rot, (l, t_, r_, bt) in shapes:
                 r = (x + l, y + t_, x + r_, y + bt)
-                if free(r, side) and inside(r):
+                if free(r, side) and inside(r, -1.0 if f.GetReference() in EDGE else 0.4):
                     best = (x, y, rot, side)
                     break
             if best:

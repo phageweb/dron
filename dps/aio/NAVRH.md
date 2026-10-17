@@ -54,14 +54,14 @@ baterie (U24 pad 1) ── Rsense2 0,2 mΩ ── +BATT ─┬─ 4× ESC (MOSFE
 +5V ──┬─ D2 ─┐                         USB-C J301 → +5V_USB ── D3 ─┤
       │      └─ +4v5 ─┬─ U7 TLV76733 → +3.3V 1 A (H743, AT32 ×4, INA186, INA226, BMI270 IO)   převzato [Z1]
       │               └─ U6 LP5912 → +1.8V_GYRO (BMI270)                                       převzato [Z1]
-      └─ LD06/D500 (J202), JP201
+      └─ LD06/D500 (pady TP201, TP202), JP201
 ```
 
 | Větev | Obvod | Zátěž, co víme | Zdroj | Proč |
 | --- | --- | --- | --- | --- |
 | +10V | U3, list Power | 4× budič NSG2065Q | převzato [Z1] | budiče ESC potřebují 8–20 V [Z1]. **Nesmí se vypínat**, proto VTX nevisí na ní |
 | +10V_SW / +10V_VTX | U201, list VTX | HD VTX: DJI O3 12–16 W [Z12], Lite+ neměřený | kopie U3 [Z1], dělič 100k/6,49k = 9,84 V | 10 V je uprostřed rozsahu Lite+ 3–12,6 V [Z13] a v rozsahu DJI. Buck dá 3 A, O3 při 16 W bere 1,6 A. Vlastní buck, aby šel VTX vypnout bez vypnutí motorů |
-| +5V | U4, list Power | LD06/D500 rozběh 540 mA, provoz 290 mA [Z14]; GPS, MTF-02P, XR1, LDO 3,3 V — neměřeno | převzato [Z1] | 3 A [Z6]. MicoAir AIO má 5 V/2 A [Z9] |
+| +5V | U4, list Power | LD06/D500 rozběh 540 mA, provoz 290 mA [Z14]; GPS, MTF-02P, přijímač, LDO 3,3 V — neměřeno | převzato [Z1] | 3 A [Z6]. MicoAir AIO má 5 V/2 A [Z9] |
 | +3.3V | U7 TLV76733, list Power | H743, 4× AT32F421, senzory | převzato [Z1] | 1 A LDO z +4v5 |
 | +1.8V_GYRO | U6 LP5912, list Power | BMI270 VDD | převzato [Z1] | oddělené napájení gyra |
 | +5V_USB | J301, list MCU | — | podle OpenAIO [Z1] | USB napájí logiku bez baterie. D3 v listu Power ho OR-uje do +4v5, takže USB nenapájí +5V ani motory |
@@ -113,8 +113,8 @@ bude čip na desce otočený.
 | Buck 10 V pro VTX | U201, L201, C201–C203, R201, R202 | převzato zapojení | kopie U3 z OpenAIO [Z1], TI LMR51430 [Z6] | viz napájení výš. Stejné díly a dělič jako ověřený U3 |
 | EN | R203 1k, R204 100k, JP201 | naše volba | — | R204 drží VTX vypnutý, dokud ho MCU nezapne (`VTX_EN`, PD13). R203 chrání pin MCU, když je JP201 zapájená na +5V (VTX trvale zapnutý, třeba na stole) |
 | Proud VTX | R205 20 mΩ, U202 INA226, C204 | podle dokumentu | TI INA226 [Z7], ArduPilot `AP_BattMonitor_INA2xx` [Z5] | Spotřebu Lite+ nikdo nezměřil. Rozsah ±81,92 mV / 20 mΩ = 4 A, při 1,6 A ztráta 51 mW. Adresa 0x40 (A0 = A1 = GND) |
-| HD VTX | J201 SH1.0-6P, JP202 | podle dokumentu | pinout DJI, stejný mají MicoAir [Z5] i OpenAIO [Z1] | 1 +10V_VTX, 2 GND, 3 VTX_TX, 4 VTX_RX, 5 GND, 6 SBUS z DJI přes JP202 na RC_RX. Pasuje DJI O3/O4 přímo, Lite+ přes redukci 6P → 4P. JP202 je standardně rozpojená, protože RX6 patří přijímači XR1. MicoAir má pin 6 a pad RX6 spojené natvrdo a dva vysílače by se na jedné lince praly |
-| LD06 / D500 | J202 ZH1.5-4P, R206 0R | podle dokumentu | manuál LD19 / Waveshare ([test linky](../../spec/realna_stavba_dronu/15_test_linky_skenu.md)) | 1 Tx → LIDAR_TX (UART5 RX), 2 PWM, 3 GND, 4 +5V. PWM musí být uzemněné, pokud se otáčky neřídí: R206. Když se R206 vyjme, řídí otáčky MCU přes LIDAR_PWM (PB0, TIM3_CH3) |
+| HD VTX | J201 SH1.0-6P, JP202 | podle dokumentu | pinout DJI, stejný mají MicoAir [Z5] i OpenAIO [Z1] | 1 +10V_VTX, 2 GND, 3 VTX_TX, 4 VTX_RX, 5 GND, 6 SBUS z DJI přes JP202 na RC_RX. Pasuje DJI O3/O4 přímo, Lite+ přes redukci 6P → 4P. JP202 je standardně rozpojená, protože RX6 patří přijímači na J305. MicoAir má pin 6 a pad RX6 spojené natvrdo a dva vysílače by se na jedné lince praly |
+| LD06 / D500 | pady TP201 Tx, TP202 PWM, 5V a GND na TP320/TP321, R206 0R | podle dokumentu, rozhodnuto 18. 10. | manuál LD19 / Waveshare ([test linky](../../spec/realna_stavba_dronu/15_test_linky_skenu.md)), MicoAir [Z27] | na pady jako u MicoAiru, ZH1.5-4P (požadavek M1) se na desku nevešel. Tx lidaru → LIDAR_TX (UART5 RX), PWM, GND, +5V. PWM musí být uzemněné, pokud se otáčky neřídí: R206. Když se R206 vyjme, řídí otáčky MCU přes LIDAR_PWM (PB0, TIM3_CH3) |
 
 ### 4.6 MCU H743 `mcu_h743.kicad_sch` — nové
 
@@ -141,9 +141,10 @@ bude čip na desce otočený.
 | Krystal 8 MHz | Y301 YXC X32258MOB4SI (C2682775), C322/C323 15 pF C0G | naše volba podle AN4938/AN2867 [Z4][Z18][Z19] | 8 MHz čeká hwdef (`OSCILLATOR_HZ`). CL 12 pF: C = 2 × (CL − Cstray) = 2 × (12 − 5) = 14 → 15 pF. Kontrola strmosti: gm_crit = 4·ESR·(2πf)²·(C0+CL)² ≈ 0,5 mA/V při ESR 180 Ω a C0 ≤ 5 pF, mez H743 je Gmcritmax 1,5 mA/V. Nízké CL je tu schválně, s krystalem 20 pF by vyšlo přes 1 mA/V |
 | Baro | U302 SPL06-001 nebo DPS310, C317 | rozhodnuto 17. 10.: ploška pro oba [Z15][Z16] | obě mají pouzdro LGA-8 2 × 2,5 mm s roztečí 0,65 mm a stejné piny jako BMP280, proto symbol a footprint BMP280. Relativní přesnost obou ±0,06 hPa, šum v režimu vysoké přesnosti SPL06 0,3–0,6 Pa RMS, DPS310 ±0,2 Pa. CSB a SDO na 3,3 V → I2C, adresa 0x77. Osadí se podle skladu JLC, v hwdefu je SPL06 (čipy mají stejné ID, viz kap. 6). Footprint Bosch: velikost plošek ověřit proti doporučení SPL06/DPS310 |
 | Druhá IMU | U303 BMI088, C318/C319 | rozhodnuto 17. 10.: ano, jako MicoAir [Z17] | SPI2 jako MicoAir: PS na GND = SPI, SDO1 a SDO2 spojené do MISO (výstup neaktivního čipu je ve vysoké impedanci, ERC to hlásí, je to záměr), CS akcelerometru PD4, gyra PD5, INT1 → PC14, INT3 → PC15, INT2 a INT4 nezapojené podle datasheetu |
-| GPS WS-M181 | J303 SH1.0-6P, R314/R315 4,7k | podle dokumentu [Z21] | pořadí podle potisku modulu: 1 TX modulu → GPS_RX (PD9), 2 RX → GPS_TX (PD8), 3 GND, 4 5V, 5 SCL, 6 SDA (I2C1, kompas IST8310). Pull-upy pro externí I2C, kdyby je modul neměl. **Kde je pin 1, výrobce neuvádí**: ověřit multimetrem |
-| MTF-02P | J304 SH1.0-4P | podle dokumentu [Z20] | 1 GND, 2 5V, 3 Rx modulu ← FLOW_TX (PA0), 4 Tx → FLOW_RX (PA1), pořadí z manuálu robofusion. MicoAir kreslí stejné signály od druhého konce (Tx, Rx, 5V, GND). **Pin 1 ověřit multimetrem** |
-| Pady | TP307–TP321 | naše volba | XR1 Nano (nemá konektor, jen půlené pady 5V, G, TX, RX [Z22]): 5V, GND, RC_RX, RC_TX. UART1 a UART8 pro Bluetooth nebo cokoli dalšího. Volné PWM5, 7, 9, 10, 11. Další 5V a GND |
+| GPS + kompas | J303 SH1.0-6P boční, R314/R315 4,7k | rozhodnuto 18. 10.: jako MicoAir [Z27] | 1 GND, 2 5V, 3 TX3 (PD8), 4 RX3 (PD9), 5 SCL, 6 SDA (I2C1). Pořadí MicoAiru, aby seděl kabel GPS z MicoAiru. MicoAir v tabulkách píše pin 6 první: v README ArduPilotu je pin 1 DJI konektoru 12 V, tedy poslední řádek. **Na desku se zatím nevešel**, kap. 7 |
+| UART4 (MTF-02P) | J304 SH1.0-4P boční | rozhodnuto 18. 10.: jako MicoAir [Z27] | 1 GND, 2 5V, 3 TX4 (PA0), 4 RX4 (PA1). Stejné pořadí uvádí i manuál MTF-02P [Z20]. Na desce vzadu u pravé hrany jako u MicoAiru |
+| UART1 + UART6 (přijímač, telemetrie) | J305 SH1.0-6P boční | rozhodnuto 18. 10.: jako MicoAir [Z27] | 1 GND, 2 5V, 3 TX1, 4 RX1, 5 TX6, 6 RX6. Přijímač (XR1 Nano) na UART6 přes kabel jako u MicoAiru, místo dřívějších padů TP307–TP312. **Na desku se zatím nevešel**, kap. 7 |
+| Pady | TP313–TP321 | naše volba | UART8 pro Bluetooth nebo cokoli dalšího, volné PWM5, 7, 9, 10, 11, 5V a GND (i pro LD06) |
 | RGB LED | D301–D303 XINGLIGHT XL-1005 0402, R316 330R, R317 150R, R318 75R | rozhodnuto 17. 10. [Z23][Z24] | ArduPilot `GPIO_LED_RGB` svítí nulou (`HAL_GPIO_LED_ON` 0, MicoAir ho nemění), proto anody na +3.3V a katody na PE3/PE2/PE4. Zelená XL-1005UGC (C965793) a modrá XL-1005UBC (C22355736) jsou díly OpenAIO, modrá i s jejím 75R. Červená XL-1005SURC (C965790) ze stejné řady. Proud odhadem 3–5 mA na barvu (Vf při malém proudu: R ~1,9 V, G ~2,7 V, B ~2,9 V), mez pinu 20 mA. Než MCU nastaví piny, jsou ve vysoké impedanci a LED nesvítí |
 | Bzučák | Q301 AO3400A (C20917), R319 100k, D304 1N4148WS (C2128), pady TP322 BZ+ / TP323 BZ− | rozhodnuto 17. 10. [Z23][Z25] | `BUZZ_ON_LVL` je výchozí 1, takže spínač v nule: N-MOSFET mezi BZ− a GND, aktivní 5V bzučák na padech jako u běžných FC (na desce 36 mm není místo na SMD bzučák). AO3400A má Vgs(th) do 1,45 V a 48 mΩ při 2,5 V, 2N7002 (do 2,5 V) by z 3,3 V spínal nejistě. R319 drží hradlo dole během resetu a v bootloaderu. D304 chrání tranzistor, kdyby se připojil magnetický bzučák |
 | microSD | J302 TF-021B-H265 (C498185), R309–R313 47k, C320 100 nF, C321 4,7 µF | rozhodnuto 17. 10.: microSD jako MicoAir | slot z OpenAIO [Z1], ve footprintu doplněné pady 1 a 8 (kap. 7). 4bitové SDMMC1 jako MicoAir [Z5], pull-upy 47k na CMD a D0–D3 (specifikace SD chce 10–100k), CLK bez pull-upu |
@@ -156,13 +157,13 @@ bude čip na desce otočený.
 | --- | --- | --- | --- |
 | Baterie + motory | U24 | 1 +, 2 GND, 12–23 fáze | převzato, obrys 35,4 mm a díry 25,5 beze změny |
 | HD VTX | J201 SH1.0-6P | 1 +10V_VTX, 2 GND, 3 TX (PA2), 4 RX (PA3), 5 GND, 6 RC_RX (PC7) | hotovo |
-| LD06 / D500 | J202 ZH1.5-4P | 1 Tx → PB5, 2 PWM, 3 GND, 4 +5V | hotovo |
+| LD06 / D500 | TP201, TP202 + TP320/TP321 | Tx → PB5, PWM, 5V, GND | pady jako MicoAir |
 | USB | J301 USB-C | USB 2.0, VBUS → +5V_USB | hotovo |
 | SWD a BOOT0 | TP301–TP306 | BOOT0, +3.3V, SWDIO, SWCLK, NRST, GND | hotovo |
-| GPS + kompas | J303 SH1.0-6P | 1 TX modulu, 2 RX, 3 GND, 4 5V, 5 SCL, 6 SDA | hotovo, pin 1 ověřit multimetrem |
-| MTF-02P | J304 SH1.0-4P | 1 GND, 2 5V, 3 Rx modulu, 4 Tx modulu | hotovo, pin 1 ověřit multimetrem |
-| XR1 Nano | TP307–TP310 | 5V, GND, TX modulu → RC_RX (PC7), RX modulu ← RC_TX (PC6) | hotovo, pájí se vodiči |
-| Bluetooth / volné UARTy | TP311–TP314 | UART1 (PA9/PA10), UART8 (PE1/PE0) | hotovo |
+| GPS + kompas | J303 SH1.0-6P | 1 GND, 2 5V, 3 TX3, 4 RX3, 5 SCL, 6 SDA | schéma hotové, na desku se nevešel |
+| UART4 (MTF-02P) | J304 SH1.0-4P | 1 GND, 2 5V, 3 TX4, 4 RX4 | hotovo, na desce |
+| UART1 + UART6 | J305 SH1.0-6P | 1 GND, 2 5V, 3 TX1, 4 RX1, 5 TX6, 6 RX6 | schéma hotové, na desku se nevešel |
+| Bluetooth / volný UART | TP313, TP314 | UART8 (PE1/PE0) | hotovo |
 | Volné PWM | TP315–TP319 | PWM5, 7, 9, 10, 11 | hotovo |
 | Bzučák | TP322 BZ+, TP323 BZ− | BZ+ = +5V, BZ− spíná Q301 (PD15) | hotovo, aktivní 5V bzučák |
 
@@ -195,7 +196,7 @@ zůstaly stejné. Mění se:
 | 3 | USART3 | PD8/PD9 | GPS WS-M181 |
 | 4 | UART4 | PA0/PA1 | MTF-02P |
 | 5 | UART5 | PB5 (RX) | LD06 / D500, 230400 |
-| 6 | USART6 | PC6/PC7 | XR1 Nano, CRSF |
+| 6 | USART6 | PC6/PC7 | XR1 Nano na J305, CRSF |
 | 7 | UART7 | PE8/PE7 | volné (MicoAir: telemetrie ESC) |
 | 8 | UART8 | PE1/PE0 | volné / Bluetooth |
 
@@ -217,10 +218,15 @@ se schématem přes UUID a zůstaly na místě i s vodiči. Co se změnilo:
   místo BMP580; J201 na místo SH-6; pady na místa malých padů). Blokovací kondenzátory H743
   vzadu pod ním, ostatní co nejblíž pinům, se kterými sdílí síť, bez překryvu courtyardů.
   **Není to layout**, jen výchozí bod.
-- **Nevešly se konektory J303 (GPS), J304 (MTF-02P) a J202 (LD06).** Volné plochy zbývá
-  187 mm² vpředu a 160 mm² vzadu, ale rozdrobené. Konektory potřebují souvislých 66, 52 a
-  86 mm² a hledání po mřížce 0,2 mm na obou stranách, ve všech otočeních a před pasivními
-  díly je nenašlo. Leží mimo desku, viz kap. 8.
+- **Konektory jako MicoAir743-AIO** (18. 10.) [Z27]: GPS vpředu nahoře, UART1+UART6 vzadu
+  nahoře, UART4 vzadu vpravo, boční SH1.0, směrem ven přes hranu. **J304 (UART4) se vešel,
+  J303 (GPS) a J305 (UART1+6) ne.** Hledání po mřížce 0,25 mm na obou stranách a ve všech
+  otočeních ukázalo, že každé místo pro 6pinový konektor (boční 9,8 × 6,6, i svislý BM06B
+  9,8 × 5,2 mm) koliduje s převzatými díly ESC a napájení. Místa, kde by překážely jen naše
+  nové díly, jsou uprostřed desky přes H743, microSD nebo J201. MicoAir to zvládá jiným
+  layoutem ESC. Oba konektory leží mimo desku, viz kap. 8.
+- LD06 je na padech (TP201, TP202 a 5V/GND z TP320/TP321) jako u MicoAiru: ZH1.5-4P
+  (požadavek M1) potřeboval 86 mm² v jednom kuse a ten na desce není.
 - DRC po rozmístění: kromě nepropojených spojů hlásí zkraty a vůle tam, kde nové pady leží
   na zbytcích mědi OpenAIO (vodiče +3.3V, +4v5, GND a prokovy v místě jádra). Ty se při
   layoutu jádra roztrhají a vedou znovu.
@@ -235,9 +241,9 @@ a −3,925 mm. Doplněné jsou podle něj, do mezer, které pro ně v potisku z�
 
 | Co | Kde | Proč není rozhodnuté |
 | --- | --- | --- |
-| Pin 1 konektorů GPS a MTF-02P | J303, J304 | výrobci pin 1 neuvádí. Před prvním zapnutím změřit, který pin modulu je GND |
+| Pin 1 konektorů | J303, J304, J305 | pořadí z tabulek MicoAiru, pin 1 = GND podle README ArduPilotu. Před prvním zapnutím ověřit multimetrem proti kabelu z MicoAiru |
 | LCSC čísla | díly s „—“ v kusovníku | vybrat podle skladu JLC |
-| Konektory GPS, MTF-02P, LD06 | J303, J304, J202 | na desku se nevejdou (kap. 7). Možnosti: pady místo konektorů jako u XR1 a MicoAiru, nebo konektory na kabelu/přídavné destičce |
+| Konektory GPS a UART1+6 | J303, J305 | na desku se nevejdou (kap. 7). Možnosti: pady v pořadí MicoAiru, nebo předělat layout ESC z OpenAIO, aby se uvolnila hrana |
 | Layout jádra | aio.kicad_pcb | nové díly leží mimo desku, rozmístění a únik z BGA H743 na HDI se dělá ručně v KiCadu. Potisk OpenAIO přepsat |
 
 ## 9. Kontrola
@@ -300,19 +306,19 @@ python3 dps/aio/tabulky.py                                  # přegeneruje tabul
 | J3 | PA6 | — |  | nezapojeno |
 | K3 | PA7 | — |  | nezapojeno |
 | D9 | PA8 | — |  | nezapojeno |
-| C9 | PA9 | UART1_TX | USART1_TX, SERIAL1 | TP311 |
-| D10 | PA10 | UART1_RX | USART1_RX, SERIAL1 | TP312 |
+| C9 | PA9 | UART1_TX | USART1_TX, SERIAL1 | J305 |
+| D10 | PA10 | UART1_RX | USART1_RX, SERIAL1 | J305 |
 | C10 | PA11 | USB_DM | OTG_FS_DM, SERIAL0 | J301 |
 | B10 | PA12 | USB_DP | OTG_FS_DP, SERIAL0 | J301 |
 | A10 | PA13 | SWDIO | SWD | TP303 |
 | A9 | PA14 | SWCLK | SWD | TP304 |
 | A8 | PA15 | IMU_CS | BMI270_CS | R25, U8 |
-| J4 | PB0 | LIDAR_PWM | PWM6, TIM3_CH3, GPIO 55 | J202, R206 |
+| J4 | PB0 | LIDAR_PWM | PWM6, TIM3_CH3, GPIO 55 | R206, TP202 |
 | K4 | PB1 | PWM5 | PWM5, TIM3_CH4, GPIO 54 | TP315 |
 | G5 | PB2 | — |  | nezapojeno |
 | A7 | PB3 | IMU_SPI.SCK | SPI3_SCK | U8 |
 | A6 | PB4 | IMU_SPI.MISO | SPI3_MISO | U8 |
-| C5 | PB5 | LIDAR_TX | UART5_RX, SERIAL5 | J202 |
+| C5 | PB5 | LIDAR_TX | UART5_RX, SERIAL5 | TP201 |
 | B5 | PB6 | UART5_TX | UART5_TX, SERIAL5 | jen štítek, čeká na zapojení |
 | A5 | PB7 | IMU_INT | DRDY3_BMI270 | U8 |
 | B4 | PB8 | EXT_SCL | I2C1_SCL (bus 1) | J303, R314 |
@@ -329,8 +335,8 @@ python3 dps/aio/tabulky.py                                  # přegeneruje tabul
 | F3 | PC3_C | IMU2_MOSI | SPI2_MOSI | U303 |
 | G4 | PC4 | — |  | nezapojeno |
 | H4 | PC5 | — |  | nezapojeno |
-| F10 | PC6 | RC_TX | USART6_TX, SERIAL6 | TP310 |
-| E10 | PC7 | RC_RX | USART6_RX, SERIAL6 | JP202, TP309 |
+| F10 | PC6 | RC_TX | USART6_TX, SERIAL6 | J305 |
+| E10 | PC7 | RC_RX | USART6_RX, SERIAL6 | J305, JP202 |
 | F9 | PC8 | SD_D0 | SDMMC1_D0 | J302, R310 |
 | E9 | PC9 | SD_D1 | SDMMC1_D1 | J302, R311 |
 | B9 | PC10 | SD_D2 | SDMMC1_D2 | J302, R312 |
@@ -384,12 +390,12 @@ python3 dps/aio/tabulky.py                                  # přegeneruje tabul
 | K1 | VDD | +3.3V |  | napájecí síť (58 dílů) |
 | H1 | VDDA | +3.3V |  | napájecí síť (58 dílů) |
 | F4 | VDDLDO | +3.3V |  | napájecí síť (58 dílů) |
-| C2 | VSS | GND |  | napájecí síť (139 dílů) |
-| E4 | VSS | GND |  | napájecí síť (139 dílů) |
-| E5 | VSS | GND |  | napájecí síť (139 dílů) |
-| E6 | VSS | GND |  | napájecí síť (139 dílů) |
-| J1 | VSS | GND |  | napájecí síť (139 dílů) |
-| G1 | VSSA | GND |  | napájecí síť (139 dílů) |
+| C2 | VSS | GND |  | napájecí síť (138 dílů) |
+| E4 | VSS | GND |  | napájecí síť (138 dílů) |
+| E5 | VSS | GND |  | napájecí síť (138 dílů) |
+| E6 | VSS | GND |  | napájecí síť (138 dílů) |
+| J1 | VSS | GND |  | napájecí síť (138 dílů) |
+| G1 | VSSA | GND |  | napájecí síť (138 dílů) |
 | F6 | VDD33_USB | +3.3V |  | napájecí síť (58 dílů) |
 <!-- /tabulky:piny -->
 
@@ -401,7 +407,7 @@ python3 dps/aio/tabulky.py                                  # přegeneruje tabul
 | +1.8V_GYRO | /IMU/, /Power/ | C27, C29, U6, U8 |
 | +10V | /ESC1/, /ESC2/, /ESC3/, /ESC4/, /Power/ | C23, C43, C50, C57, C64, L2, R17, R21, U14, U16 … (+2) |
 | +3.3V | /, /ESC1/, /ESC2/, /ESC3/, /ESC4/, /IMU/, /MCU H743/, /Power/, /VTX a LD06/ | C28, C30, C39, C46, C53, C60, C104, C204, C301, C302 … (+49) |
-| +5V | /MCU H743/, /Power/, /VTX a LD06/ | C24, D2, D304, J202, J303, J304, JP201, L3, R19, R22 … (+4) |
+| +5V | /MCU H743/, /Power/, /VTX a LD06/ | C24, D2, D304, J303, J304, J305, JP201, L3, R19, R22 … (+3) |
 | +5V_USB | /MCU H743/, /Power/ | D3, J301 |
 | +BATT | /, /ESC1/, /ESC2/, /ESC3/, /ESC4/, /MCU H743/, /Power/, /VTX a LD06/ | C18, C19, C90, C91, C92, C93, C94, C95, C96, C97 … (+27) |
 | 1A | /, /ESC1/ | C40, Q3, Q4, R47, U14, U24 |
@@ -422,13 +428,13 @@ python3 dps/aio/tabulky.py                                  # přegeneruje tabul
 | IMU_SPI.MISO | /IMU/, /MCU H743/ | U8, U301 |
 | IMU_SPI.MOSI | /IMU/, /MCU H743/ | U8, U301 |
 | IMU_SPI.SCK | /IMU/, /MCU H743/ | U8, U301 |
-| LIDAR_PWM | /MCU H743/, /VTX a LD06/ | J202, R206, U301 |
-| LIDAR_TX | /MCU H743/, /VTX a LD06/ | J202, U301 |
+| LIDAR_PWM | /MCU H743/, /VTX a LD06/ | R206, TP202, U301 |
+| LIDAR_TX | /MCU H743/, /VTX a LD06/ | TP201, U301 |
 | MOTOR1 | /, /ESC1/, /MCU H743/ | R39, TP20, U301 |
 | MOTOR2 | /, /ESC2/, /MCU H743/ | R58, TP21, U301 |
 | MOTOR3 | /, /ESC3/, /MCU H743/ | R77, TP22, U301 |
 | MOTOR4 | /, /ESC4/, /MCU H743/ | R96, TP23, U301 |
-| RC_RX | /MCU H743/, /VTX a LD06/ | JP202, TP309, U301 |
+| RC_RX | /MCU H743/, /VTX a LD06/ | J305, JP202, U301 |
 | SCL | /MCU H743/, /VTX a LD06/ | R306, U202, U301, U302 |
 | SDA | /MCU H743/, /VTX a LD06/ | R305, U202, U301, U302 |
 | VTX_EN | /MCU H743/, /VTX a LD06/ | R203, U301 |
@@ -639,7 +645,7 @@ python3 dps/aio/tabulky.py                                  # přegeneruje tabul
 | R25 | 10k | R_0201_0603Metric | C106225 |
 | U8 | BMI270 | LGA-14_L3.0-W2.5-P0.50-BR | C2836813 |
 
-**/MCU H743/** (76 dílů)
+**/MCU H743/** (71 dílů)
 
 | Ref | Hodnota | Pouzdro | LCSC |
 | --- | --- | --- | --- |
@@ -670,8 +676,9 @@ python3 dps/aio/tabulky.py                                  # přegeneruje tabul
 | D304 | 1N4148WS | D_SOD-323 | C2128 |
 | J301 | TYPE-C 16P QTWT | USB-TYPE-C-SMD_TYPE-C-16P-QTWT | C5187472 |
 | J302 | TF-021B-H265 | TF-SMD_TF-021B-H265 | C498185 |
-| J303 | GPS WS-M181 | JST_SH_SM06B-SRSS-TB_1x06-1MP_P1.00mm_Horizontal | C160405 |
-| J304 | MTF-02P | JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal | — |
+| J303 | GPS (UART3+I2C1) | JST_SH_SM06B-SRSS-TB_1x06-1MP_P1.00mm_Horizontal | C160405 |
+| J304 | UART4 (MTF-02P) | JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal | — |
+| J305 | UART1+UART6 (RX, telemetrie) | JST_SH_SM06B-SRSS-TB_1x06-1MP_P1.00mm_Horizontal | C160405 |
 | Q301 | AO3400A | SOT-23 | C20917 |
 | R301 | 10k | R_0201_0603Metric | — |
 | R302 | 10k | R_0201_0603Metric | — |
@@ -698,12 +705,6 @@ python3 dps/aio/tabulky.py                                  # přegeneruje tabul
 | TP304 | SWCLK | TestPoint_Pad_D1.0mm | — |
 | TP305 | NRST | TestPoint_Pad_D1.0mm | — |
 | TP306 | GND | TestPoint_Pad_D1.0mm | — |
-| TP307 | XR1 5V | TestPoint_Pad_D1.0mm | — |
-| TP308 | XR1 GND | TestPoint_Pad_D1.0mm | — |
-| TP309 | XR1 TX | TestPoint_Pad_D1.0mm | — |
-| TP310 | XR1 RX | TestPoint_Pad_D1.0mm | — |
-| TP311 | UART1 TX | TestPoint_Pad_D1.0mm | — |
-| TP312 | UART1 RX | TestPoint_Pad_D1.0mm | — |
 | TP313 | UART8 TX | TestPoint_Pad_D1.0mm | — |
 | TP314 | UART8 RX | TestPoint_Pad_D1.0mm | — |
 | TP315 | PWM5 | TestPoint_Pad_D1.0mm | — |
@@ -760,7 +761,7 @@ python3 dps/aio/tabulky.py                                  # přegeneruje tabul
 | U6 | LP5912-1.8DRVR | WSON-6-1EP_2x2mm_P0.65mm_EP1x1.6mm_ThermalVias | C2876234 |
 | U7 | TLV76733DRVR | WSON-6-1EP_2x2mm_P0.65mm_EP1x1.6mm | C2848334 |
 
-**/VTX a LD06/** (17 dílů)
+**/VTX a LD06/** (18 dílů)
 
 | Ref | Hodnota | Pouzdro | LCSC |
 | --- | --- | --- | --- |
@@ -769,7 +770,6 @@ python3 dps/aio/tabulky.py                                  # přegeneruje tabul
 | C203 | 22uF | C_0603_1608Metric | C2762594 |
 | C204 | 100n | C_0201_0603Metric | C76939 |
 | J201 | HD VTX | JST_SH_SM06B-SRSS-TB_1x06-1MP_P1.00mm_Horizontal | C160405 |
-| J202 | LD06 | JST_ZH_S4B-ZR-SM4A-TF_1x04-1MP_P1.50mm_Horizontal | — |
 | JP201 | VTX vždy zapnutý | SolderJumper-2_P1.3mm_Open_Pad1.0x1.5mm | — |
 | JP202 | SBUS z DJI | SolderJumper-2_P1.3mm_Open_Pad1.0x1.5mm | — |
 | L201 | XRTC303020D4R7MBCA | IND-SMD_L3.0-W3.0_AFE303020S | C39846837 |
@@ -779,7 +779,10 @@ python3 dps/aio/tabulky.py                                  # přegeneruje tabul
 | R204 | 100k | R_0201_0603Metric | C270364 |
 | R205 | 20m 1% | R_0805_2012Metric | — |
 | R206 | 0R | R_0201_0603Metric | — |
+| TP201 | LD06 TX | TestPoint_Pad_D1.0mm | — |
+| TP202 | LD06 PWM | TestPoint_Pad_D1.0mm | — |
 | U201 | LMR51430YFDDCR | SOT-23-6_L2.9-W1.6-P0.95-LS2.9-BL | C5219261 |
 | U202 | INA226AIDGSR | TSSOP-10_3x3mm_P0.5mm | — |
 <!-- /tabulky:kusovnik -->
 | Z26 | [EasyEDA: TF-021B-H265 (C498185)](https://easyeda.com/component/da54a9e9dc5d41c3aeb4074d4ae8aee7), data přes `easyeda.com/api/products/C498185/components` | 8 signálových padů 1,2 × 0,7 mm po 1,1 mm |
+| Z27 | ArduPilot `8b9ea70`: `hwdef/MicoAir743-AIO/README.md` a `MicoAir743-AIO_Ports_Connection.jpg` | konektory GPS (UART3+I2C1), DJI VTX, UART1+UART6, UART4 a pady AIO; pin 1 DJI = 12 V |

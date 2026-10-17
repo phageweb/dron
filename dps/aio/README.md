@@ -44,9 +44,10 @@ stejného bucku s EN z MCU.
 
 `aio.kicad_pcb` vychází z layoutu OpenAIO: 35,4 × 35,4 mm, 8 vrstev HDI 1+6+1, 1 oz.
 Od 18. 10. odpovídá schématu: díly vypuštěných listů a jejich měď jsou pryč,
-ESC, napájení, IMU a kořen zůstaly na místě i s vodiči. 90 nových dílů má **hrubé
-rozmístění** (`aktualizuj_desku.sh --rozmisti`), konektory J303, J304 a J202 se
-nevešly a leží mimo desku ([NAVRH kap. 7](./NAVRH.md#7-deska-pcb)).
+ESC, napájení, IMU a kořen zůstaly na místě i s vodiči. Nové díly mají **hrubé
+rozmístění** (`aktualizuj_desku.sh --rozmisti`). Konektory periferií jsou jako na
+MicoAir743-AIO; UART4 (J304) je na desce, GPS (J303) a UART1+6 (J305) se nevešly a
+leží mimo desku ([NAVRH kap. 7](./NAVRH.md#7-deska-pcb)).
 
 Schéma se do desky propisuje bez GUI (dělá totéž co F8, viz hlavička skriptu):
 

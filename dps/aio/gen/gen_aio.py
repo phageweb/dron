@@ -34,9 +34,16 @@ _n = 0
 
 
 def uid():
+    """UUID of wires, labels and texts: by order, nothing outside the schematic refers to them."""
     global _n
     _n += 1
     return str(uuid.uuid5(uuid.NAMESPACE_URL, f"dron/dps/aio/{_n}"))
+
+
+def stable(key):
+    """UUID of sheets, symbols and pins, by name: the board links footprints to them, so adding or
+    removing a part must not shift the others."""
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, f"dron/dps/aio/id/{key}"))
 
 
 def font(*extra):
@@ -163,14 +170,15 @@ class Sheet:
         just = "left" if lib_id in ("lib:R", "lib:C") else None
         e = [S("symbol"), [S("lib_id"), lib_id], [S("at"), x, y, rot], [S("unit"), 1], [S("body_style"), 1],
              [S("exclude_from_sim"), NO], [S("in_bom"), NO if power else YES], [S("on_board"), NO if power else YES],
-             [S("in_pos_files"), NO if power else YES], [S("dnp"), YES if dnp else NO], [S("uuid"), uid()],
+             [S("in_pos_files"), NO if power else YES], [S("dnp"), YES if dnp else NO],
+             [S("uuid"), stable(f"{self.path}/{ref}")],
              self.prop("Reference", ref, *ref_at, hide=power, justify=just),
              self.prop("Value", value, *val_at, justify=just),
              self.prop("Footprint", fp, x, y, hide=True), self.prop("Datasheet", "", x, y, hide=True)]
         if lcsc:
             e.append(self.prop("LCSC", lcsc, x, y, hide=True))
         for num in pins_of(sym):
-            e.append([S("pin"), num, [S("uuid"), uid()]])
+            e.append([S("pin"), num, [S("uuid"), stable(f"{self.path}/{ref}/{num}")]])
         e.append([S("instances"), [S("project"), PROJ, [S("path"), self.path, [S("reference"), ref], [S("unit"), 1]]]])
         self.items.append(e)
 
@@ -321,7 +329,7 @@ for name, (x, y) in {"ESC1": (241.3, 35.56), "ESC2": (241.3, 76.2), "ESC3": (241
 
 
 def new_sheet(name, fname, x, y, w, pins_left, pins_right, page):
-    su = uid()
+    su = stable(f"sheet/{name}")
     h = 2.54 * (max(len(pins_left), len(pins_right)) + 2)
     sh = [S("sheet"), [S("at"), x, y], [S("size"), w, h], [S("exclude_from_sim"), NO], [S("in_bom"), YES],
           [S("on_board"), YES], [S("dnp"), NO], [S("fields_autoplaced"), YES],
@@ -382,9 +390,9 @@ v.part("C204", "lib:C", "100n", C0201, "C76939", 254, 50.8, {"1": "+3.3V", "2": 
 v.part("J201", "Connector_Generic:Conn_01x06", "HD VTX",
        "Connector_JST:JST_SH_SM06B-SRSS-TB_1x06-1MP_P1.00mm_Horizontal", "C160405", 203.2, 116.84,
        {"1": "+10V_VTX", "2": "GND", "3": "VTX_TX", "4": "VTX_RX", "5": "GND", "6": "VTX_SBUS"})
-v.part("J202", "Connector_Generic:Conn_01x04", "LD06",
-       "Connector_JST:JST_ZH_S4B-ZR-SM4A-TF_1x04-1MP_P1.50mm_Horizontal", "", 203.2, 162.56,
-       {"1": "LIDAR_TX", "2": "LIDAR_PWM", "3": "GND", "4": "+5V"})
+# LD06 on pads as on MicoAir (no room for the ZH1.5 connector): its 5V and GND go to TP320/TP321
+v.part("TP201", "lib:TestPoint", "LD06 TX", "lib:TestPoint_Pad_D1.0mm", "", 203.2, 162.56, {"1": "LIDAR_TX"})
+v.part("TP202", "lib:TestPoint", "LD06 PWM", "lib:TestPoint_Pad_D1.0mm", "", 215.9, 162.56, {"1": "LIDAR_PWM"})
 v.part("R206", "lib:R", "0R", R0201, "", 231.14, 162.56, {"1": "LIDAR_PWM", "2": "GND"})
 # J201 pin 6 (SBUS from a DJI unit) and the XR1 Nano's TX both want USART6 RX: open by default
 v.part("JP202", "Jumper:SolderJumper_2_Open", "SBUS z DJI", "Jumper:SolderJumper-2_P1.3mm_Open_Pad1.0x1.5mm", "",
@@ -396,8 +404,8 @@ for i, net in enumerate(["+10V_SW", "+10V_VTX", "+5V"]):
 v.text("Spínaných 10 V pro HD VTX: kopie U3 z fc_power\n(LMR51430, 100k/6,49k = 9,84 V, 3 A). Vlastní buck, protože\n+10V z fc_power napájí budiče ESC a vypínat se nesmí.\nDimenzováno na DJI O3/O4 (12–16 W ≈ 1,6 A).", 38.1, 20.32, 1.8)
 v.text("EN: výchozí vypnuto (R204), MCU spíná přes VTX_EN\n(RELAYn_PIN, RELAYn_DEFAULT 1). JP201 = trvale zapnuto.", 99.06, 83.82)
 v.text("Proud VTX: R205 20 mΩ, INA226 0x40.\nArduPilot: BATT2_MONITOR 21, BATT2_SHUNT 0.02, BATT2_MAX_AMPS 3.\nPull-upy SDA/SCL patří k MCU (mcu_h743), tady nejsou.", 182.88, 20.32, 1.8)
-v.text("HD VTX, pinout DJI: 1 napájení, 2 GND, 3 TX MCU, 4 RX MCU, 5 GND, 6 SBUS z DJI. Pro Lite+ redukce 6P → 4P.\nJP202 rozpojená: RX6 patří přijímači XR1. Zapájet jen pro DJI s SBUS a bez XR1.", 177.8, 101.6, 1.8)
-v.text("LD06/D500: ZH1.5-4P, 1 Tx, 2 PWM, 3 GND, 4 P5V (rozběh 540 mA z +5V). PWM uzemněn přes R206; bez něj ho řídí MCU přes LIDAR_PWM.", 177.8, 152.4, 1.8)
+v.text("HD VTX, pinout DJI jako MicoAir: 1 napájení, 2 GND, 3 TX2, 4 RX2, 5 GND, 6 SBUS z DJI. Pro Lite+ redukce 6P → 4P.\nJP202 rozpojená: RX6 patří přijímači na J305. Zapájet jen pro DJI s SBUS a bez přijímače.", 177.8, 101.6, 1.8)
+v.text("LD06/D500 na pady jako u MicoAiru (ZH1.5 se nevešel): TP201 Tx lidaru, TP202 PWM, 5V a GND na TP320/TP321 (rozběh 540 mA).\nPWM uzemněn přes R206; bez něj ho řídí MCU přes LIDAR_PWM.", 177.8, 152.4, 1.8)
 v.write("vtx.kicad_sch", "VTX a LD06", uid(), comments=["Buck: kopie U3 z OpenAIO fc_power (CERN-OHL-S-2.0)", "Licence: CERN-OHL-S-2.0"])
 
 # ------------------------------------------------------------------ MCU sheet
@@ -568,26 +576,27 @@ m.items.append([S("hierarchical_label"), "IMU_SPI{SCK,MOSI,MISO}", [S("shape"), 
 m.wire((243.84, 167.64), (251.46, 167.64), bus=True)
 m.items.append([S("label"), "IMU_SPI{SCK,MOSI,MISO}", [S("at"), 246.38, 167.64, 0],
                 font([S("justify"), S("left"), S("bottom")]), [S("uuid"), uid()]])
-# peripherals (pin orders from the makers' labels; pin 1 not documented: verify with a meter)
-# WS-M181: SH1.0-6P, label TX RX GND 5V SCL SDA, IST8310 compass on I2C1
-m.part("J303", "Connector_Generic:Conn_01x06", "GPS WS-M181", "Connector_JST:JST_SH_SM06B-SRSS-TB_1x06-1MP_P1.00mm_Horizontal",
-       "C160405", 50.8, 266.7, {"1": "GPS_RX", "2": "GPS_TX", "3": "GND", "4": "+5V", "5": "EXT_SCL", "6": "EXT_SDA"})
+# peripherals: connectors as on MicoAir743-AIO (ArduPilot hwdef/MicoAir743-AIO, ports picture), SH1.0 side entry.
+# MicoAir's tables list pin 6 first: its README says pin 1 of the DJI connector is 12 V, the last row.
+m.part("J303", "Connector_Generic:Conn_01x06", "GPS (UART3+I2C1)", "Connector_JST:JST_SH_SM06B-SRSS-TB_1x06-1MP_P1.00mm_Horizontal",
+       "C160405", 50.8, 266.7, {"1": "GND", "2": "+5V", "3": "GPS_TX", "4": "GPS_RX", "5": "EXT_SCL", "6": "EXT_SDA"})
 m.part("R314", "lib:R", "4.7k", R0201, "", 76.2, 266.7, {"1": "+3.3V", "2": "EXT_SCL"})
 m.part("R315", "lib:R", "4.7k", R0201, "", 88.9, 266.7, {"1": "+3.3V", "2": "EXT_SDA"})
-# MTF-02P: SH1.0-4P, MicoAir: Tx, Rx, 5V, GND (robofusion lists GND, 5V, Rx, Tx)
-m.part("J304", "Connector_Generic:Conn_01x04", "MTF-02P", "Connector_JST:JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal",
+m.part("J304", "Connector_Generic:Conn_01x04", "UART4 (MTF-02P)", "Connector_JST:JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal",
        "", 119.38, 266.7, {"1": "GND", "2": "+5V", "3": "FLOW_TX", "4": "FLOW_RX"})
-# pads: XR1 Nano (castellated 5V G TX RX), UART1 and UART8 (Bluetooth or spare), free PWM
+m.part("J305", "Connector_Generic:Conn_01x06", "UART1+UART6 (RX, telemetrie)",
+       "Connector_JST:JST_SH_SM06B-SRSS-TB_1x06-1MP_P1.00mm_Horizontal", "C160405", 297.18, 266.7,
+       {"1": "GND", "2": "+5V", "3": "UART1_TX", "4": "UART1_RX", "5": "RC_TX", "6": "RC_RX"})
+# pads: UART8 (Bluetooth or spare), free PWM, 5V and GND (also for the LD06)
 for i, (ref, val, net) in enumerate([
-        ("TP307", "XR1 5V", "+5V"), ("TP308", "XR1 GND", "GND"), ("TP309", "XR1 TX", "RC_RX"),
-        ("TP310", "XR1 RX", "RC_TX"), ("TP311", "UART1 TX", "UART1_TX"), ("TP312", "UART1 RX", "UART1_RX"),
         ("TP313", "UART8 TX", "UART8_TX"), ("TP314", "UART8 RX", "UART8_RX"), ("TP315", "PWM5", "PWM5"),
         ("TP316", "PWM7", "PWM7"), ("TP317", "PWM9", "PWM9"), ("TP318", "PWM10", "PWM10"), ("TP319", "PWM11", "PWM11"),
         ("TP320", "5V", "+5V"), ("TP321", "GND", "GND")]):
     m.part(ref, "lib:TestPoint", val, TP, "", 147.32 + 15.24 * i, 264.16, {"1": net})
-m.text("""J303 GPS WS-M181 (SH1.0-6P), pořadí podle potisku modulu: TX RX GND 5V SCL SDA. Kompas IST8310 na I2C1, pull-upy R314/R315.
-J304 MTF-02P (SH1.0-4P): GND 5V Rx Tx podle robofusion, MicoAir kreslí Tx Rx 5V GND. Kde je pin 1, výrobci neuvádí:
-před prvním zapnutím ověřit multimetrem pin GND na modulu proti kabelu. XR1 Nano nemá konektor, jen pady (TX modulu → RC_RX).""", 30.48, 287.02, 1.27)
+m.text("""Konektory jako MicoAir743-AIO (SH1.0, boční), pin 1 = GND:
+J303 GPS: 1 GND, 2 5V, 3 TX3, 4 RX3, 5 SCL, 6 SDA (kompas na I2C1, pull-upy R314/R315).
+J304 UART4 (MTF-02P): 1 GND, 2 5V, 3 TX4, 4 RX4.  J305 UART1+UART6: 1 GND, 2 5V, 3 TX1, 4 RX1, 5 TX6, 6 RX6 (přijímač na UART6).
+Kabely od MicoAiru tak sedí. Pin 1 před prvním zapnutím ověřit multimetrem proti kabelu.""", 30.48, 287.02, 1.27)
 m.place("#FLG301", "power:PWR_FLAG", "PWR_FLAG", "", "", 317.5, 30.48, power=True, ref_at=(317.5, 27), val_at=(317.5, 27.94))
 m.attach("+5V_USB", 317.5, 30.48, (1, 0), [])   # USB VBUS comes in from the connector
 m.write("mcu_h743.kicad_sch", "MCU STM32H743", uid())
