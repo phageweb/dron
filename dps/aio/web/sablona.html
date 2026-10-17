@@ -1,0 +1,385 @@
+<title>AIO H743 Pavo20</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --ground: #eef0ec;
+  --surface: #f8f9f6;
+  --paper: #fbfbf7;
+  --ink: #18201c;
+  --muted: #59635d;
+  --line: #d3d8d1;
+  --accent: #1f6a4c;
+  --accent-ink: #ffffff;
+  --copper: #b0601f;
+  --st-prevzato: #2c7a56;
+  --st-dokument: #2f5c9c;
+  --st-volba: #a8711a;
+  --st-otevrene: #b23257;
+  --shadow: 0 1px 2px rgb(20 30 25 / .06), 0 8px 24px rgb(20 30 25 / .08);
+  --f-display: "Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground: #121614;
+    --surface: #1a201d;
+    --paper: #f4f4ee;
+    --ink: #e4e9e5;
+    --muted: #9aa49e;
+    --line: #2d3531;
+    --accent: #5cc195;
+    --accent-ink: #0e1512;
+    --copper: #e39a57;
+    --st-prevzato: #5cc195;
+    --st-dokument: #79a6e6;
+    --st-volba: #e0b04f;
+    --st-otevrene: #ec7a9b;
+    --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 8px 24px rgb(0 0 0 / .35);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #121614;
+  --surface: #1a201d;
+  --paper: #f4f4ee;
+  --ink: #e4e9e5;
+  --muted: #9aa49e;
+  --line: #2d3531;
+  --accent: #5cc195;
+  --accent-ink: #0e1512;
+  --copper: #e39a57;
+  --st-prevzato: #5cc195;
+  --st-dokument: #79a6e6;
+  --st-volba: #e0b04f;
+  --st-otevrene: #ec7a9b;
+  --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 8px 24px rgb(0 0 0 / .35);
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--ground); color: var(--ink);
+  font: 15px/1.55 var(--f-body);
+  padding-inline: clamp(16px, 3vw, 40px); padding-block: 24px 48px;
+}
+.wrap { max-width: 1480px; margin-inline: auto; display: grid; gap: 20px; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 600; text-wrap: balance; margin: 0; letter-spacing: .005em; }
+h1 { font-size: clamp(30px, 4vw, 44px); line-height: 1.05; }
+h2 { font-size: 24px; line-height: 1.15; }
+h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+p { margin: 0; }
+code, .mono { font-family: var(--f-mono); font-size: .88em; }
+a { color: var(--accent); }
+
+header { display: grid; gap: 14px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; color: var(--muted); letter-spacing: .04em; }
+.lead { max-width: 70ch; color: var(--muted); }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 13px; }
+.facts div { display: grid; }
+.facts dt { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.facts dd { margin: 0; font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500;
+  padding: 2px 9px 2px 7px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.st-prevzato { color: var(--st-prevzato); }
+.st-dokument { color: var(--st-dokument); }
+.st-volba { color: var(--st-volba); }
+.st-otevrene { color: var(--st-otevrene); }
+
+nav.tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--line); padding-bottom: 0; }
+nav.tabs button {
+  font: 600 16px/1 var(--f-display); letter-spacing: .02em; color: var(--muted);
+  background: none; border: 0; padding: 10px 14px 12px; cursor: pointer; white-space: nowrap;
+  border-bottom: 3px solid transparent; margin-bottom: -1px;
+}
+nav.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+nav.tabs button:hover { color: var(--ink); }
+nav.tabs .file { display: block; font: 400 11px var(--f-mono); margin-top: 4px; color: var(--muted); }
+
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 20px; align-items: start; }
+@media (max-width: 1050px) { .main { grid-template-columns: minmax(0, 1fr); } }
+
+.viewer { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.vbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between;
+  padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.vbar .tools { display: flex; gap: 4px; }
+button.tool { font: 500 13px var(--f-body); color: var(--ink); background: var(--ground); border: 1px solid var(--line);
+  border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+button.tool:hover { border-color: var(--accent); }
+.stage { position: relative; background: var(--paper); aspect-ratio: 420 / 297; max-width: 100%;
+  touch-action: none; cursor: grab; }
+.stage.dragging { cursor: grabbing; }
+.stage svg.sheet { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.blk { fill: transparent; stroke: transparent; stroke-width: .5; cursor: pointer; transition: fill .15s, stroke .15s; }
+.blk[data-st="prevzato"] { --c: var(--st-prevzato); }
+.blk[data-st="dokument"] { --c: var(--st-dokument); }
+.blk[data-st="volba"] { --c: var(--st-volba); }
+.blk[data-st="otevrene"] { --c: var(--st-otevrene); }
+.blk.link { --c: var(--copper); }
+.show-all .blk { stroke: var(--c); stroke-dasharray: 1.6 1.2; fill: color-mix(in srgb, var(--c) 6%, transparent); }
+.blk:hover, .blk:focus-visible { fill: color-mix(in srgb, var(--c) 16%, transparent); stroke: var(--c); stroke-dasharray: none; outline: none; }
+.blk.sel { fill: color-mix(in srgb, var(--c) 20%, transparent); stroke: var(--c); stroke-width: .9; stroke-dasharray: none; }
+.stage[data-dark] .blk { mix-blend-mode: multiply; }
+
+.tip { position: fixed; z-index: 10; pointer-events: none; max-width: 320px; background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; box-shadow: var(--shadow); font-size: 13px; display: grid; gap: 4px; }
+.tip b { font: 600 15px/1.2 var(--f-display); }
+.tip .hint { color: var(--muted); font-size: 11px; }
+
+aside.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 18px 20px;
+  display: grid; gap: 16px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); max-height: calc(100vh - 24px); overflow: auto; }
+@media (max-width: 1050px) { aside.panel { position: static; max-height: none; } }
+.panel .head { display: grid; gap: 8px; }
+.panel section { display: grid; gap: 5px; }
+.panel section p { max-width: 62ch; }
+.blist { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.blist button { width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; text-align: left;
+  font: inherit; color: inherit; background: none; border: 0; border-radius: 6px; padding: 7px 8px; cursor: pointer; }
+.blist button:hover, .blist button:focus-visible { background: var(--ground); outline: none; }
+.blist .t { font-weight: 500; }
+.blist .s { display: block; font-size: 12.5px; color: var(--muted); }
+.parts { display: flex; flex-wrap: wrap; gap: 5px; }
+.parts span { font: 12px var(--f-mono); background: var(--ground); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; }
+.parts span i { font-style: normal; color: var(--muted); }
+.src { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 3px; font-size: 13px; }
+.src .id { font-family: var(--f-mono); color: var(--muted); margin-right: 6px; }
+.back { justify-self: start; font: 500 13px var(--f-body); color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; }
+.pins { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; max-height: 360px; }
+.pins table { border-collapse: collapse; width: 100%; font-size: 12px; }
+.pins th, .pins td { text-align: left; padding: 4px 7px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.pins th { position: sticky; top: 0; background: var(--surface); font-weight: 600; }
+.pins td:nth-child(-n+3) { font-family: var(--f-mono); white-space: nowrap; }
+.pins tr.nc td { color: var(--muted); }
+input#pinfilter { font: 13px var(--f-body); color: var(--ink); background: var(--ground); border: 1px solid var(--line);
+  border-radius: 6px; padding: 6px 9px; width: 100%; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+footer { color: var(--muted); font-size: 13px; display: grid; gap: 6px; }
+@media (prefers-reduced-motion: reduce) { .blk { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">dps/aio · schéma rev A · 17. 10. 2026</div>
+    <h1>AIO H743 pro Pavo20 Pro</h1>
+    <p class="lead">Vlastní deska místo MicoAir H743 AIO: řídicí počítač STM32H743 s ArduPilotem, čtyři ESC s AM32 a napájení pro video vysílač a lidar. Najeď na blok ve schématu a uvidíš, co dělá. Klikni a dozvíš se proč a odkud je.</p>
+    <dl class="facts">
+      <div><dt>Obrys</dt><dd>36 × 36 mm</dd></div>
+      <div><dt>Díry</dt><dd>26 × 26 mm</dd></div>
+      <div><dt>Vrstvy</dt><dd>8, HDI 1+6+1</dd></div>
+      <div><dt>MCU</dt><dd>STM32H743VIH6</dd></div>
+      <div><dt>ESC</dt><dd>4× AT32F421, AM32</dd></div>
+      <div><dt>Vstup</dt><dd>4S LiHV, ≤ 17,4 V</dd></div>
+    </dl>
+    <div class="legend" id="legend"></div>
+  </header>
+
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Listy schématu"></nav>
+
+  <div class="main">
+    <div class="viewer">
+      <div class="vbar">
+        <span id="vhint">Kolečko přibližuje, tažením se posouvá.</span>
+        <div class="tools">
+          <button class="tool" id="zin" type="button" aria-label="Přiblížit">+</button>
+          <button class="tool" id="zout" type="button" aria-label="Oddálit">−</button>
+          <button class="tool" id="zfit" type="button">Celý list</button>
+          <button class="tool" id="zall" type="button" aria-pressed="true">Obrysy bloků</button>
+        </div>
+      </div>
+      <div class="stage show-all" id="stage"></div>
+    </div>
+    <aside class="panel" id="panel" aria-live="polite"></aside>
+  </div>
+
+  <footer>
+    <p>Generováno ze schématu skriptem <code>dps/aio/web/build.py</code>. Texty jsou v <code>dps/aio/web/obsah.py</code>, podrobný popis v <code>dps/aio/NAVRH.md</code>.</p>
+  </footer>
+</div>
+<div class="tip" id="tip" hidden></div>
+<!--SVG-->
+<script>
+/*DATA*/
+(function () {
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const md = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\[(Z\d+)\]/g, '<span class="mono">[$1]</span>');
+  const chip = st => `<span class="chip st-${st}">${esc(DATA.stavy[st][0])}</span>`;
+  const NS = "http://www.w3.org/2000/svg";
+  const stage = $("#stage"), panel = $("#panel"), tip = $("#tip");
+  let cur = null, vb = null, full = null, selected = null;
+
+  $("#legend").innerHTML = Object.entries(DATA.stavy).map(([k, [n, d]]) =>
+    `<span class="chip st-${k}" title="${esc(d)}">${esc(n)}</span>`).join("") +
+    `<span class="chip" style="color:var(--copper)" title="rámeček listu, kliknutím přejdeš">odkaz na list</span>`;
+
+  const tabs = $("#tabs");
+  tabs.innerHTML = DATA.listy.map(L =>
+    `<button role="tab" type="button" id="tab-${L.id}" data-id="${L.id}" aria-selected="false">${esc(L.nazev)}<span class="file">${esc(L.soubor)}</span></button>`).join("");
+  tabs.addEventListener("click", e => { const b = e.target.closest("button"); if (b) show(b.dataset.id); });
+
+  function setVB(v) {
+    vb = v;
+    const svg = $("svg.sheet", stage);
+    if (svg) svg.setAttribute("viewBox", v.map(n => n.toFixed(2)).join(" "));
+  }
+
+  function show(id, blockId) {
+    const L = DATA.listy.find(l => l.id === id) || DATA.listy[0];
+    cur = L; selected = null;
+    tabs.querySelectorAll("button").forEach(b => b.setAttribute("aria-selected", b.dataset.id === L.id));
+    stage.innerHTML = "";
+    stage.appendChild($("#svg-" + L.id).content.cloneNode(true));
+    const svg = stage.querySelector("svg");
+    svg.classList.add("sheet");
+    svg.removeAttribute("width"); svg.removeAttribute("height");
+    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    const g = document.createElementNS(NS, "g");
+    const add = (box, cls, data) => {
+      const r = document.createElementNS(NS, "rect");
+      r.setAttribute("x", box[0]); r.setAttribute("y", box[1]);
+      r.setAttribute("width", box[2] - box[0]); r.setAttribute("height", box[3] - box[1]);
+      r.setAttribute("rx", 1.2); r.setAttribute("class", cls);
+      r.setAttribute("tabindex", "0"); r.setAttribute("role", "button");
+      for (const [k, v] of Object.entries(data)) r.dataset[k] = v;
+      g.appendChild(r);
+      return r;
+    };
+    L.odkazy.forEach(o => add(o.box, "blk link", { cil: o.cil, name: o.nazev }).setAttribute("aria-label", "List " + o.nazev));
+    L.bloky.forEach(b => add(b.box, "blk", { id: b.id, st: b.stav }).setAttribute("aria-label", b.nazev));
+    svg.appendChild(g);
+    full = L.viewBox.slice();
+    setVB(full.slice());
+    try { history.replaceState(null, "", "#" + L.id); } catch (e) {}
+    if (blockId) select(blockId); else overview();
+  }
+
+  function overview() {
+    selected = null;
+    stage.querySelectorAll(".blk.sel").forEach(r => r.classList.remove("sel"));
+    const L = cur;
+    const items = L.bloky.map(b => `<li><button type="button" data-id="${b.id}"><span><span class="t">${esc(b.nazev)}</span><span class="s">${md(b.kratce)}</span></span>${chip(b.stav)}</button></li>`).join("");
+    const links = L.odkazy.length ? `<section><h3>Listy</h3><ul class="blist">${L.odkazy.map(o =>
+      `<li><button type="button" data-cil="${o.cil}"><span class="t">${esc(o.nazev)}</span><span class="chip" style="color:var(--copper)">přejít</span></button></li>`).join("")}</ul></section>` : "";
+    panel.innerHTML = `<div class="head"><h2>${esc(L.nazev)}</h2><p>${md(L.uvod)}</p></div>
+      <section><h3>Bloky na listu</h3><ul class="blist">${items}</ul></section>${links}`;
+  }
+
+  function select(id) {
+    const b = cur.bloky.find(x => x.id === id);
+    if (!b) return;
+    selected = b;
+    stage.querySelectorAll(".blk").forEach(r => r.classList.toggle("sel", r.dataset.id === id));
+    const src = b.zdroje.map(z => {
+      const [n, u] = DATA.zdroje[z];
+      return `<li><span class="id">${z}</span>${u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(n)}</a>` : esc(n)}</li>`;
+    }).join("");
+    const parts = b.dily.length ? `<section><h3>Součástky</h3><div class="parts">${b.dily.map(d =>
+      `<span>${esc(d.ref)} <i>${esc(d.val)}</i></span>`).join("")}</div></section>` : "";
+    const pins = b.piny ? `<section><h3>Mapa pinů</h3><input id="pinfilter" type="search" placeholder="Hledat pin, síť nebo funkci, např. UART5" aria-label="Hledat v mapě pinů">
+      <div class="pins"><table><thead><tr><th>Kulička</th><th>Pin</th><th>Síť</th><th>Funkce</th><th>Kam vede</th></tr></thead><tbody>${b.piny.map(r =>
+        `<tr class="${r[2] ? "" : "nc"}">${r.map(c => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div></section>` : "";
+    panel.innerHTML = `<button class="back" type="button" id="back">← ${esc(cur.nazev)}: všechny bloky</button>
+      <div class="head">${chip(b.stav)}<h2>${esc(b.nazev)}</h2></div>
+      <section><h3>Co to je</h3><p>${md(b.co)}</p></section>
+      <section><h3>Proč</h3><p>${md(b.proc)}</p></section>
+      <section><h3>Odkud a jak</h3><p>${md(b.jak)}</p></section>
+      ${parts}
+      <section><h3>Zdroje</h3><ul class="src">${src}</ul></section>
+      ${pins}
+      <button class="tool" type="button" id="zoomto">Přiblížit na blok</button>`;
+    $("#back").onclick = () => { overview(); setVB(full.slice()); };
+    $("#zoomto").onclick = () => zoomTo(b.box);
+    const f = $("#pinfilter");
+    if (f) f.addEventListener("input", () => {
+      const q = f.value.trim().toLowerCase();
+      panel.querySelectorAll(".pins tbody tr").forEach(tr => { tr.hidden = q && !tr.textContent.toLowerCase().includes(q); });
+    });
+  }
+
+  function zoomTo(box) {
+    const pad = 12, w = box[2] - box[0] + 2 * pad, h = box[3] - box[1] + 2 * pad;
+    const ar = full[2] / full[3];
+    let W = Math.max(w, h * ar), H = W / ar;
+    setVB([box[0] - pad - (W - w) / 2, box[1] - pad - (H - h) / 2, W, H]);
+  }
+
+  panel.addEventListener("click", e => {
+    const b = e.target.closest("button[data-id]"), l = e.target.closest("button[data-cil]");
+    if (b) { select(b.dataset.id); const bl = cur.bloky.find(x => x.id === b.dataset.id); if (bl) zoomTo(bl.box); }
+    if (l) show(l.dataset.cil);
+  });
+
+  // hover tooltip
+  stage.addEventListener("pointermove", e => {
+    const r = e.target.closest && e.target.closest(".blk");
+    if (!r || dragging) { tip.hidden = true; return; }
+    let html;
+    if (r.dataset.cil) html = `<b>List ${esc(r.dataset.name)}</b><span>Kliknutím přejdeš na list.</span>`;
+    else {
+      const b = cur.bloky.find(x => x.id === r.dataset.id);
+      html = `${chip(b.stav)}<b>${esc(b.nazev)}</b><span>${md(b.kratce)}</span><span class="hint">Klikni pro co, proč a odkud.</span>`;
+    }
+    tip.innerHTML = html; tip.hidden = false;
+    const x = Math.min(e.clientX + 16, window.innerWidth - tip.offsetWidth - 8);
+    const y = Math.min(e.clientY + 16, window.innerHeight - tip.offsetHeight - 8);
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  });
+  stage.addEventListener("pointerleave", () => { tip.hidden = true; });
+
+  function activate(r) {
+    if (r.dataset.cil) show(r.dataset.cil);
+    else select(r.dataset.id);
+  }
+  stage.addEventListener("keydown", e => {
+    const r = e.target.closest && e.target.closest(".blk");
+    if (r && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); activate(r); }
+  });
+
+  // pan & zoom on the viewBox
+  let dragging = false, start = null, moved = false;
+  function toSheet(cx, cy) {
+    const rc = stage.getBoundingClientRect();
+    const s = Math.max(vb[2] / rc.width, vb[3] / rc.height);
+    const ox = (rc.width * s - vb[2]) / 2, oy = (rc.height * s - vb[3]) / 2;
+    return [vb[0] - ox + (cx - rc.left) * s, vb[1] - oy + (cy - rc.top) * s, s];
+  }
+  function zoom(f, cx, cy) {
+    const [px, py] = toSheet(cx, cy);
+    const W = Math.min(full[2] * 1.2, Math.max(20, vb[2] * f)), k = W / vb[2], H = vb[3] * k;
+    setVB([px - (px - vb[0]) * k, py - (py - vb[1]) * k, W, H]);
+  }
+  stage.addEventListener("wheel", e => { e.preventDefault(); zoom(e.deltaY > 0 ? 1.15 : 1 / 1.15, e.clientX, e.clientY); }, { passive: false });
+  stage.addEventListener("pointerdown", e => {
+    start = { x: e.clientX, y: e.clientY, vb: vb.slice(), s: toSheet(e.clientX, e.clientY)[2], target: e.target };
+    moved = false;
+  });
+  window.addEventListener("pointermove", e => {
+    if (!start) return;
+    const dx = e.clientX - start.x, dy = e.clientY - start.y;
+    if (!moved && Math.hypot(dx, dy) > 4) { moved = true; dragging = true; stage.classList.add("dragging"); tip.hidden = true; }
+    if (moved) setVB([start.vb[0] - dx * start.s, start.vb[1] - dy * start.s, start.vb[2], start.vb[3]]);
+  });
+  window.addEventListener("pointerup", () => {
+    if (start && !moved) {
+      const r = start.target.closest && start.target.closest(".blk");
+      if (r) activate(r);
+    }
+    start = null; dragging = false; stage.classList.remove("dragging");
+  });
+  const center = () => { const rc = stage.getBoundingClientRect(); return [rc.left + rc.width / 2, rc.top + rc.height / 2]; };
+  $("#zin").onclick = () => zoom(1 / 1.4, ...center());
+  $("#zout").onclick = () => zoom(1.4, ...center());
+  $("#zfit").onclick = () => setVB(full.slice());
+  $("#zall").onclick = e => {
+    const on = stage.classList.toggle("show-all");
+    e.currentTarget.setAttribute("aria-pressed", on);
+  };
+
+  const h = (location.hash || "").slice(1);
+  show(DATA.listy.some(l => l.id === h) ? h : "koren");
+})();
+</script>

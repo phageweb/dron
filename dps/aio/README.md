@@ -4,8 +4,13 @@ Jedna deska místo MicoAir H743 AIO: STM32H743 s ArduPilotem, 4× ESC s AM32,
 napájení VTX a LD06. Vychází z [OpenAIO](https://github.com/OpenDrone-hw/OpenAIO)
 `986ce1e` (CERN-OHL-S-2.0), viz [návrh](../docs/02_navrh.md) a [požadavky](../docs/04_pozadavky.md).
 
-Stav **17. 10. 2026: schéma rev A bez jádra H743.** Převzaté a jisté části jsou
-nakreslené, list `mcu_h743.kicad_sch` je prázdný a kreslí se ručně.
+Stav **17. 10. 2026: schéma rev A.** Převzaté a jisté části jsou nakreslené,
+včetně jádra H743 (napájení podle AN4938, piny podle hwdefu MicoAiru).
+Krystal, baro, logování, druhá IMU a konektory periferií jsou otevřené.
+
+- **[NAVRH.md](./NAVRH.md)**: celý návrh, co je kde, proč a odkud, mapa pinů, kusovník.
+- **Interaktivní schéma**: `nix develop ./dps -c python3 dps/aio/web/build.py` vytvoří
+  `web/schema.html` (listy s klikacími bloky, texty v `web/obsah.py`).
 
 ```sh
 nix develop ./dps
@@ -21,7 +26,7 @@ kicad dps/aio/aio.kicad_pro
 | Power | `fc_power.kicad_sch` | **převzatý beze změny** | +10V pro budiče ESC (stálé), +5V 3 A, USB OR na +4v5, 3,3 V TLV76733 1 A, 1,8 V pro gyro |
 | IMU | `fc_imu.kicad_sch` | **převzatý beze změny** | BMI270 na SPI, napájení 1,8 V |
 | VTX a LD06 | `vtx.kicad_sch` | nový | spínaných 10 V pro HD VTX (kopie bucku U3), INA226, HD VTX SH1.0-6P s pinoutem DJI, LD06 ZH1.5-4P |
-| MCU H743 | `mcu_h743.kicad_sch` | **prázdný, kreslíš ty** | rozhraní jsou hierarchické štítky, seznam toho, co sem patří, je přímo v listu |
+| MCU H743 | `mcu_h743.kicad_sch` | jádro nakreslené, periferie otevřené | H743 s blokováním, BOOT0, SWD, USB-C, dělič baterie, pull-upy I2C. Ostatní piny mají štítky podle hwdefu |
 
 Vypuštěné z OpenAIO, protože patří k RP2354A nebo je nepotřebujeme: `fc_rp2350a`
 (jádro), `rx_esp32c3_sx1281` (přijímač, máme XR1 Nano), `fc_osd` (analogové OSD),
@@ -38,36 +43,23 @@ stejného bucku s EN z MCU.
 **schéma jde dál libovolně měnit** a do desky se propíše klávesou **F8** (Tools →
 Update PCB from Schematic):
 
-- Prvním F8 zmizí 145 footprintů z vypuštěných listů a přibude 16 dílů listu VTX.
+- Prvním F8 zmizí 145 footprintů z vypuštěných listů a přibudou díly listů VTX a MCU.
   ESC, napájení a IMU zůstanou na místě i s vodiči.
 - `kicad-cli pcb drc --schematic-parity aio.kicad_pcb` ukáže, co ještě nesedí.
 
 ## Kontrola
 
 ```sh
-kicad-cli sch erc --severity-error dps/aio/aio.kicad_sch   # 34 chyb, všechny vysvětlené níž
+kicad-cli sch erc --severity-error dps/aio/aio.kicad_sch   # 17 chyb, všechny vysvětlené níž
 ```
 
 | Počet | Co | Proč |
 | ---: | --- | --- |
 | 16 | `pin_not_driven` v ESC1–4 | převzaté z OpenAIO/OpenESC: piny kondenzátorů v jejich knihovně mají typ *input* |
-| 16 | `label_dangling` | hierarchické štítky prázdného listu MCU H743 |
-| 1 | `power_pin_not_driven` +5V_USB | USB konektor patří do listu MCU H743 |
-| 1 | `pin_not_driven` SCL u INA226 | I2C řídí MCU H743 |
+| 1 | `pin_to_pin` VCAP E7–F8 | VCAP1 a VCAP2 spojené, jak doporučuje ST AN4938 |
 
 ## Co je na tobě
 
-V listu `mcu_h743.kicad_sch`:
-
-- H743 v TFBGA-100 (STM32H743VIH6, jako MicoAir), okolí podle ST AN4938
-- USB-C → `+5V_USB`
-- baro, pull-upy I2C, logování (microSD jako MicoAir, nebo flash)
-- druhá IMU ano/ne
-- konektory GPS, MTF-02P, XR1 Nano, Bluetooth: pořadí pinů ověřit z dokumentace modulů
-- dělič napětí baterie do ADC, `ESC_CURRENT` do ADC
-
-A mimo list:
-
-- **Obrys a díry.** `lib:AIO_outline` má rozteč děr 25,5 mm, Pavo20 potřebuje 26 × 26 ([P5](../docs/04_pozadavky.md)).
-- **Layout jádra**, až bude list MCU nakreslený.
-- **LCSC čísla** nových dílů v listu VTX: R203, R205, R206, U202 INA226, J202, JP201.
+Seznam s důvody je v [NAVRH.md, kap. 8](./NAVRH.md#8-otevřené-otázky): krystal,
+baro, logování, druhá IMU, konektory GPS, MTF-02P, XR1 Nano a Bluetooth, RGB LED
+a bzučák, obrys 36 × 36 s dírami 26 × 26, layout jádra a LCSC čísla nových dílů.
