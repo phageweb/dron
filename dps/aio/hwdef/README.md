@@ -28,23 +28,28 @@ mapa pinů ve schématu ([NAVRH.md](../NAVRH.md#mapa-pinů-h743)) a hwdef říka
 | PD13 (PWM8) | výstup | relé VTX: `RELAY1_PIN 57`, `RELAY1_DEFAULT 1`, `SERVO8_FUNCTION -1` | spíná EN bucku U201 |
 | INA226 | — | `BATT2_MONITOR 21`, bus 0, 0x40, 0,02 Ω, 3 A | proud VTX |
 
-## Kontrola
-
-Generátor ArduPilotu ověří, že piny a jejich alternativní funkce na STM32H743
-existují, a sestaví mapu DMA:
+## Sestavení
 
 ```sh
-cd external/ardupilot
-python3 libraries/AP_HAL_ChibiOS/hwdef/scripts/chibios_hwdef.py --bootloader -D /tmp/bl ../../dps/aio/hwdef/Pavo20AIO/hwdef-bl.dat
-python3 libraries/AP_HAL_ChibiOS/hwdef/scripts/chibios_hwdef.py --params ../../dps/aio/hwdef/Pavo20AIO/defaults.parm \
-    -D /tmp/fw ../../dps/aio/hwdef/Pavo20AIO/hwdef.dat
+nix develop ./dps#firmware -c dps/aio/hwdef/sestav.sh     # → build/pavo20aio/
 ```
 
-Stav 17. 10. 2026 (ArduPilot `8b9ea70`): bootloader projde celý. Firmware projde
-přes piny, I2C, SPI, ADC, baro i mapu DMA a zastaví se na `Bootloader
-(Tools/bootloaders/Pavo20AIO_bl.bin) does not exist`. To je očekávané: plné
-sestavení potřebuje nejdřív `Tools/scripts/build_bootloaders.py Pavo20AIO` a
-překladač ARM. To přijde na řadu, až bude deska.
+Skript sestaví v kopii `external/ardupilot` z hardlinků (aby SITL build v
+originále zůstal na své desce) bootloader a ArduCopter a zkopíruje
+`arducopter.apj`, `arducopter_with_bl.hex` a `Pavo20AIO_bl.bin` do `build/pavo20aio/`.
+
+Stav **17. 10. 2026**, ArduPilot `8b9ea70` (s projektovým patchem pro DDS),
+GCC arm-none-eabi 15.3.1:
+
+| Cíl | Výsledek | Flash |
+| --- | --- | --- |
+| bootloader (`--Werror`) | sestaven | 20 360 B, 110 kB volno |
+| ArduCopter | sestaven | 1 435 912 B, **268 kB volno** z 1 920 kB |
+
+Varování jsou obecná, ne od desky: 6× `-Woverloaded-virtual` v `AP_HAL/RCOutput.h`
+z novějšího GCC a jedno varování linkeru o segmentu RWX. Firmware **nikdo
+nenahrál do desky**, deska ještě neexistuje. Sestavení ověřuje, že hwdef je
+úplný a konzistentní, ne že deska poletí.
 
 ## Co se ještě změní
 

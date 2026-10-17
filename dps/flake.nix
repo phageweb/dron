@@ -18,6 +18,17 @@
             echo "KiCad $(kicad-cli version) — ./check.sh runs ERC/DRC on the OpenDrone sources"
           '';
         };
+        # ArduPilot for the board's own hwdef: ARM compiler and waf's Python
+        # (python 3.14 in nixpkgs has no `future`; the ChibiOS build does not need it).
+        # mkShellNoCC: mkShell would set CC/CXX to the host gcc, and waf prefers those.
+        firmware = pkgs.mkShellNoCC {
+          packages = [
+            pkgs.gcc-arm-embedded
+            pkgs.gnumake
+            pkgs.git
+            (pkgs.python3.withPackages (p: with p; [ empy pexpect intelhex pymavlink lxml setuptools ]))
+          ];
+        };
       });
 
       apps = forAll (pkgs: {

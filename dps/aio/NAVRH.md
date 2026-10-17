@@ -156,8 +156,9 @@ bude čip na desce otočený.
 
 ## 6. ArduPilot
 
-Hwdef desky je hotový v [`hwdef/Pavo20AIO`](./hwdef/README.md) a projde
-generátorem ArduPilotu (piny, I2C, SPI, ADC, DMA). Vychází z `MicoAir743v2` [Z5],
+Hwdef desky je hotový v [`hwdef/Pavo20AIO`](./hwdef/README.md) a ArduPilot
+z něj sestaví bootloader i ArduCopter (1,44 MB, 268 kB flash volno), viz
+`dps/aio/hwdef/sestav.sh`. Vychází z `MicoAir743v2` [Z5],
 což je cíl, na kterém běží dnešní MicoAir AIO 45A (board ID 1179, viz
 [firmware](../../firmware/README.md)). Piny UARTů, SPI, I2C, PWM, ADC a SDMMC
 zůstaly stejné. Mění se:
