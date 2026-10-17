@@ -180,11 +180,12 @@ def main():
                 missing = [r for r in b["refs"] if r not in boxes]
                 assert not missing, (L["id"], b["id"], missing)
                 box = union([boxes[r] for r in b["refs"]], 3.2)
-            parts = [{"ref": r, "val": values.get(r, "")} for r in b.get("refs", [])]
+            parts = [{"ref": r, "val": values.get(r, "")} for r in b.get("refs", []) + b.get("dalsi", [])]
             bb = dict(b, box=[round(v, 2) for v in box], dily=parts)
             bb.pop("refs", None)
             bb.pop("rect", None)
             bb.pop("ramecek", None)
+            bb.pop("dalsi", None)
             if b.get("piny"):
                 rows = []
                 for ball, (net, func) in nets_of["U301"].items():

@@ -107,11 +107,13 @@ define AP_COMPASS_PROBING_ENABLED 1
 define HAL_I2C_INTERNAL_MASK 1
 define HAL_COMPASS_AUTO_ROT_DEFAULT 2
 
-# barometer: not chosen yet (NAVRH.md, open questions); both are probed
+# barometer U302: SPL06-001 or DPS310, same footprint and pins, CSB and SDO
+# high -> 0x77. Both report ID 0x10 in register 0x0D, so either driver would
+# take either chip: list only the one that is fitted (SPL06, as on MicoAir).
+# For a DPS310 replace the line with: BARO DPS310 I2C:0:0x77
 BARO SPL06 I2C:0:0x77
-BARO DPS310 I2C:0:0x76
 
-# microSD on SDMMC1, if logging stays on SD (open question)
+# microSD J302 on SDMMC1
 PC12 SDMMC1_CK  SDMMC1
 PD2  SDMMC1_CMD SDMMC1
 PC8  SDMMC1_D0  SDMMC1
@@ -121,7 +123,7 @@ PC11 SDMMC1_D3  SDMMC1
 define FATFS_HAL_DEVICE SDCD1
 define HAL_OS_FATFS_IO 1
 
-# SPI2 - BMI088, optional second IMU (open question); probing finds none if not fitted
+# SPI2 - BMI088 U303, second IMU as on MicoAir
 PD3  SPI2_SCK        SPI2
 PC2  SPI2_MISO       SPI2
 PC3  SPI2_MOSI       SPI2

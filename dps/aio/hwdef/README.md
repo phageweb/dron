@@ -19,9 +19,9 @@ mapa pinů ve schématu ([NAVRH.md](../NAVRH.md#mapa-pinů-h743)) a hwdef říka
 | Dělič baterie | 21.12 | **11.0** | R303 100k / R304 10k |
 | Proud | 40.2 | **50.0** A/V | INA186A3 100 V/V × 0,2 mΩ = 20 mV/A |
 | Kompas | QMC5883L na desce | **jen externí** v GPS, `HAL_I2C_INTERNAL_MASK 1` | na desce kompas není. I2C2 (bus 0) je vnitřní, I2C1 (bus 1) vede ke GPS |
-| Baro | SPL06 0x77 | SPL06 0x77 **a** DPS310 0x76, oba se zkusí | baro ještě není vybrané |
+| Baro | SPL06 0x77 | SPL06 0x77; pro DPS310 vyměnit řádku `BARO` | stejné pouzdro i piny, ale **stejné ID čipu (0x10)**: ArduPilot je nerozezná a dvě řádky by vytvořily dva ovladače na jednom čipu |
 | OSD | AT7456E na SPI1, `OSD_TYPE 1` | **bez SPI1**, `HAL_OSD_TYPE_DEFAULT 5` (MSP DisplayPort) | VTX je digitální |
-| BMI088 | ano | piny rezervované, když není osazený, ArduPilot ho nenajde a jede dál | druhá IMU je otevřená otázka |
+| BMI088 | ano | ano, U303 na SPI2 | jako MicoAir |
 | Rotace IMU | ROLL_180… | `ROTATION_NONE` | **doplnit po layoutu** podle toho, jak čipy sedí |
 | SERIAL7 | telemetrie ESC | bez výchozího protokolu | ESC z OpenESC nemají vodič telemetrie, otáčky jdou přes bidirectional DShot |
 | SERIAL3 | — | GPS | WS-M181 na USART3 |
@@ -53,6 +53,4 @@ nenahrál do desky**, deska ještě neexistuje. Sestavení ověřuje, že hwdef 
 
 ## Co se ještě změní
 
-Až se rozhodne v [otevřených otázkách](../NAVRH.md#8-otevřené-otázky): baro (jedna
-řádka `BARO`), logování (SDMMC, nebo `HAL_LOGGING_DATAFLASH` se SPI flash),
-BMI088 (smazat, když nebude), rotace IMU podle layoutu.
+Rotace obou IMU podle layoutu. Když se místo SPL06 osadí DPS310, vyměnit řádku `BARO`.

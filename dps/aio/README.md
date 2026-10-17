@@ -5,8 +5,8 @@ napájení VTX a LD06. Vychází z [OpenAIO](https://github.com/OpenDrone-hw/Ope
 `986ce1e` (CERN-OHL-S-2.0), viz [návrh](../docs/02_navrh.md) a [požadavky](../docs/04_pozadavky.md).
 
 Stav **17. 10. 2026: schéma rev A.** Převzaté a jisté části jsou nakreslené,
-včetně jádra H743 (napájení podle AN4938, piny podle hwdefu MicoAiru).
-Krystal, baro, logování, druhá IMU a konektory periferií jsou otevřené.
+včetně jádra H743 (napájení podle AN4938, piny podle hwdefu MicoAiru), krystalu,
+barometru, BMI088 a microSD. Konektory periferií, LED a bzučák jsou otevřené.
 
 - **[NAVRH.md](./NAVRH.md)**: celý návrh, co je kde, proč a odkud, mapa pinů, kusovník.
 - **[hwdef/](./hwdef/README.md)**: popis desky pro ArduPilot (firmware, bootloader, výchozí parametry).
@@ -27,7 +27,7 @@ kicad dps/aio/aio.kicad_pro
 | Power | `fc_power.kicad_sch` | **převzatý beze změny** | +10V pro budiče ESC (stálé), +5V 3 A, USB OR na +4v5, 3,3 V TLV76733 1 A, 1,8 V pro gyro |
 | IMU | `fc_imu.kicad_sch` | **převzatý beze změny** | BMI270 na SPI, napájení 1,8 V |
 | VTX a LD06 | `vtx.kicad_sch` | nový | spínaných 10 V pro HD VTX (kopie bucku U3), INA226, HD VTX SH1.0-6P s pinoutem DJI, LD06 ZH1.5-4P |
-| MCU H743 | `mcu_h743.kicad_sch` | jádro nakreslené, periferie otevřené | H743 s blokováním, BOOT0, SWD, USB-C, dělič baterie, pull-upy I2C. Ostatní piny mají štítky podle hwdefu |
+| MCU H743 | `mcu_h743.kicad_sch` | nakreslený kromě konektorů periferií | H743 s blokováním, krystal, BOOT0, SWD, USB-C, dělič baterie, I2C2 s barometrem, BMI088, microSD. Ostatní piny mají štítky podle hwdefu |
 
 Vypuštěné z OpenAIO, protože patří k RP2354A nebo je nepotřebujeme: `fc_rp2350a`
 (jádro), `rx_esp32c3_sx1281` (přijímač, máme XR1 Nano), `fc_osd` (analogové OSD),
@@ -51,16 +51,18 @@ Update PCB from Schematic):
 ## Kontrola
 
 ```sh
-kicad-cli sch erc --severity-error dps/aio/aio.kicad_sch   # 17 chyb, všechny vysvětlené níž
+kicad-cli sch erc --severity-error dps/aio/aio.kicad_sch   # 18 chyb, všechny vysvětlené níž
 ```
 
 | Počet | Co | Proč |
 | ---: | --- | --- |
 | 16 | `pin_not_driven` v ESC1–4 | převzaté z OpenAIO/OpenESC: piny kondenzátorů v jejich knihovně mají typ *input* |
 | 1 | `pin_to_pin` VCAP E7–F8 | VCAP1 a VCAP2 spojené, jak doporučuje ST AN4938 |
+| 1 | `pin_to_pin` SDO1–SDO2 BMI088 | oba výstupy na MISO, jak předepisuje datasheet BMI088 pro SPI |
 
 ## Co je na tobě
 
-Seznam s důvody je v [NAVRH.md, kap. 8](./NAVRH.md#8-otevřené-otázky): krystal,
-baro, logování, druhá IMU, konektory GPS, MTF-02P, XR1 Nano a Bluetooth, RGB LED
-a bzučák, obrys 36 × 36 s dírami 26 × 26, layout jádra a LCSC čísla nových dílů.
+Seznam s důvody je v [NAVRH.md, kap. 8](./NAVRH.md#8-otevřené-otázky): konektory
+GPS, MTF-02P, XR1 Nano a Bluetooth, RGB LED a bzučák, obrys 36 × 36 s dírami
+26 × 26, layout a LCSC čísla nových dílů. Krystal, baro (SPL06 nebo DPS310),
+microSD a BMI088 jsou od 17. 10. nakreslené.

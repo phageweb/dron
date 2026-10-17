@@ -1,7 +1,9 @@
 """Texty interaktivní stránky: bloky každého listu, co dělají, proč a odkud.
 
 Stav bloku: prevzato | dokument | volba | otevrene (viz NAVRH.md, úroveň jistoty).
-`refs` určují oblast na listu (obálka symbolů), `rect` ji dá ručně v mm listu.
+`refs` určují oblast na listu (obálka symbolů), `rect` ji dá ručně v mm listu,
+`ramecek` vezme rámeček nakreslený v listu kolem dané součástky. `dalsi` jsou díly
+bloku, které leží jinde na listu: patří do seznamu, ne do oblasti.
 """
 
 ZDROJE = {
@@ -21,6 +23,11 @@ ZDROJE = {
     "Z12": ("spec/10_pavo20.md, termika (DJI O3 12–16 W)", ""),
     "Z13": ("spec/11_kusovnik_pavo20.md (Lite+ 3–12,6 V)", ""),
     "Z14": ("spec/15_test_linky_skenu.md (LD19, D500)", ""),
+    "Z15": ("Goertek SPL06-001", "https://media.digikey.com/pdf/Data%20Sheets/Goertek%20Microelectronics%20PDFs/SPL06-001.pdf"),
+    "Z16": ("Infineon DPS310", "https://files.seeedstudio.com/products/101020812/res/DPS310-datasheet.pdf"),
+    "Z17": ("Bosch BMI088 rev 1.9", "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi088-ds001.pdf"),
+    "Z18": ("YXC X32258MOB4SI, JLC C2682775", "https://jlcpcb.com/partdetail/2777872-X32258MOB4SI/C2682775"),
+    "Z19": ("ST DS12110, STM32H743 datasheet", "https://cdn.sparkfun.com/assets/e/4/e/c/a/STM32H743VI_Datasheet.pdf"),
 }
 
 STAVY = {
@@ -177,8 +184,8 @@ LISTY = [
     },
     {
         "id": "mcu", "nazev": "MCU H743", "svg": "aio-MCU H743.svg", "soubor": "mcu_h743.kicad_sch",
-        "uvod": "STM32H743VIH6 se vším, co je jasné z AN4938 a z hwdefu MicoAiru. Periferie, o kterých se "
-                "teprve rozhoduje (krystal, baro, logování, druhá IMU, konektory), jsou jen štítky na pinech.",
+        "uvod": "STM32H743VIH6 s krystalem, barometrem, druhou IMU a microSD, podle AN4938, datasheetů a hwdefu "
+                "MicoAiru. Konektory periferií, LED a bzučák jsou zatím jen štítky na pinech.",
         "bloky": [
             dict(id="u301", refs=["U301"], stav="dokument", nazev="STM32H743VIH6",
                  kratce="TFBGA-100, piny podle hwdefu MicoAir743v2. Klikni pro mapu pinů.",
@@ -216,10 +223,32 @@ LISTY = [
                  co="J301 TYPE-C 16P (C5187472), R307/R308 5,1k na CC1/CC2, VBUS → +5V_USB → D3 v listu Power.",
                  proc="5,1k na CC je podmínka, aby USB-C zdroj vůbec pustil 5 V. Sériové 30 Ω z OpenAIO jsou vynechané, patřily k RP2354, OTG_FS je nepotřebuje.",
                  jak="Převzato z OpenAIO [Z1], piny podle hwdefu [Z5].", zdroje=["Z1", "Z5"]),
-            dict(id="otevrene", rect=[28, 178, 122, 30], stav="otevrene", nazev="Co ještě není nakreslené",
-                 kratce="Krystal, baro, logování, druhá IMU, konektory, LED, bzučák.",
-                 co="Krystal 8 MHz na HSE_IN/HSE_OUT, baro na SDA/SCL, microSD (SD_*) nebo flash, BMI088 (IMU2_*), konektory GPS, MTF-02P, XR1 Nano, Bluetooth, RGB LED, bzučák, volné PWM.",
-                 proc="Každá z těch věcí je rozhodnutí: kondenzátory krystalu závisí na zvoleném krystalu, baro a logování na skladu a místě, konektory na pořadí pinů modulů, které nemáme ověřené.",
+            dict(id="krystal", refs=["Y301", "C322", "C323"], stav="volba", nazev="Krystal 8 MHz",
+                 kratce="YXC X32258MOB4SI, CL 12 pF, kondenzátory 15 pF.",
+                 co="Y301 8 MHz 3225 (C2682775) na PH0/PH1, C322 a C323 15 pF C0G k zemi.",
+                 proc="ArduPilot čeká 8 MHz (`OSCILLATOR_HZ`). C = 2 × (CL − Cstray) = 2 × (12 − 5) = 14 → 15 pF. Strmost krystalu gm_crit ≈ 0,5 mA/V je pod mezí H743 1,5 mA/V. S krystalem 20 pF by vyšla přes 1 mA/V, proto nízké CL.",
+                 jak="Výpočet podle AN4938 a AN2867 [Z4], mez Gmcritmax z datasheetu H743 [Z19], krystal [Z18].",
+                 zdroje=["Z4", "Z18", "Z19"]),
+            dict(id="baro", refs=["U302"], dalsi=["C317"], stav="dokument", nazev="Barometr SPL06 nebo DPS310",
+                 kratce="Jedna ploška pro oba, I2C na 0x77. Osadí se podle skladu.",
+                 co="U302 v pouzdru LGA-8 2 × 2,5 mm (symbol a footprint BMP280, stejné piny), CSB a SDO na 3,3 V → I2C s adresou 0x77, C317 blokování.",
+                 proc="Obě čidla mají stejné pouzdro, piny i adresy a stejnou relativní přesnost ±0,06 hPa. DPS310 má o něco menší šum. Mají ale i stejné ID čipu, takže ArduPilot je nerozezná: v hwdefu je SPL06 (jako MicoAir), pro DPS310 se vymění jedna řádka.",
+                 jak="Datasheety SPL06-001 [Z15] a DPS310 [Z16], ovladače AP_Baro [Z5].", zdroje=["Z15", "Z16", "Z5"]),
+            dict(id="bmi088", refs=["U303"], dalsi=["C318", "C319"], stav="dokument", nazev="Druhá IMU BMI088",
+                 kratce="SPI2 jako MicoAir, odolná vůči vibracím.",
+                 co="U303 BMI088: PS na zem (SPI), SDO1 a SDO2 spojené do MISO, CS akcelerometru PD4, gyra PD5, INT1 → PC14, INT3 → PC15, INT2 a INT4 nezapojené.",
+                 proc="Dvě IMU dávají EKF zálohu a BMI088 je navržená pro vibrace. MicoAir má stejnou dvojici. Spojené SDO předepisuje datasheet, ERC to hlásí jako chybu.",
+                 jak="Zapojení podle datasheetu BMI088, kap. 7 [Z17], piny podle hwdefu [Z5].", zdroje=["Z17", "Z5"]),
+            dict(id="sd", refs=["J302"], dalsi=["R309", "R310", "R311", "R312", "R313", "C320", "C321"], stav="dokument",
+                 nazev="microSD",
+                 kratce="Slot z OpenAIO na 4bitovém SDMMC1, pull-upy 47k.",
+                 co="J302 TF-021B-H265 (C498185), R309–R313 47k na CMD a D0–D3, C320 100 nF a C321 4,7 µF na napájení karty.",
+                 proc="Logy se bez karty neladí. SDMMC jako MicoAir je rychlé a hwdef ho už má. Specifikace SD chce pull-upy 10–100k na CMD a datech.",
+                 jak="Slot převzatý z OpenAIO [Z1], piny podle hwdefu [Z5].", zdroje=["Z1", "Z5"]),
+            dict(id="otevrene", rect=[28, 186, 112, 22], stav="otevrene", nazev="Co ještě není nakreslené",
+                 kratce="Konektory periferií, RGB LED, bzučák, volné PWM, obrys.",
+                 co="Konektory GPS (GPS_*, EXT_SDA/SCL), MTF-02P (FLOW_*), XR1 Nano (RC_TX/RC_RX), Bluetooth (UART1 nebo UART8), RGB LED, bzučák, pady volných PWM.",
+                 proc="U konektorů neznáme ověřené pořadí pinů modulů. LED a bzučák čekají na výběr dílů.",
                  jak="Piny jsou rezervované podle hwdefu [Z5], seznam je v NAVRH.md, kap. 8.", zdroje=["Z5"]),
         ],
     },
