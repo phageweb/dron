@@ -1,0 +1,98 @@
+(version 1)
+
+# OpenDrone canonical design rules.
+#
+# Copied from hardware-template into every board repo. Keep the block above the
+# marker byte-identical across repos. Board-specific rules go
+# below the marker, never in the middle.
+#
+# This file holds CUSTOM rules only. The fab numbers that gate a JLCPCB order
+# live in the project file under board.design_settings.rules, and come from
+# Board Setup > Import Settings from Another Board, pointed at
+# kicad/templates/OpenDrone-6L. The line standard is:
+#
+#   clearance 0.09   track 0.09   via 0.35 / 0.20 drill
+#   annular 0.075    hole-to-hole 0.20        edge clearance 0.20
+#
+# Do not restate those here. Two copies of a number drift, and the one you are
+# not looking at is the one that is wrong.
+
+(rule "silkscreen over pad"
+  (constraint silk_clearance (min 0.15mm))
+  (condition "A.Type == 'Pad'"))
+
+# --- board-specific rules below this line ------------------------------------
+#
+# Only what this board needs and the line does not. Name every rule so the next
+# person can tell a real constraint from a copied one.
+#
+# OpenAIO, one board: the hand-routed Base and Core of 2026-08-22 (d81e559, plus the always-on
+# +10V of 9aba717) merged into one board: 8-layer HDI 1+6+1 on the OpenAIO-Whoop stackup (12L tried and dropped on cost, 2026-10-15)
+# (0.997 mm, 1 oz on all layers, ENIG). The 2 oz outer rules of OpenAIO-Base.kicad_dru and the
+# LGA rule of OpenAIO-Core.kicad_dru are gone with the 2 oz copper and the LGA. Via rules come
+# from OpenAIO-Whoop.kicad_dru. KiCad: the LAST matching rule wins.
+
+# ---- HDI 1+6+1 vias (NextPCB, from OpenAIO-Whoop) ----
+(rule "HDI 1+6+1: no mechanical blind vias"
+  (severity warning)
+  (constraint disallow blind_via))
+
+(rule "HDI 1+6+1: microvias F.Cu-In1.Cu and In6.Cu-B.Cu only"
+  (constraint disallow micro_via)
+  (condition "!((A.Layer_Top == 'F.Cu' && A.Layer_Bottom == 'In1.Cu') || (A.Layer_Top == 'In6.Cu' && A.Layer_Bottom == 'B.Cu'))"))
+
+(rule "HDI 1+6+1: buried vias In1.Cu-In6.Cu only"
+  (constraint disallow buried_via)
+  (condition "!(A.Layer_Top == 'In1.Cu' && A.Layer_Bottom == 'In6.Cu')"))
+
+(rule "HDI microvia: laser hole 0.10 to 0.125"
+  (constraint hole_size (min 0.10mm) (max 0.125mm))
+  (condition "A.Via_Type == 'Micro'"))
+
+(rule "HDI microvia: land 0.25, ring 0.075"
+  (constraint via_diameter (min 0.25mm))
+  (constraint annular_width (min 0.075mm))
+  (condition "A.Via_Type == 'Micro'"))
+
+(rule "HDI buried via: ring 0.09"
+  (constraint annular_width (min 0.09mm))
+  (condition "A.Via_Type == 'Buried'"))
+
+# Through vias are allowed (owner, 2026-10-15): a via that joins F.Cu and B.Cu copper stays a
+# mechanical through via at its routed size; every other via is a microvia and/or buried stack.
+
+(rule "HDI buried via: mechanical hole 0.15 to 0.25"
+  (constraint hole_size (min 0.15mm) (max 0.25mm))
+  (condition "A.Via_Type == 'Buried'"))
+
+(rule "same-net via array 0.20"
+  (constraint hole_to_hole (min 0.20mm))
+  (condition "A.Net == B.Net && A.Type == 'Via' && B.Type == 'Via'"))
+
+(rule "HDI microvia stacked or staggered on a same-net buried via"
+  (constraint hole_to_hole (min 0mm))
+  (condition "A.Net == B.Net && ((A.Via_Type == 'Micro' && B.Via_Type == 'Buried') || (A.Via_Type == 'Buried' && B.Via_Type == 'Micro'))"))
+
+(rule "HDI laser hole to buried hole, different nets: L2 copper clearance governs"
+  (constraint hole_to_hole (min 0.25mm))
+  (condition "A.Net != B.Net && ((A.Via_Type == 'Micro' && B.Via_Type == 'Buried') || (A.Via_Type == 'Buried' && B.Via_Type == 'Micro'))"))
+
+# ---- Core layout ----
+# The Core was routed by hand on the 0.09 line standard with the Default class only
+# (OpenAIO-Core.kicad_pro). The rule area "Core layout" covers it; inside it the Base netclass
+# clearances (Power 0.10, Analog/RF/USB 0.12) do not apply. Move the rule area with the Core.
+(rule "Core layout: line standard clearance 0.09"
+  (constraint clearance (min 0.09mm))
+  (condition "A.intersectsArea('Core layout') && B.intersectsArea('Core layout')"))
+
+# ---- Footprint-intrinsic (2026-10-15) ----
+(rule "U9 X2SON-6 land pattern below the class clearance"
+  (layer outer)
+  (condition "A.Type == 'Pad' && B.Type == 'Pad' && A.memberOfFootprint('U9') && B.memberOfFootprint('U9')")
+  (constraint clearance (min 0.076mm)))
+
+# The peg has no net, so a drill nick into R4.2 is harmless electrically; move R4 about 0.1 mm away when rerouting.
+(rule "USB1 locating peg (no-net PTH) to R4: 0.08 mm, accepted"
+  (condition "(A.memberOfFootprint('USB1') && B.memberOfFootprint('R4')) || (A.memberOfFootprint('R4') && B.memberOfFootprint('USB1'))")
+  (constraint clearance (min 0.08mm))
+  (constraint hole_clearance (min 0.08mm)))

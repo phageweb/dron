@@ -1,0 +1,212 @@
+(kicad_sch
+	(version 20260306)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "7095c71d-4b1e-506b-9034-6e14c9be24d9")
+	(paper "A3")
+	(title_block
+		(title "MCU STM32H743 — k nakreslení")
+		(date "2026-10-17")
+		(rev "A")
+	)
+	(lib_symbols)
+	(hierarchical_label "IMU_SPI{SCK,MOSI,MISO}"
+		(shape bidirectional)
+		(at 30.48 50.8 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "332ff079-cec9-5e07-8b19-48c612084889")
+	)
+	(hierarchical_label "IMU_CS"
+		(shape bidirectional)
+		(at 30.48 55.88 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "dac72d2d-625b-5832-bf78-c1b50a6d86ae")
+	)
+	(hierarchical_label "IMU_INT"
+		(shape bidirectional)
+		(at 30.48 60.96 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "f91065fa-f9f9-519b-bdbd-0faf458ec44c")
+	)
+	(hierarchical_label "IMU_CLKIN"
+		(shape bidirectional)
+		(at 30.48 66.04 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "ecd12305-eb74-5c18-8c89-4e0df3a3da8b")
+	)
+	(hierarchical_label "ESC_CURRENT"
+		(shape bidirectional)
+		(at 30.48 71.12 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "c5f4000e-557e-5161-8694-b88edc3f4da7")
+	)
+	(hierarchical_label "SDA"
+		(shape bidirectional)
+		(at 30.48 76.2 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "80a07cc3-a7a6-5b6f-be73-8d2da7457cd1")
+	)
+	(hierarchical_label "SCL"
+		(shape bidirectional)
+		(at 30.48 81.28 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "56f1b619-22c5-5be7-a212-deb60d8d1890")
+	)
+	(hierarchical_label "MOTOR1"
+		(shape bidirectional)
+		(at 381 50.8 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "5ef35e61-1d06-5518-8dbc-aaaa217dc46a")
+	)
+	(hierarchical_label "MOTOR2"
+		(shape bidirectional)
+		(at 381 55.88 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "08b92dcf-c691-5290-a0f5-d0f95b36986b")
+	)
+	(hierarchical_label "MOTOR3"
+		(shape bidirectional)
+		(at 381 60.96 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "a5dbf45f-da70-5af4-977a-7ae5aa2240cb")
+	)
+	(hierarchical_label "MOTOR4"
+		(shape bidirectional)
+		(at 381 66.04 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "d151eb6c-06c9-5baa-93c2-ced779726dda")
+	)
+	(hierarchical_label "VTX_EN"
+		(shape bidirectional)
+		(at 381 71.12 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "bf6c5406-4639-55ed-a5c2-9dc21c11a72c")
+	)
+	(hierarchical_label "VTX_TX"
+		(shape bidirectional)
+		(at 381 76.2 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "dbdcffb7-1e5e-5267-8b94-c8b6d41f9e92")
+	)
+	(hierarchical_label "VTX_RX"
+		(shape bidirectional)
+		(at 381 81.28 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "fa264ad8-15c4-5928-9b61-af8e8fec5ea6")
+	)
+	(hierarchical_label "RC_RX"
+		(shape bidirectional)
+		(at 381 86.36 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "94dbae00-1603-5026-ae1e-336698db966e")
+	)
+	(hierarchical_label "LIDAR_TX"
+		(shape bidirectional)
+		(at 381 91.44 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "5158ed8e-6985-5ed4-b95f-4234e896a365")
+	)
+	(hierarchical_label "LIDAR_PWM"
+		(shape bidirectional)
+		(at 381 96.52 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "a9d70ded-4c3b-528d-866e-9ee83d7938ac")
+	)
+	(text "MCU STM32H743 — NENAKRESLENO, kreslí se ručně.\n\nRozhrani k ostatním listům jsou hierarchické štítky vlevo a vpravo.\nPinout podle hwdef MicoAir743v2 (external/ardupilot/libraries/AP_HAL_ChibiOS/hwdef/MicoAir743v2/hwdef.dat).\n\nCo sem patří (viz dps/docs/04_pozadavky.md, kap. 2.4–2.8):\n- STM32H743VIH6 (TFBGA-100), VCAP, blokování, krystal 8 MHz, BOOT0 tlačítko, SWD pady, reset   [ST AN4938]\n- USB-C (USB 2.0, CC 5,1k, ESD) → +5V_USB (fc_power ho OR-uje do +4v5)\n- IMU: BMI270 v listu IMU je na IMU_SPI; druhá IMU (BMI088 jako MicoAir) — rozhodnout\n- Baro (SPL06 / DPS310 / BMP580) na I2C, a pull-upy SDA/SCL (sdílí ho INA226 0x40 z listu VTX)\n- Log: microSD na SDMMC1 (MicoAir) nebo SPI flash — rozhodnout\n- Dělič napětí baterie do ADC (OpenAIO: 100k/10k), ESC_CURRENT do ADC\n- MOTOR1–4 na TIM1 CH1–4 (bidirectional DShot), jako MicoAir PE9/PE11/PE13/PE14\n- UARTy a konektory: GPS + kompas (SH 6P), MTF-02P (SH 4P), XR1 Nano (pady), Bluetooth (pady),\n  LD06 Tx → LIDAR_TX (UART5 RX), HD VTX → VTX_TX/VTX_RX (USART2), RC_RX (USART6)\n  Pořadí pinů GPS a MTF-02P ověřit z dokumentace modulů.\n- VTX_EN a LIDAR_PWM na volné GPIO (RELAY), RGB LED, bzučák\n- volné PWM výstupy navíc k motorům (MicoAir AIO má 4 + LED)\n- obrys 36 × 36 mm, díry 26 × 26 (Pavo20), nejlépe oválné na 25,5–26"
+		(exclude_from_sim no)
+		(at 60.96 40.64 0)
+		(effects
+			(font
+				(size 2 2)
+			)
+			(justify left bottom)
+		)
+		(uuid "ed9dcc8e-1fa9-50c2-855f-0afe9a04e8b8")
+	)
+	(embedded_fonts no)
+)

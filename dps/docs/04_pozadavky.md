@@ -4,8 +4,11 @@ Sepsáno **12. 10. 2026**. Navazuje na [rešerši](./01_reserse_otevrenych_proje
 a [návrh](./02_navrh.md), ale s jednou změnou: **ESP32 most na desce není.**
 Wi-Fi z ESP32 má na tenhle účel malý dosah, takže sken z LD06 jde dolů přes OSD
 Walksnailu ([test](../../spec/realna_stavba_dronu/15_test_linky_skenu.md)) a záloha je
-přikoupený sériový Bluetooth na volném UARTu. Z desky 1 tak zbývá jen napájení
-a konektory, a ty jsou tady součástí AIO.
+přikoupený sériový Bluetooth na volném UARTu.
+
+Tenhle dokument popisuje **desku 2** (vlastní AIO). Od 17. 10. 2026 je to
+**jediná deska**: samostatná deska 1 se nevyrobí a její schéma
+je teď list `vtx.kicad_sch` v [aio](../aio/README.md).
 
 Deska je **vlastní AIO místo MicoAir H743 V2**: H743 s ArduPilotem, čtyři ESC,
 napájení pro všechno, co na stroji je. Pinout se přebírá z `MicoAir743v2`, aby
@@ -25,7 +28,7 @@ stačil upravený hwdef.
 | P6 | Hmotnost | **≤ 10 g** osazená, bez kabelů | MicoAir váží 10 g — horší být nesmí |
 | P7 | UARTy | **6 použitých + 1 volný**, viz tabulka níž | [rozvržení UARTů](../../spec/realna_stavba_dronu/14_postup_stavby_pavo20.md#rozvržení-uartů) |
 | P8 | 5 V | **≥ 1,5 A** trvale | RX, GPS, MTF-02P, LD06 (300 mA rozběh, 180 mA provoz) |
-| P9 | VTX | **9–10 V, ≥ 1,5 A**, spínané z FC | Lite+ snese 3–12,6 V; dnešní 12V BEC je 0,6 V pod stropem |
+| P9 | VTX | **10 V, ≥ 2 A** (dimenzováno na DJI O3/O4, 12–16 W), spínané z FC | Spotřeba Lite+ se nečeká: větev se navrhne na třídu O3/O4, pro kterou je rám i MicoAir (12 V/2 A pro O3/O4) dělaný. 16 W na 10 V je 1,6 A. Lite+ snese 3–12,6 V; 12V BEC je 0,6 V pod stropem |
 | P10 | IMU | aspoň jedna, SPI, s DRDY | ArduPilot; MicoAir má BMI088 + BMI270 |
 | P11 | Baro | I2C nebo SPI | AltHold, EKF |
 | P12 | Logování | microSD | bez logu se neladí notch ani gainy |
@@ -50,7 +53,7 @@ stačil upravený hwdef.
 | UART (MicoAir) | Zařízení | Napájení | Pozn. |
 | --- | --- | --- | --- |
 | USART1 | volný / Bluetooth modul (M7) | 3,3 V nebo 5 V | MAVLink |
-| USART2 | Walksnail Lite+ (MSP DisplayPort) | **9–10 V spínané** (P9) | konektor HD VTX: 6 pin SH |
+| USART2 | Walksnail Lite+ (MSP DisplayPort) | **10 V spínané** (P9) | konektor HD VTX: 6 pin SH |
 | USART3 | WS-M181 GPS + kompas na I2C1 | 5 V | JST-SH 6 pin |
 | UART4 | MTF-02P | 5 V | JST-SH 4 pin |
 | UART5 | LD06, jen RX | 5 V | ZH1.5-4P (M1), PWM pin LD06 uzemnit nebo na GPIO |
@@ -89,10 +92,10 @@ podívat se, jak to udělali, a nakreslit znovu.
 | --- | --- | --- |
 | 10 V pro drivery ESC | LMR54406 | OpenESC-20x20 (už v listu ESC) |
 | 5 V, ≥ 1,5 A | **LMR51430** (36 V vstup, 3 A) | OpenFC-Lite-Mini, list `power` |
-| 9–10 V VTX, spínané | LMR51430, EN na GPIO MCU (PINIO) | OpenFC-Lite-Mini má totéž jako „10 V spínaný" |
+| 10 V VTX, spínané, 3 A | LMR51430, EN na GPIO MCU (PINIO) | OpenFC-Lite-Mini U3, dělič 100k/6,49k, signál `10V_ENABLE` — ověřeno ve schématu |
 | 3,3 V MCU | LDO z 5 V (TLV76733 nebo podobný) | OpenESC / OpenFC-Lite-Mini |
 | 3,3 V IMU, oddělené | samostatné nízkošumové LDO | Kestrel H7 (vzor) |
-| Měření VTX (M4) | INA226 + shunt na 9V větvi | datasheet TI INA226, I2C |
+| Měření VTX (M4) | INA226 + shunt na 10V větvi | datasheet TI INA226, I2C |
 
 Datasheety: TI [LMR51430](https://www.ti.com/product/LMR51430),
 [INA186](https://www.ti.com/product/INA186), [INA226](https://www.ti.com/product/INA226)
@@ -141,7 +144,7 @@ Seznam senzorů, které ArduPilot umí: `libraries/AP_InertialSensor/` a
 
 | Co | Konektor | Pozn. |
 | --- | --- | --- |
-| Walksnail Lite+ | JST-SH 1,0 6 pin, pinout jako HD VTX konektor MicoAiru | 9V spínané, GND, TX2, RX2 |
+| HD VTX (Lite+, DJI O3/O4) | JST-SH 1,0 6 pin, pinout DJI jako MicoAir a OpenFC-Lite-Mini | 1 +10 V spínané, 2 GND, 3 TX2, 4 RX2, 5 GND, 6 RX přijímače |
 | LD06 | **ZH1.5-4P** (M1) | 5 V, GND, TX → RX5 a RX8 (M2), PWM |
 | GPS + kompas | JST-SH 6 pin | 5 V, GND, TX3, RX3, SDA, SCL |
 | MTF-02P | JST-SH 4 pin | 5 V, GND, TX4, RX4 |
@@ -164,7 +167,7 @@ Seznam senzorů, které ArduPilot umí: `libraries/AP_InertialSensor/` a
 | Hardware H743 | ST AN4938, AN2867, datasheet a reference manual RM0433 | PDF, st.com |
 | Buck, proud, USB ESD | datasheety TI LMR51430, INA186, INA226; ST USBLC6-2 | PDF |
 | Díly a sklad | [JLCPCB parts](https://jlcpcb.com/parts) / [LCSC](https://www.lcsc.com) — kvůli osazení u JLC | web |
-| Pravidla výroby | DRU soubory v repozitářích OpenDrone (6 vrstev, 2 oz) | KiCad |
+| Pravidla výroby | DRU soubory v repozitářích OpenDrone (OpenESC 6 vrstev; OpenAIO 8 vrstev HDI 1+6+1, 1 oz, 1,0 mm) | KiCad |
 
 Odkazy na všechno z rešerše jsou v [Zdrojích](./03_zdroje.md).
 
@@ -172,10 +175,10 @@ Odkazy na všechno z rešerše jsou v [Zdrojích](./03_zdroje.md).
 
 | Otázka | Možnosti | Na čem to závisí |
 | --- | --- | --- |
-| Pouzdro H743 | TFBGA-100 / LQFP-100 | jestli se LQFP vejde vedle 4 ESC na 36 mm — zkusit hrubé rozmístění |
+| Pouzdro H743 | TFBGA-100 / LQFP-100 | **doporučeno TFBGA-100** (17. 10.): na OpenAIO (35,4 mm) jsou MOSFETy po okrajích horní strany, budiče ESC a přijímač dole a uprostřed horní strany je na jádro asi 20 × 20 mm. RP2354A v QFN-60 tam zabírá 7 × 7, TFBGA-100 má 8 × 8 a vejde se na jeho místo. LQFP-100 má 16 × 16 bez blokovacích kondenzátorů a zabral by celé jádro |
 | Jedna nebo dvě IMU | BMI270 sama / + BMI088 | místo a hmotnost; ArduPilot umí s jednou |
-| microSD nebo flash | SD / SPI flash | výška slotu, hmotnost |
-| VTX 9 nebo 10 V | obojí v rozsahu Lite+ | spotřeba Lite+ — **změřit na MicoAiru dřív** |
+| microSD nebo flash | SD / SPI flash | otevřené. Na OpenAIO by slot microSD (asi 12 × 12 mm) místo neměl, ale MicoAir H743 V2 AIO má na 36 × 36 mm 4× ESC 45 A, H743 v TFBGA-100 (STM32H743VIH6), dvě IMU **i microSD** [manuál robofusion] — jde to tedy, za cenu hustšího layoutu |
+| ~~VTX 9 nebo 10 V~~ | **10 V** (17. 10.) | převzít dělič z OpenFC-Lite-Mini beze změny; dimenzuje se na O3/O4, ne na změřený Lite+ |
 | LD06 do dvou UARTů (M2) | ano / ne | jestli OSD linka čte LD06 sama, nebo z AP_Proximity |
 | Licence | CERN-OHL-S-2.0 | převzetím listu OpenDrone je deska povinně otevřená |
 
@@ -184,6 +187,6 @@ Odkazy na všechno z rešerše jsou v [Zdrojích](./03_zdroje.md).
 | | |
 | --- | --- |
 | **Ověřeno** | Pinout MicoAir z hwdefu v `external/ardupilot` `8b9ea70`. Rozvržení UARTů a napájení podle [postupu stavby](../../spec/realna_stavba_dronu/14_postup_stavby_pavo20.md) a [kusovníku](../../spec/realna_stavba_dronu/11_kusovnik_pavo20.md). |
-| **Převzaté tvrzení** | Díly a revize OpenDrone z jejich `AGENTS.md` k 7. 10. 2026, viz [rešerše](./01_reserse_otevrenych_projektu.md). Žádný KiCad soubor jsme zatím neotevřeli. |
-| **Odhad** | P6 ≤ 10 g, P8 ≥ 1,5 A, P9 ≥ 1,5 A — spotřeba Lite+ neznámá, odhad podle podobných VTX. |
+| **Ověřeno v souborech** (17. 10.) | Projekty OpenDrone otevřené v KiCadu 10 a prověřené přes ERC/DRC (`./check.sh`, výsledek v [návrhu](./02_navrh.md#erc-a-drc-převzatých-projektů)). Díly sedí na `AGENTS.md`: list `ESC.kicad_sch` má AT32F421G8U7, NSG2065Q a DOY180N03T, `power.kicad_sch` 2× LMR51430 (5 V stálý, 10 V spínaný přes `10V_ENABLE`). |
+| **Odhad** | P6 ≤ 10 g, P8 ≥ 1,5 A. P9 je dimenzované na DJI O3 (12–16 W, viz [Pavo20](../../spec/realna_stavba_dronu/10_pavo20.md)), ne na změřený Lite+. |
 | **Neověřeno** | Pinout HD VTX konektoru MicoAiru a Lite+, pinout konektoru LD06 — vzít z manuálů v `spec/realna_stavba_dronu/manualy` a ověřit multimetrem. |

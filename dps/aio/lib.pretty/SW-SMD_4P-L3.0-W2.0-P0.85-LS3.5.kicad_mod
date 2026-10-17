@@ -1,0 +1,223 @@
+(footprint "SW-SMD_4P-L3.0-W2.0-P0.85-LS3.5"
+	(version 20260206)
+	(generator "pcbnew")
+	(generator_version "10.0")
+	(layer "F.Cu")
+	(property "Reference" "REF**"
+		(at 0 -4.42 180)
+		(layer "F.SilkS")
+		(hide yes)
+		(uuid "2dc7dce2-db33-4030-bd9b-86579d39773a")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "TS2306A 240GF MSM 9_C2976675"
+		(at 0 4.42 180)
+		(layer "F.Fab")
+		(uuid "7d0a3c83-252d-48ca-83aa-b18fe21fcd7b")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 180)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "7b32a112-189d-40d1-aa57-4e864f4aff45")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 180)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "668052e8-38f9-4d38-9b22-21a945a7d214")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "LCSC" "C2976675"
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "a98ada5f-7ee4-4545-9d06-e50304574675")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "MPN" "TS2306A 240gf MSM 9"
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "56bc3474-aba9-4a33-82ea-76cea22df844")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Manufacturer" "SHOU HAN"
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "11e8189d-ef76-4a2d-88a0-d1a4440f1a27")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(sheetname "/RP2354A/")
+	(sheetfile "fc_rp2350a.kicad_sch")
+	(attr smd)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -1.5 -1)
+		(end -1.5 -0.96)
+		(stroke
+			(width 0.25)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "2e540362-0e57-4263-a047-ac23be979b33")
+	)
+	(fp_line
+		(start -1.5 -1)
+		(end 1.5 -1)
+		(stroke
+			(width 0.25)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "eddb0d3d-0b86-4262-b6ac-fa0f424b810e")
+	)
+	(fp_line
+		(start -1.5 0.96)
+		(end -1.5 1)
+		(stroke
+			(width 0.25)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "70be4674-1f5a-43a7-8d34-82d8ec13000c")
+	)
+	(fp_line
+		(start -1.5 1)
+		(end 1.5 1)
+		(stroke
+			(width 0.25)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "dbe8594c-2a74-41ba-8465-12be442e3ae1")
+	)
+	(fp_line
+		(start 1.5 -1)
+		(end 1.5 -0.96)
+		(stroke
+			(width 0.25)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "061bd34a-fa6f-42f0-babf-8fe59854a3aa")
+	)
+	(fp_line
+		(start 1.5 0.96)
+		(end 1.5 1)
+		(stroke
+			(width 0.25)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "bfd4b04e-2c3d-4cf5-b548-c151cb90ffa5")
+	)
+	(fp_circle
+		(center 0 0)
+		(end 0.64 0)
+		(stroke
+			(width 0.25)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.SilkS")
+		(uuid "980bddf8-d20b-4e9b-8bb0-a4b737588e99")
+	)
+	(fp_circle
+		(center -1.75 -1)
+		(end -1.72 -1)
+		(stroke
+			(width 0.06)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.Fab")
+		(uuid "14674a99-b3b8-4e95-95cc-e1c8e2e20546")
+	)
+	(fp_text user "${REFERENCE}"
+		(at 0 0 180)
+		(layer "F.Fab")
+		(uuid "37b46a4c-9d7d-4b34-b1bf-5440bd38b019")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(pad "1" smd rect
+		(at -1.64 -0.42)
+		(size 0.42 0.6)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "30814a82-7f0d-4b64-b9e3-59fae41fa3c7")
+	)
+	(pad "1" smd rect
+		(at -1.64 0.42)
+		(size 0.42 0.6)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "7fcebb42-bf93-42f9-a007-dfb0ef763ee8")
+	)
+	(pad "2" smd rect
+		(at 1.64 -0.42)
+		(size 0.42 0.6)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "5bba7141-668d-4c17-b9d4-7587eb85cfb4")
+	)
+	(pad "2" smd rect
+		(at 1.64 0.42)
+		(size 0.42 0.6)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "55d5f671-b7b7-4cde-99fa-6a1d5f8d4362")
+	)
+	(embedded_fonts no)
+	(model "${KIPRJMOD}/lib.3dshapes/SW-SMD_4P-L3.0-W2.0-P0.85-LS3.5.wrl"
+		(offset
+			(xyz 0 -0 -0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

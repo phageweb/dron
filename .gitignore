@@ -36,3 +36,10 @@ android/lidarcam/local.properties
 # nix build outputs (gcroots)
 result
 result-*
+
+# KiCad per-user and generated state (dps/)
+*.kicad_prl
+*-backups/
+fp-info-cache
+\#auto_saved_files#
+~*.lck
