@@ -49,11 +49,11 @@ LISTY = [
         "uvod": "Vstup baterie, měření proudu všech ESC, obrys desky s pady a odkazy na ostatní listy. "
                 "Klikni na rámeček listu a přejdeš na něj.",
         "bloky": [
-            dict(id="obrys", refs=["U24"], stav="otevrene", nazev="Obrys desky, pady baterie a motorů",
+            dict(id="obrys", refs=["U24"], stav="prevzato", nazev="Obrys desky, pady baterie a motorů",
                  kratce="U24 z OpenAIO. Pady sedí, rozměr a díry je potřeba upravit.",
                  co="Footprint `lib:AIO_outline` nese obrys desky, díry a pady: 1 baterie +, 2 GND, 11 díry na GND, 12–23 fáze motorů (1A–4C).",
                  proc="Pady jsou součást obrysu, aby seděly s převzatým layoutem ESC. Fáze vedou do listů ESC přes sítě 1A–4C.",
-                 jak="Převzato z OpenAIO [Z1]. Otevřené: OpenAIO má 35,4 × 35,4 mm a díry 25,5 × 25,5. Pavo20 potřebuje díry 26 × 26 [Z11], obrys 36 × 36 jako MicoAir [Z9].",
+                 jak="Převzato z OpenAIO [Z1] beze změny: 35,4 × 35,4 mm, díry ⌀3 na 25,5 × 25,5. Rám Pavo20 má 26 × 26 [Z11], šroub M2 projde s rezervou 0,15 mm jako u MicoAiru [Z9]. Oválné díry by zasáhly 8 prokovů přívodu baterie.",
                  zdroje=["Z1", "Z9", "Z11"]),
             dict(id="proud", refs=["Rsense2", "U25", "C104", "TP13"], stav="prevzato", nazev="Proud všech ESC",
                  kratce="Shunt 0,2 mΩ a INA186A3: 20 mV/A do ADC H743.",

@@ -20,8 +20,8 @@ na dronu a konektory pro video vysílač a lidar.
 
 | Parametr | Hodnota | Proč / odkud |
 | --- | --- | --- |
-| Obrys | 36 × 36 mm | stejně jako MicoAir AIO [Z9], vejde se do rámu Pavo20 Pro |
-| Díry | 26 × 26 mm, nejlépe oválné na 25,5–26 | rozteč FC rámu Pavo20 Pro je 26 × 26 [Z11]. MicoAir má 25,5 [Z9] a sedí jen díky vůli |
+| Obrys | 35,4 × 35,4 mm | obrys OpenAIO [Z1] beze změny, o 0,6 mm menší než MicoAir AIO (36 × 36) [Z9] |
+| Díry | ⌀3 mm na 25,5 × 25,5, jako OpenAIO a MicoAir | rozteč FC rámu Pavo20 Pro je 26 × 26 [Z11]. Šroub M2 sedne díky vůli, oválné díry nejdou, viz kap. 4.1 |
 | Vstup | 4S LiHV, max. 17,4 V | baterie Tattu ([kusovník](../../spec/realna_stavba_dronu/11_kusovnik_pavo20.md)). Převzaté obvody snesou 3S–6S [Z1] |
 | MCU | STM32H743VIH6, TFBGA-100 | stejný čip jako MicoAir [Z9], ArduPilot na něm má hotový target [Z5]. Pouzdro se vejde na místo jádra OpenAIO, LQFP-100 by se nevešel ([požadavky, kap. 4](../docs/04_pozadavky.md)) |
 | Vrstvy | 8, HDI 1+6+1, 1 oz, 1,0 mm | tak je vyrobený OpenAIO [Z1], ze kterého je převzatý layout ESC |
@@ -72,7 +72,7 @@ baterie (U24 pad 1) ── Rsense2 0,2 mΩ ── +BATT ─┬─ 4× ESC (MOSFE
 
 | Co | Ref | Jistota | Zdroj | Proč |
 | --- | --- | --- | --- | --- |
-| Obrys s pady baterie a motorů | U24 `lib:AIO_outline` | převzato, **obrys a díry otevřené** | OpenAIO [Z1] | pad 1 baterie +, pad 2 GND, pady 12–23 fáze motorů. Footprint má 35,4 mm a díry 25,5. Pro nás 36 mm a 26 × 26 |
+| Obrys s pady baterie a motorů | U24 `lib:AIO_outline` | převzato beze změny, rozhodnuto 18. 10. | OpenAIO [Z1] | pad 1 baterie +, pad 2 GND, pady 12–23 fáze motorů. Obrys 35,4 × 35,4 mm: o 0,6 mm menší než MicoAir, a 36 mm bylo v plánu jen podle něj. Díry ⌀3 mm na 25,5 × 25,5: vyzkoušeno 18. 10.: ovál 25,5–26 zasáhne v levém horním rohu 8 ze 40 prokovů CSA+, které vedou proud baterie a díru obtáčejí zvenku. Šroub M2 na rozteči 26 projde dírou ⌀3 na 25,5 s rezervou 0,15 mm (posun 0,25 mm na osu, 0,35 mm úhlopříčně), jako u MicoAiru [Z9] |
 | Shunt všech ESC | Rsense2 0,2 mΩ 2512 | převzato | OpenAIO [Z1] | proud do všech ESC |
 | Zesilovač proudu | U25 INA186A3, C104 | převzato | OpenAIO [Z1], TI INA186 [Z8] | 100 V/V × 0,2 mΩ = 20 mV/A. Výstup ESC_CURRENT jde do PC1 (ADC) |
 | Testovací body | TP13, TP20–TP23 | převzato | OpenAIO [Z1] | proud a DShot čtyř motorů |
@@ -154,7 +154,7 @@ bude čip na desce otočený.
 
 | Konektor | Ref | Pinout | Stav |
 | --- | --- | --- | --- |
-| Baterie + motory | U24 | 1 +, 2 GND, 12–23 fáze | převzato, obrys otevřený |
+| Baterie + motory | U24 | 1 +, 2 GND, 12–23 fáze | převzato, obrys 35,4 mm a díry 25,5 beze změny |
 | HD VTX | J201 SH1.0-6P | 1 +10V_VTX, 2 GND, 3 TX (PA2), 4 RX (PA3), 5 GND, 6 RC_RX (PC7) | hotovo |
 | LD06 / D500 | J202 ZH1.5-4P | 1 Tx → PB5, 2 PWM, 3 GND, 4 +5V | hotovo |
 | USB | J301 USB-C | USB 2.0, VBUS → +5V_USB | hotovo |
@@ -212,7 +212,6 @@ a přibudou nové díly. ESC a napájení zůstanou na místě i s vodiči.
 | Co | Kde | Proč není rozhodnuté |
 | --- | --- | --- |
 | Pin 1 konektorů GPS a MTF-02P | J303, J304 | výrobci pin 1 neuvádí. Před prvním zapnutím změřit, který pin modulu je GND |
-| Obrys a díry | U24 `lib:AIO_outline` | upravit na 36 × 36 a 26 × 26 |
 | LCSC čísla | díly s „—“ v kusovníku | vybrat podle skladu JLC |
 | Layout jádra | aio.kicad_pcb | až budou rozhodnuté body výš |
 

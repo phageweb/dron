@@ -98,7 +98,8 @@ a vyměnit jádro:
 - **RP2350 → STM32H743.** Jediný důvod, proč OpenAIO nejde vzít celé.
   ArduPilot na RP2350 je otevřený PR s 10× pomalými doubly; až se mergne a
   ověří, stojí za to se k OpenFC-Core vrátit, protože by se převzalo všechno.
-- **Rozteč 25,5 → 26 × 26** pro Pavo20, nejlépe oválné díry na obě.
+- ~~Rozteč 25,5 → 26 × 26~~: zůstává 25,5, M2 na rámu 26 × 26 projde dírou ⌀3 s vůlí 0,15 mm.
+  Oválné díry by zasáhly prokovy přívodu baterie ([AIO, NAVRH kap. 4.1](../aio/NAVRH.md)).
 - **Bez 2,4GHz RX na desce**, viz výše.
 
 ### Co opravíme proti MicoAir H743 V2

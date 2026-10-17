@@ -65,6 +65,7 @@ kicad-cli sch erc --severity-error dps/aio/aio.kicad_sch   # 18 chyb, všechny v
 
 ## Co je na tobě
 
-Seznam s důvody je v [NAVRH.md, kap. 8](./NAVRH.md#8-otevřené-otázky): obrys
-36 × 36 s dírami 26 × 26, layout, LCSC čísla nových dílů a ověření pinu 1 u
-konektorů GPS a MTF-02P. Schéma je od 17. 10. nakreslené celé.
+Seznam s důvody je v [NAVRH.md, kap. 8](./NAVRH.md#8-otevřené-otázky): layout,
+LCSC čísla nových dílů a ověření pinu 1 u konektorů GPS a MTF-02P. Schéma je od
+17. 10. nakreslené celé. Obrys 35,4 mm a díry 25,5 zůstávají z OpenAIO (18. 10.),
+oválné díry na 26 by zasáhly prokovy přívodu baterie.

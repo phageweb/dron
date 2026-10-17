@@ -352,7 +352,7 @@ for i, net in enumerate(["+BATT", "CSA+", "+4v5", "+10V", "+1.8V_GYRO"]):
                ref_at=(30.48 + 15.24 * i, 248), val_at=(30.48 + 15.24 * i, 248.92))
     root.attach(net, 30.48 + 15.24 * i, 251.46, (0, 1) if net in RAILS else (1, 0), [])
 
-root.text("Baterie a motory: U24 = obrys desky s pady (OpenAIO). Rozteč děr 25,5 mm → pro Pavo20 26 × 26: upravit footprint lib:AIO_outline.", 20.32, 25.4, 1.8)
+root.text("Baterie a motory: U24 = obrys desky s pady (OpenAIO). Obrys 35,4 mm, díry ⌀3 na 25,5: rám Pavo20 má 26 × 26, M2 projde s vůlí 0,15 mm.", 20.32, 25.4, 1.8)
 root.text("Proud všech ESC: Rsense2 0,2 mΩ + INA186A3 (100 V/V) = 20 mV/A → ESC_CURRENT do ADC H743.", 20.32, 33.02, 1.8)
 root.text("Převzato beze změny: 4× esc_channel (OpenESC kanál), fc_power (10 V budiče + 5 V + 3,3 V + 1,8 V gyro), fc_imu (BMI270).\nNové: vtx.kicad_sch (spínaných 10 V pro HD VTX, INA226, LD06), mcu_h743.kicad_sch (H743, senzory, microSD, USB, konektory, LED, bzučák).", 20.32, 236.22, 1.8)
 root.write("aio.kicad_sch", "AIO H743 pro Pavo20 Pro", ROOT, comments=[CERN, "Licence: CERN-OHL-S-2.0"])

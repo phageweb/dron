@@ -8392,7 +8392,7 @@
 			)
 		)
 	)
-	(text "Baterie a motory: U24 = obrys desky s pady (OpenAIO). Rozteč děr 25,5 mm → pro Pavo20 26 × 26: upravit footprint lib:AIO_outline."
+	(text "Baterie a motory: U24 = obrys desky s pady (OpenAIO). Obrys 35,4 mm, díry ⌀3 na 25,5: rám Pavo20 má 26 × 26, M2 projde s vůlí 0,15 mm."
 		(exclude_from_sim no)
 		(at 20.32 25.4 0)
 		(effects
