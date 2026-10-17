@@ -210,7 +210,20 @@ se schématem přes UUID a zůstaly na místě i s vodiči. Co se změnilo:
 - **Přejmenováno** 10 sítí, které vedou dál k převzatým dílům: MOTOR1–4, CURR → ESC_CURRENT
   a sběrnice IMU (CS, INT, SPI). Jejich vodiče zůstaly, v místě jádra RP2354 končí naprázdno
   (44 visících vodičů v DRC) a dotrasují se k H743.
-- **Přidáno** 93 dílů listů MCU, VTX a kořene, zatím mimo desku vpravo.
+- **Přidáno** 93 dílů listů MCU, VTX a kořene.
+- **Hrubé rozmístění** (`aktualizuj_desku.sh --rozmisti`, skript `gen/rozmisti.py`): kotvy
+  na místa dílů OpenAIO, které nahrazují (H743 na místo RP2354 otočený o 180°, aby kuličky
+  USB a SDMMC mířily k USB-C a slotu; USB-C a microSD na místa stejných footprintů; baro na
+  místo BMP580; J201 na místo SH-6; pady na místa malých padů). Blokovací kondenzátory H743
+  vzadu pod ním, ostatní co nejblíž pinům, se kterými sdílí síť, bez překryvu courtyardů.
+  **Není to layout**, jen výchozí bod.
+- **Nevešly se konektory J303 (GPS), J304 (MTF-02P) a J202 (LD06).** Volné plochy zbývá
+  187 mm² vpředu a 160 mm² vzadu, ale rozdrobené. Konektory potřebují souvislých 66, 52 a
+  86 mm² a hledání po mřížce 0,2 mm na obou stranách, ve všech otočeních a před pasivními
+  díly je nenašlo. Leží mimo desku, viz kap. 8.
+- DRC po rozmístění: kromě nepropojených spojů hlásí zkraty a vůle tam, kde nové pady leží
+  na zbytcích mědi OpenAIO (vodiče +3.3V, +4v5, GND a prokovy v místě jádra). Ty se při
+  layoutu jádra roztrhají a vedou znovu.
 - Potisk desky má ještě popisky padů OpenAIO (cam, LED, gnd…), opraví se při layoutu.
 
 Footprint microSD slotu `TF-SMD_TF-021B-H265` v OpenAIO **neměl pady 1 (DAT2) a 8
@@ -224,6 +237,7 @@ a −3,925 mm. Doplněné jsou podle něj, do mezer, které pro ně v potisku z�
 | --- | --- | --- |
 | Pin 1 konektorů GPS a MTF-02P | J303, J304 | výrobci pin 1 neuvádí. Před prvním zapnutím změřit, který pin modulu je GND |
 | LCSC čísla | díly s „—“ v kusovníku | vybrat podle skladu JLC |
+| Konektory GPS, MTF-02P, LD06 | J303, J304, J202 | na desku se nevejdou (kap. 7). Možnosti: pady místo konektorů jako u XR1 a MicoAiru, nebo konektory na kabelu/přídavné destičce |
 | Layout jádra | aio.kicad_pcb | nové díly leží mimo desku, rozmístění a únik z BGA H743 na HDI se dělá ručně v KiCadu. Potisk OpenAIO přepsat |
 
 ## 9. Kontrola

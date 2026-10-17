@@ -44,8 +44,9 @@ stejného bucku s EN z MCU.
 
 `aio.kicad_pcb` vychází z layoutu OpenAIO: 35,4 × 35,4 mm, 8 vrstev HDI 1+6+1, 1 oz.
 Od 18. 10. odpovídá schématu: díly vypuštěných listů a jejich měď jsou pryč,
-93 nových dílů leží **mimo desku vpravo** (řádek na list) a čeká na rozmístění.
-ESC, napájení, IMU a kořen zůstaly na místě i s vodiči.
+ESC, napájení, IMU a kořen zůstaly na místě i s vodiči. 90 nových dílů má **hrubé
+rozmístění** (`aktualizuj_desku.sh --rozmisti`), konektory J303, J304 a J202 se
+nevešly a leží mimo desku ([NAVRH kap. 7](./NAVRH.md#7-deska-pcb)).
 
 Schéma se do desky propisuje bez GUI (dělá totéž co F8, viz hlavička skriptu):
 

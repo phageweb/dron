@@ -7,4 +7,9 @@ fp=$(nix-store -q --requisites "$(readlink -f "$(command -v kicad-cli)")" | grep
 export PYTHONPATH="$(echo "$base"/lib/python3*/site-packages)"
 export KICAD10_FOOTPRINT_DIR="${KICAD10_FOOTPRINT_DIR:-$fp/share/kicad/footprints}"
 # swig reports every removed item as a leak on exit; that is noise
-"$py" "$(dirname "$0")/aktualizuj_desku.py" "$@" 2>&1 | grep -v -e "swig/python detected" -e "Font .* not found"
+run() { "$py" "$@" 2>&1 | grep -v -e "swig/python detected" -e "Font .* not found"; }
+if [ "${1:-}" = "--rozmisti" ]; then
+  run "$(dirname "$0")/rozmisti.py" "$(dirname "$0")/../aio.kicad_pcb"
+else
+  run "$(dirname "$0")/aktualizuj_desku.py" "$@"
+fi
