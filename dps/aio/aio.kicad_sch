@@ -8414,7 +8414,7 @@
 		)
 		(uuid "ffb1b0ff-81cc-5517-a471-b6bcdfa05327")
 	)
-	(text "Převzato beze změny: 4× esc_channel (OpenESC kanál), fc_power (10 V budiče + 5 V + 3,3 V + 1,8 V gyro), fc_imu (BMI270).\nNové: vtx.kicad_sch (spínaných 10 V pro HD VTX, INA226, LD06). Prázdné, k nakreslení: mcu_h743.kicad_sch."
+	(text "Převzato beze změny: 4× esc_channel (OpenESC kanál), fc_power (10 V budiče + 5 V + 3,3 V + 1,8 V gyro), fc_imu (BMI270).\nNové: vtx.kicad_sch (spínaných 10 V pro HD VTX, INA226, LD06), mcu_h743.kicad_sch (H743, senzory, microSD, USB, konektory, LED, bzučák)."
 		(exclude_from_sim no)
 		(at 20.32 236.22 0)
 		(effects

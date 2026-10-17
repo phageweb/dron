@@ -6,9 +6,12 @@ napájení VTX a LD06. Vychází z [OpenAIO](https://github.com/OpenDrone-hw/Ope
 
 Stav **17. 10. 2026: schéma rev A.** Převzaté a jisté části jsou nakreslené,
 včetně jádra H743 (napájení podle AN4938, piny podle hwdefu MicoAiru), krystalu,
-barometru, BMI088, microSD a konektorů periferií. RGB LED a bzučák jsou otevřené.
+barometru, BMI088, microSD, konektorů periferií, RGB LED a spínače bzučáku.
 
 - **[NAVRH.md](./NAVRH.md)**: celý návrh, co je kde, proč a odkud, mapa pinů, kusovník.
+- **Schéma se generuje**: `nix develop ./dps -c python3 dps/aio/gen/gen_aio.py` přepíše všechny
+  listy (`*.kicad_sch`) se stálými UUID. Schéma se proto mění v `gen/gen_aio.py`, ne v KiCadu.
+  Desku, pravidla, projekt a `lib.pretty` generátor nepřepisuje, ty se upravují v KiCadu.
 - **[hwdef/](./hwdef/README.md)**: popis desky pro ArduPilot (firmware, bootloader, výchozí parametry).
 - **Interaktivní schéma**: `nix develop ./dps -c python3 dps/aio/web/build.py` vytvoří
   `web/schema.html` (listy s klikacími bloky, texty v `web/obsah.py`).
@@ -27,7 +30,7 @@ kicad dps/aio/aio.kicad_pro
 | Power | `fc_power.kicad_sch` | **převzatý beze změny** | +10V pro budiče ESC (stálé), +5V 3 A, USB OR na +4v5, 3,3 V TLV76733 1 A, 1,8 V pro gyro |
 | IMU | `fc_imu.kicad_sch` | **převzatý beze změny** | BMI270 na SPI, napájení 1,8 V |
 | VTX a LD06 | `vtx.kicad_sch` | nový | spínaných 10 V pro HD VTX (kopie bucku U3), INA226, HD VTX SH1.0-6P s pinoutem DJI, LD06 ZH1.5-4P |
-| MCU H743 | `mcu_h743.kicad_sch` | nakreslený kromě RGB LED a bzučáku | H743 s blokováním, krystal, BOOT0, SWD, USB-C, dělič baterie, I2C2 s barometrem, BMI088, microSD. Ostatní piny mají štítky podle hwdefu |
+| MCU H743 | `mcu_h743.kicad_sch` | nakreslený | H743 s blokováním, krystal, BOOT0, SWD, USB-C, dělič baterie, I2C2 s barometrem, BMI088, microSD, RGB LED, bzučák. Ostatní piny mají štítky podle hwdefu |
 
 Vypuštěné z OpenAIO, protože patří k RP2354A nebo je nepotřebujeme: `fc_rp2350a`
 (jádro), `rx_esp32c3_sx1281` (přijímač, máme XR1 Nano), `fc_osd` (analogové OSD),
@@ -62,7 +65,6 @@ kicad-cli sch erc --severity-error dps/aio/aio.kicad_sch   # 18 chyb, všechny v
 
 ## Co je na tobě
 
-Seznam s důvody je v [NAVRH.md, kap. 8](./NAVRH.md#8-otevřené-otázky): RGB LED a
-bzučák, obrys 36 × 36 s dírami 26 × 26, layout, LCSC čísla nových dílů a ověření
-pinu 1 u konektorů GPS a MTF-02P. Krystal, baro, microSD, BMI088 a konektory
-periferií jsou od 17. 10. nakreslené.
+Seznam s důvody je v [NAVRH.md, kap. 8](./NAVRH.md#8-otevřené-otázky): obrys
+36 × 36 s dírami 26 × 26, layout, LCSC čísla nových dílů a ověření pinu 1 u
+konektorů GPS a MTF-02P. Schéma je od 17. 10. nakreslené celé.

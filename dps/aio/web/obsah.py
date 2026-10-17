@@ -31,6 +31,9 @@ ZDROJE = {
     "Z20": ("MicoAir MTF-02P", "https://micoair.com/optical_range_sensor_mtf-02p/"),
     "Z21": ("Caddx WS-M181", "https://www.caddxfpv.com/products/walksnail-ws-m181gps"),
     "Z22": ("RadioMaster XR1 Nano, manuál", "https://images.amainhobbies.com/images/resources/RM-BR0157.XR1-900/Manuals/1-RM-BR0157.XR1-900_RadioMaster_XR1_Nano_Multi-Frequency_ELRS_Receiver%20-%20Manual.pdf"),
+    "Z23": ("ArduPilot AP_Notify: PixRacerLED.cpp, Buzzer.cpp", "https://github.com/ArduPilot/ardupilot/tree/8b9ea70/libraries/AP_Notify"),
+    "Z24": ("XINGLIGHT XL-1005SURC, JLC C965790", "https://jlcpcb.com/partdetail/XINGLIGHT-XL1005SURC/C965790"),
+    "Z25": ("AO3400A, JLC C20917", "https://jlcpcb.com/partdetail/C20917"),
 }
 
 STAVY = {
@@ -188,7 +191,7 @@ LISTY = [
     {
         "id": "mcu", "nazev": "MCU H743", "svg": "aio-MCU H743.svg", "soubor": "mcu_h743.kicad_sch",
         "uvod": "STM32H743VIH6 s krystalem, barometrem, druhou IMU a microSD, podle AN4938, datasheetů a hwdefu "
-                "MicoAiru, a konektory periferií. RGB LED a bzučák jsou zatím jen štítky na pinech.",
+                "MicoAiru, konektory periferií, RGB LED a spínač bzučáku.",
         "bloky": [
             dict(id="u301", refs=["U301"], stav="dokument", nazev="STM32H743VIH6",
                  kratce="TFBGA-100, piny podle hwdefu MicoAir743v2. Klikni pro mapu pinů.",
@@ -255,11 +258,16 @@ LISTY = [
                  proc="Konektory místo pájení tam, kde se modul často odpojuje. XR1 Nano konektor nemá, má jen půlené pady. Pořadí pinů je z potisku a obrázků výrobců, kde je pin 1, ale nikdo neuvádí: před prvním zapnutím změřit, který pin modulu je GND.",
                  jak="Caddx a potisk WS-M181 [Z21], MicoAir a robofusion pro MTF-02P [Z20], manuál XR1 [Z22], piny UARTů z hwdefu [Z5].",
                  zdroje=["Z21", "Z20", "Z22", "Z5"]),
-            dict(id="otevrene", rect=[28, 194, 90, 14], stav="otevrene", nazev="Co ještě není nakreslené",
-                 kratce="RGB LED, bzučák, obrys desky.",
-                 co="RGB LED na LED_R/G/B (aktivní v nule jako MicoAir), bzučák na BUZZER přes tranzistor, obrys 36 × 36 mm s dírami 26 × 26.",
-                 proc="LED a bzučák čekají na výběr dílů, obrys patří k layoutu.",
-                 jak="Piny jsou rezervované podle hwdefu [Z5], seznam je v NAVRH.md, kap. 8.", zdroje=["Z5"]),
+            dict(id="led", refs=["D301", "D302", "D303", "R316", "R317", "R318"], stav="dokument", nazev="RGB LED",
+                 kratce="Tři LED 0402 svítící nulou, jak je ArduPilot řídí.",
+                 co="D301 červená XL-1005SURC s R316 330R, D302 zelená XL-1005UGC s R317 150R, D303 modrá XL-1005UBC s R318 75R. Anody na 3,3 V, katody na PE3, PE2, PE4.",
+                 proc="ArduPilot zapíná GPIO_LED_RGB nulou (HAL_GPIO_LED_ON 0), stejně jako na MicoAiru. Zelená a modrá jsou díly z OpenAIO, červená ze stejné řady. Proud 3–5 mA na barvu, mez pinu je 20 mA.",
+                 jak="Polarita ze zdrojáků AP_Notify [Z23], díly XINGLIGHT [Z24].", zdroje=["Z23", "Z24"]),
+            dict(id="bzucak", refs=["Q301", "R319", "D304", "TP322", "TP323"], stav="dokument", nazev="Spínač bzučáku",
+                 kratce="AO3400A spíná aktivní 5V bzučák na padech BZ+ a BZ−.",
+                 co="Q301 AO3400A mezi BZ− a zemí, hradlo z PD15, R319 100k ho drží vypnutý. D304 1N4148WS přes bzučák. Pady TP322 BZ+ (5 V) a TP323 BZ−.",
+                 proc="BUZZ_ON_LVL je ve výchozím stavu 1, takže stačí spínač k zemi. Na 36mm desku se SMD bzučák nevejde, proto pady jako na běžných FC. AO3400A sepne už od 1,45 V, 2N7002 by z 3,3 V spínal nejistě. Dioda chrání tranzistor, kdyby se připojil magnetický bzučák.",
+                 jak="Úroveň ze zdrojáků AP_Notify [Z23], MOSFET podle parametrů JLC [Z25].", zdroje=["Z23", "Z25"]),
         ],
     },
 ]
