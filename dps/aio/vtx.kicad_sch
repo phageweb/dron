@@ -2,7 +2,7 @@
 	(version 20260306)
 	(generator "eeschema")
 	(generator_version "10.0")
-	(uuid "f851f84d-cb59-5cab-b9aa-36129f980e7a")
+	(uuid "f91065fa-f9f9-519b-bdbd-0faf458ec44c")
 	(paper "A3")
 	(title_block
 		(title "VTX a LD06")
@@ -4893,14 +4893,13 @@
 		)
 		(uuid "9200b849-89ad-5010-8f7c-699f4defdc71")
 	)
-	(hierarchical_label "RC_RX"
-		(shape bidirectional)
+	(label "VTX_SBUS"
 		(at 195.58 124.46 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify right)
+			(justify right bottom)
 		)
 		(uuid "bbe02415-549a-5397-a8bf-7d22a8184f88")
 	)
@@ -5258,6 +5257,117 @@
 		)
 	)
 	(symbol
+		(lib_id "Jumper:SolderJumper_2_Open")
+		(at 238.76 132.08 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "7d95fcfb-8018-5158-9804-a2441579fb28")
+		(property "Reference" "JP202"
+			(at 238.76 125.73 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "SBUS z DJI"
+			(at 238.76 138.43 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Jumper:SolderJumper-2_P1.3mm_Open_Pad1.0x1.5mm"
+			(at 238.76 132.08 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 238.76 132.08 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "f0c321e7-28ff-5328-891a-2f90ea6892bf")
+		)
+		(pin "2"
+			(uuid "cdc5a42d-6cc4-5ea2-a820-e9803e217fe9")
+		)
+		(instances
+			(project "aio"
+				(path "/fb88b6f9-ee39-4640-a9d4-04a17ceeac64/1052a4a9-9195-58b6-8061-975967a9ab78"
+					(reference "JP202")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts
+			(xy 233.68 132.08)
+			(xy 231.14 132.08)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1f165a87-c01b-5b97-a5ee-eec18dad9aea")
+	)
+	(label "VTX_SBUS"
+		(at 231.14 132.08 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "ea8d0f71-65fe-5cee-a145-b66aaaa7a1fe")
+	)
+	(wire
+		(pts
+			(xy 243.84 132.08)
+			(xy 246.38 132.08)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3d5921e4-0200-5b08-8d22-02c08c0859ea")
+	)
+	(hierarchical_label "RC_RX"
+		(shape bidirectional)
+		(at 246.38 132.08 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "4093d4fe-3385-5a48-afec-a88aacb06088")
+	)
+	(symbol
 		(lib_id "power:PWR_FLAG")
 		(at 50.8 190.5 0)
 		(unit 1)
@@ -5267,7 +5377,7 @@
 		(on_board no)
 		(in_pos_files no)
 		(dnp no)
-		(uuid "7d95fcfb-8018-5158-9804-a2441579fb28")
+		(uuid "cec5ca4b-cacf-5478-9768-ce7864a0abb5")
 		(property "Reference" "#FLG200"
 			(at 50.8 187 0)
 			(hide yes)
@@ -5312,7 +5422,7 @@
 			)
 		)
 		(pin "1"
-			(uuid "f0c321e7-28ff-5328-891a-2f90ea6892bf")
+			(uuid "9e2147cc-ec32-5774-9afa-c0643f63237a")
 		)
 		(instances
 			(project "aio"
@@ -5332,7 +5442,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "cdc5a42d-6cc4-5ea2-a820-e9803e217fe9")
+		(uuid "232cb2f2-30b9-5e44-b5ce-b61e9028f7c6")
 	)
 	(label "+10V_SW"
 		(at 50.8 193.04 270)
@@ -5342,7 +5452,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "1f165a87-c01b-5b97-a5ee-eec18dad9aea")
+		(uuid "ae2a742e-3d21-593b-b77e-a6c87fc9446e")
 	)
 	(symbol
 		(lib_id "power:PWR_FLAG")
@@ -5354,7 +5464,7 @@
 		(on_board no)
 		(in_pos_files no)
 		(dnp no)
-		(uuid "ea8d0f71-65fe-5cee-a145-b66aaaa7a1fe")
+		(uuid "aa6ee4a8-28a9-56ce-8bfd-d064893244dd")
 		(property "Reference" "#FLG201"
 			(at 66.04 187 0)
 			(hide yes)
@@ -5399,7 +5509,7 @@
 			)
 		)
 		(pin "1"
-			(uuid "3d5921e4-0200-5b08-8d22-02c08c0859ea")
+			(uuid "542e3db7-c610-59b8-87ea-f966bc532e3e")
 		)
 		(instances
 			(project "aio"
@@ -5419,7 +5529,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "4093d4fe-3385-5a48-afec-a88aacb06088")
+		(uuid "f1447dcc-e465-5131-80f0-7cde11a23620")
 	)
 	(label "+10V_VTX"
 		(at 66.04 193.04 270)
@@ -5429,7 +5539,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "cec5ca4b-cacf-5478-9768-ce7864a0abb5")
+		(uuid "dc1e0dda-73b4-590c-b1f0-1e51a11597c6")
 	)
 	(symbol
 		(lib_id "power:PWR_FLAG")
@@ -5441,7 +5551,7 @@
 		(on_board no)
 		(in_pos_files no)
 		(dnp no)
-		(uuid "9e2147cc-ec32-5774-9afa-c0643f63237a")
+		(uuid "9be7a89f-aff4-5c10-b7b0-95ce90d2d6d1")
 		(property "Reference" "#FLG202"
 			(at 81.28 187 0)
 			(hide yes)
@@ -5486,7 +5596,7 @@
 			)
 		)
 		(pin "1"
-			(uuid "232cb2f2-30b9-5e44-b5ce-b61e9028f7c6")
+			(uuid "d0d00f01-3dbb-5142-8361-b238d567da92")
 		)
 		(instances
 			(project "aio"
@@ -5506,7 +5616,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "ae2a742e-3d21-593b-b77e-a6c87fc9446e")
+		(uuid "70627e64-a28c-54cf-a70b-d312c0404da9")
 	)
 	(symbol
 		(lib_id "lib:+5V")
@@ -5518,7 +5628,7 @@
 		(on_board no)
 		(in_pos_files no)
 		(dnp no)
-		(uuid "aa6ee4a8-28a9-56ce-8bfd-d064893244dd")
+		(uuid "f851f84d-cb59-5cab-b9aa-36129f980e7a")
 		(property "Reference" "#PWRab78011"
 			(at 81.28 193.04 0)
 			(hide yes)
@@ -5563,7 +5673,7 @@
 			)
 		)
 		(pin "1"
-			(uuid "542e3db7-c610-59b8-87ea-f966bc532e3e")
+			(uuid "ca7af37c-c8db-5597-9139-7a062525a1f6")
 		)
 		(instances
 			(project "aio"
@@ -5583,7 +5693,7 @@
 			)
 			(justify left bottom)
 		)
-		(uuid "f1447dcc-e465-5131-80f0-7cde11a23620")
+		(uuid "3e67c051-10ee-558c-9c9f-5cc012ec4ae3")
 	)
 	(text "EN: výchozí vypnuto (R204), MCU spíná přes VTX_EN\n(RELAYn_PIN, RELAYn_DEFAULT 1). JP201 = trvale zapnuto."
 		(exclude_from_sim no)
@@ -5594,7 +5704,7 @@
 			)
 			(justify left bottom)
 		)
-		(uuid "dc1e0dda-73b4-590c-b1f0-1e51a11597c6")
+		(uuid "3d391b84-a54d-52ff-8a17-04ba06967429")
 	)
 	(text "Proud VTX: R205 20 mΩ, INA226 0x40.\nArduPilot: BATT2_MONITOR 21, BATT2_SHUNT 0.02, BATT2_MAX_AMPS 3.\nPull-upy SDA/SCL patří k MCU (mcu_h743), tady nejsou."
 		(exclude_from_sim no)
@@ -5605,18 +5715,18 @@
 			)
 			(justify left bottom)
 		)
-		(uuid "9be7a89f-aff4-5c10-b7b0-95ce90d2d6d1")
+		(uuid "ac9c2247-095f-55a9-98dc-40025e3b17c3")
 	)
-	(text "HD VTX, pinout DJI: 1 napájení, 2 GND, 3 TX MCU, 4 RX MCU, 5 GND, 6 RX přijímače (SBUS z DJI). Pro Lite+ redukce 6P → 4P."
+	(text "HD VTX, pinout DJI: 1 napájení, 2 GND, 3 TX MCU, 4 RX MCU, 5 GND, 6 SBUS z DJI. Pro Lite+ redukce 6P → 4P.\nJP202 rozpojená: RX6 patří přijímači XR1. Zapájet jen pro DJI s SBUS a bez XR1."
 		(exclude_from_sim no)
-		(at 177.8 104.14 0)
+		(at 177.8 101.6 0)
 		(effects
 			(font
 				(size 1.8 1.8)
 			)
 			(justify left bottom)
 		)
-		(uuid "d0d00f01-3dbb-5142-8361-b238d567da92")
+		(uuid "332ff079-cec9-5e07-8b19-48c612084889")
 	)
 	(text "LD06/D500: ZH1.5-4P, 1 Tx, 2 PWM, 3 GND, 4 P5V (rozběh 540 mA z +5V). PWM uzemněn přes R206; bez něj ho řídí MCU přes LIDAR_PWM."
 		(exclude_from_sim no)
@@ -5627,7 +5737,7 @@
 			)
 			(justify left bottom)
 		)
-		(uuid "70627e64-a28c-54cf-a70b-d312c0404da9")
+		(uuid "dac72d2d-625b-5832-bf78-c1b50a6d86ae")
 	)
 	(embedded_fonts no)
 )
