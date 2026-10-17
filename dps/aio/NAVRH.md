@@ -146,7 +146,7 @@ bude čip na desce otočený.
 | Pady | TP307–TP321 | naše volba | XR1 Nano (nemá konektor, jen půlené pady 5V, G, TX, RX [Z22]): 5V, GND, RC_RX, RC_TX. UART1 a UART8 pro Bluetooth nebo cokoli dalšího. Volné PWM5, 7, 9, 10, 11. Další 5V a GND |
 | RGB LED | D301–D303 XINGLIGHT XL-1005 0402, R316 330R, R317 150R, R318 75R | rozhodnuto 17. 10. [Z23][Z24] | ArduPilot `GPIO_LED_RGB` svítí nulou (`HAL_GPIO_LED_ON` 0, MicoAir ho nemění), proto anody na +3.3V a katody na PE3/PE2/PE4. Zelená XL-1005UGC (C965793) a modrá XL-1005UBC (C22355736) jsou díly OpenAIO, modrá i s jejím 75R. Červená XL-1005SURC (C965790) ze stejné řady. Proud odhadem 3–5 mA na barvu (Vf při malém proudu: R ~1,9 V, G ~2,7 V, B ~2,9 V), mez pinu 20 mA. Než MCU nastaví piny, jsou ve vysoké impedanci a LED nesvítí |
 | Bzučák | Q301 AO3400A (C20917), R319 100k, D304 1N4148WS (C2128), pady TP322 BZ+ / TP323 BZ− | rozhodnuto 17. 10. [Z23][Z25] | `BUZZ_ON_LVL` je výchozí 1, takže spínač v nule: N-MOSFET mezi BZ− a GND, aktivní 5V bzučák na padech jako u běžných FC (na desce 36 mm není místo na SMD bzučák). AO3400A má Vgs(th) do 1,45 V a 48 mΩ při 2,5 V, 2N7002 (do 2,5 V) by z 3,3 V spínal nejistě. R319 drží hradlo dole během resetu a v bootloaderu. D304 chrání tranzistor, kdyby se připojil magnetický bzučák |
-| microSD | J302 TF-021B-H265 (C498185), R309–R313 47k, C320 100 nF, C321 4,7 µF | rozhodnuto 17. 10.: microSD jako MicoAir | slot z OpenAIO [Z1]. 4bitové SDMMC1 jako MicoAir [Z5], pull-upy 47k na CMD a D0–D3 (specifikace SD chce 10–100k), CLK bez pull-upu |
+| microSD | J302 TF-021B-H265 (C498185), R309–R313 47k, C320 100 nF, C321 4,7 µF | rozhodnuto 17. 10.: microSD jako MicoAir | slot z OpenAIO [Z1], ve footprintu doplněné pady 1 a 8 (kap. 7). 4bitové SDMMC1 jako MicoAir [Z5], pull-upy 47k na CMD a D0–D3 (specifikace SD chce 10–100k), CLK bez pull-upu |
 
 **Otevřené (rozhodne se ručně):** viz kap. 8.
 
@@ -201,11 +201,22 @@ zůstaly stejné. Mění se:
 
 ## 7. Deska (PCB)
 
-`aio.kicad_pcb` je zatím **layout OpenAIO beze změny** [Z1]. Převzaté díly
-(ESC, napájení, IMU, kořen) jsou svázané se schématem přes UUID. Nové listy
-VTX a MCU na desce zatím nejsou. Po stisku **F8** (Update PCB from Schematic)
-zmizí footprinty vypuštěných listů OpenAIO (RP2354A, přijímač, OSD, pady, SD)
-a přibudou nové díly. ESC a napájení zůstanou na místě i s vodiči.
+`aio.kicad_pcb` je layout OpenAIO [Z1] aktualizovaný ze schématu (18. 10.,
+`gen/aktualizuj_desku.sh`). Převzaté díly (ESC, napájení, IMU, kořen) jsou svázané
+se schématem přes UUID a zůstaly na místě i s vodiči. Co se změnilo:
+
+- **Odstraněno** 145 footprintů vypuštěných listů (RP2354A, přijímač, OSD, pady, SD)
+  a 845 kusů mědi (vodiče, prokovy, zóna +1.1V) jejich 70 sítí.
+- **Přejmenováno** 10 sítí, které vedou dál k převzatým dílům: MOTOR1–4, CURR → ESC_CURRENT
+  a sběrnice IMU (CS, INT, SPI). Jejich vodiče zůstaly, v místě jádra RP2354 končí naprázdno
+  (44 visících vodičů v DRC) a dotrasují se k H743.
+- **Přidáno** 93 dílů listů MCU, VTX a kořene, zatím mimo desku vpravo.
+- Potisk desky má ještě popisky padů OpenAIO (cam, LED, gnd…), opraví se při layoutu.
+
+Footprint microSD slotu `TF-SMD_TF-021B-H265` v OpenAIO **neměl pady 1 (DAT2) a 8
+(DAT1)**. OpenAIO kartu čte po SPI a nepotřebuje je, my máme 4bitové SDMMC. Konektor
+všech 8 kontaktů má: footprint v EasyEDA pro C498185 [Z26] je má po 1,1 mm na x = 3,775
+a −3,925 mm. Doplněné jsou podle něj, do mezer, které pro ně v potisku zůstaly.
 
 ## 8. Otevřené otázky
 
@@ -213,7 +224,7 @@ a přibudou nové díly. ESC a napájení zůstanou na místě i s vodiči.
 | --- | --- | --- |
 | Pin 1 konektorů GPS a MTF-02P | J303, J304 | výrobci pin 1 neuvádí. Před prvním zapnutím změřit, který pin modulu je GND |
 | LCSC čísla | díly s „—“ v kusovníku | vybrat podle skladu JLC |
-| Layout jádra | aio.kicad_pcb | až budou rozhodnuté body výš |
+| Layout jádra | aio.kicad_pcb | nové díly leží mimo desku, rozmístění a únik z BGA H743 na HDI se dělá ručně v KiCadu. Potisk OpenAIO přepsat |
 
 ## 9. Kontrola
 
@@ -757,3 +768,4 @@ python3 dps/aio/tabulky.py                                  # přegeneruje tabul
 | U201 | LMR51430YFDDCR | SOT-23-6_L2.9-W1.6-P0.95-LS2.9-BL | C5219261 |
 | U202 | INA226AIDGSR | TSSOP-10_3x3mm_P0.5mm | — |
 <!-- /tabulky:kusovnik -->
+| Z26 | [EasyEDA: TF-021B-H265 (C498185)](https://easyeda.com/component/da54a9e9dc5d41c3aeb4074d4ae8aee7), data přes `easyeda.com/api/products/C498185/components` | 8 signálových padů 1,2 × 0,7 mm po 1,1 mm |

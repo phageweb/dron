@@ -42,14 +42,21 @@ stejného bucku s EN z MCU.
 
 ## Deska
 
-`aio.kicad_pcb` je layout OpenAIO beze změny: 35,4 × 35,4 mm, 8 vrstev HDI 1+6+1,
-1 oz. Footprinty převzatých dílů jsou se schématem svázané přes UUID, takže
-**schéma jde dál libovolně měnit** a do desky se propíše klávesou **F8** (Tools →
-Update PCB from Schematic):
+`aio.kicad_pcb` vychází z layoutu OpenAIO: 35,4 × 35,4 mm, 8 vrstev HDI 1+6+1, 1 oz.
+Od 18. 10. odpovídá schématu: díly vypuštěných listů a jejich měď jsou pryč,
+93 nových dílů leží **mimo desku vpravo** (řádek na list) a čeká na rozmístění.
+ESC, napájení, IMU a kořen zůstaly na místě i s vodiči.
 
-- Prvním F8 zmizí 145 footprintů z vypuštěných listů a přibudou díly listů VTX a MCU.
-  ESC, napájení a IMU zůstanou na místě i s vodiči.
-- `kicad-cli pcb drc --schematic-parity aio.kicad_pcb` ukáže, co ještě nesedí.
+Schéma se do desky propisuje bez GUI (dělá totéž co F8, viz hlavička skriptu):
+
+```sh
+nix develop ./dps -c dps/aio/gen/aktualizuj_desku.sh       # --dry-run jen vypíše změny
+kicad-cli pcb drc --schematic-parity --refill-zones dps/aio/aio.kicad_pcb
+```
+
+Před spuštěním zavři desku v KiCadu, jinak ji při uložení přepíše svou kopií.
+DRC po aktualizaci: 238 nepropojených (nové díly), 44 visících vodičů v místě
+jádra RP2354, zbytek jsou varování převzatá z OpenAIO na stejných místech.
 
 ## Kontrola
 
