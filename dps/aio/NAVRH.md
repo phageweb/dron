@@ -156,18 +156,23 @@ bude čip na desce otočený.
 
 ## 6. ArduPilot
 
-Vlastní hwdef vznikne z `MicoAir743v2` [Z5]. Piny UARTů, SPI, I2C, PWM, ADC a
-SDMMC zůstanou stejné. Mění se:
+Hwdef desky je hotový v [`hwdef/Pavo20AIO`](./hwdef/README.md) a projde
+generátorem ArduPilotu (piny, I2C, SPI, ADC, DMA). Vychází z `MicoAir743v2` [Z5],
+což je cíl, na kterém běží dnešní MicoAir AIO 45A (board ID 1179, viz
+[firmware](../../firmware/README.md)). Piny UARTů, SPI, I2C, PWM, ADC a SDMMC
+zůstaly stejné. Mění se:
 
 | Co | MicoAir743v2 | Naše deska | Proč |
 | --- | --- | --- | --- |
-| APJ_BOARD_ID | AP_HW_MicoAir743v2 | vlastní | uploader nesmí nahrát cizí firmware ([návrh](../docs/02_navrh.md)) |
+| APJ_BOARD_ID | AP_HW_MicoAir743v2 (1179) | 25026, soukromé | uploader nesmí nahrát cizí firmware. Rozsah 1000–19999 přiděluje ArduPilot přes PR |
 | OSD AT7456E (SPI1, PB12) | ano | **vypustit** | Walksnail je digitální, OSD jde přes MSP DisplayPort |
 | BMI088 (SPI2) | ano | podle rozhodnutí, piny rezervované | kap. 8 |
 | Baterie | VOLT_SCALE 21.12, CURR_SCALE 40.2 | `HAL_BATT_VOLT_SCALE 11.0`, `HAL_BATT_CURR_SCALE 50.0` | dělič 100k/10k. INA186 20 mV/A → 50 A/V |
 | Relé pro VTX | — | `RELAY1_PIN 57`, `RELAY1_DEFAULT 1` | PD13 = GPIO 57 |
 | Proud VTX | — | `BATT2_MONITOR 21`, `BATT2_I2C_BUS 0`, `BATT2_I2C_ADDR 64`, `BATT2_SHUNT 0.02`, `BATT2_MAX_AMPS 3` | INA226 na vnitřní I2C2 (I2C_ORDER I2C2 I2C1 → bus 0) |
-| Orientace IMU | ROLL_180 | podle layoutu | |
+| Kompas | QMC5883L na desce | jen v GPS, `HAL_I2C_INTERNAL_MASK 1` | na desce kompas není |
+| Baro | SPL06 0x77 | SPL06 0x77 i DPS310 0x76 se zkusí | baro ještě není vybrané |
+| Orientace IMU | ROLL_180 | `ROTATION_NONE`, doplnit podle layoutu | |
 
 | SERIALn | UART | Piny | Zařízení |
 | --- | --- | --- | --- |

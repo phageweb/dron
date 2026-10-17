@@ -9,6 +9,7 @@ včetně jádra H743 (napájení podle AN4938, piny podle hwdefu MicoAiru).
 Krystal, baro, logování, druhá IMU a konektory periferií jsou otevřené.
 
 - **[NAVRH.md](./NAVRH.md)**: celý návrh, co je kde, proč a odkud, mapa pinů, kusovník.
+- **[hwdef/](./hwdef/README.md)**: popis desky pro ArduPilot (firmware, bootloader, výchozí parametry).
 - **Interaktivní schéma**: `nix develop ./dps -c python3 dps/aio/web/build.py` vytvoří
   `web/schema.html` (listy s klikacími bloky, texty v `web/obsah.py`).
 

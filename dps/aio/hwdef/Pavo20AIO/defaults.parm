@@ -1,0 +1,14 @@
+# Board defaults for the Pavo20 AIO: only what follows from the wiring.
+
+# VTX_EN on PD13 (PWM8, GPIO 57): the switched 10 V for the HD VTX, on at boot
+SERVO8_FUNCTION -1
+RELAY1_FUNCTION 1
+RELAY1_PIN 57
+RELAY1_DEFAULT 1
+
+# VTX current: INA226 U202 at 0x40 on I2C2 (bus 0), shunt R205 20 mOhm
+BATT2_MONITOR 21
+BATT2_I2C_BUS 0
+BATT2_I2C_ADDR 64
+BATT2_SHUNT 0.02
+BATT2_MAX_AMPS 3
