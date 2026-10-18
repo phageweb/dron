@@ -245,6 +245,13 @@ se schématem přes UUID a zůstaly na místě i s vodiči. Co se změnilo:
 - **DRC** (18. 10.): kromě 153 nepropojených spojů jen varování převzatá z OpenAIO
   (14 `net_conflict` pinů bez padu v ESC a USB-C, 7 `connection_width`, 4 `copper_sliver` a pár dalších).
   Nové díly nejsou trasované.
+- **Autorouter nejde** (18. 10.): Freerouting 2.4.1 (export DSN z pcbnew, převzatá měď zamčená, vrstvy
+  L2, L4, L5, L7 jako roviny) vyvedl jen 81 % padů a po prvním průchodu (40 min) skončil se skóre 0,
+  132 nespojenými spoji a 13 529 kolizemi. Trasuje se ručně v KiCadu.
+- **Únik z BGA H743** (plán pro ruční trasování): 64 signálových kuliček. Kruh 0 a 1 (26 + 18) vyjdou
+  po L1 mezi kuličkami (mezera 0,4 mm, vodič 0,09 + 2 × 0,09 izolace = 0,27 mm). Kruh 2 a 3 (14 + 6) přes
+  microvia v padu L1→L2 nasazenou na buried via L2→L7 a dál po L3 nebo L6; přes microvia L7→L8 na spodek.
+  +3.3V a VCAP (7 kuliček) a GND (6) rovnou do rovin L5 a L2/L7. 23 kuliček je nezapojených.
 - Potisk desky má ještě popisky padů OpenAIO (cam, LED, gnd…), opraví se při layoutu.
 
 Footprint microSD slotu `TF-SMD_TF-021B-H265` v OpenAIO **neměl pady 1 (DAT2) a 8
@@ -259,7 +266,7 @@ a −3,925 mm. Doplněné jsou podle něj, do mezer, které pro ně v potisku z�
 | Pin 1 konektorů | J303, J304, J305 | pořadí z tabulek MicoAiru, pin 1 = GND podle README ArduPilotu. Před prvním zapnutím ověřit multimetrem proti kabelu z MicoAiru |
 | LCSC čísla | díly s „—“ v kusovníku | vybrat podle skladu JLC |
 | Sklad TPS22810DRVR a ICM-42688-P | U201, U303 | nové díly z 18. 10., LCSC číslo vybrat podle skladu JLC. Jiný spínač 18 V ve WSON 2 × 2 má jiný pinout, záměna by znamenala úpravu schématu |
-| Trasování | aio.kicad_pcb | 153 nepropojených spojů nových dílů, únik z BGA H743 na HDI. Potisk OpenAIO přepsat |
+| Trasování | aio.kicad_pcb | 153 nepropojených spojů nových dílů, ručně v KiCadu (autorouter selhal, kap. 7), únik z BGA podle plánu v kap. 7. Potisk OpenAIO přepsat |
 
 ## 9. Kontrola
 
