@@ -245,6 +245,33 @@ rest = [f for f in todo if f.GetReference() not in ANCHORS and f.GetReference() 
 failed = []
 
 
+def spot(f, side, tx, ty):
+    """The free spot nearest to (tx, ty) on one side: (distance², x, y, rotation), or None."""
+    shapes = []
+    for rot in (0, 90, 180, 270):
+        put(f, 0, 0, rot, side)
+        shapes.append((rot, box(f)))
+    for x, y in sorted(GRID, key=lambda p: (p[0] - tx) ** 2 + (p[1] - ty) ** 2):
+        for rot, (l, t_, r_, bt) in shapes:
+            r = (x + l, y + t_, x + r_, y + bt)
+            if free(r, side) and inside(r):
+                return (x - tx) ** 2 + (y - ty) ** 2, x, y, rot
+    return None
+
+
+def place_decap(f):
+    """A supply capacitor: the nearest free spot to its IC on either side (a via joins the sides)."""
+    tx, ty = target(f)
+    best = min(((s, side) for side in "FB" if (s := spot(f, side, tx, ty))), default=None)
+    if best is None:
+        return place_one(f)
+    (_, x, y, rot), side = best
+    put(f, x, y, rot, side)
+    block(f)
+    placed.add(f.GetReference())
+    return True
+
+
 def place_one(f):
     tx, ty = target(f)
     pref = SIDE_OF.get(f.GetReference(), "F")
@@ -294,7 +321,7 @@ def by_links(fs):
     return sorted(fs, key=lambda f: (-links(f), f.GetReference()))
 
 
-# the H743's decoupling right under it, then the big parts and their supply capacitors, the pad blocks,
+# the H743's decoupling right under it, then the big parts each followed by its supply capacitors, the pad blocks,
 # the rest by what they tie to
 for f in [f for f in rest if f.GetReference() in TO_MCU]:
     place_one(f)
@@ -305,7 +332,10 @@ while big:
     f = by_links(big).pop(0)
     big.remove(f)
     place_one(f)
-for f in [f for f in rest if f.GetReference() in DECAP_OF]:
+    # its supply capacitors right after it, before other parts take the space around it
+    for c in [c for c in rest if DECAP_OF.get(c.GetReference()) == f.GetReference()]:
+        place_decap(c)
+for f in [f for f in rest if f.GetReference() in DECAP_OF and f.GetReference() not in placed]:
     place_one(f)
 rest = [f for f in rest if f.GetReference() not in DECAP_OF]
 for blk in PAD_BLOCKS:

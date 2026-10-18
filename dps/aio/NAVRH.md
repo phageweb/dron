@@ -239,8 +239,9 @@ se schématem přes UUID a zůstaly na místě i s vodiči. Co se změnilo:
   vpředu 149 mm² a vzadu 86 mm² volné plochy, ale rozdrobené: největší obdélník 2,5 × 2,9 mm. Buck proto
   nahradil spínač TPS22810 ve WSON 2 × 2 na +10V (bez cívky 3 × 3 a děliče, kap. 3) a BMI088 nahradila
   ICM-42688-P v LGA-14 2,5 × 3 (kap. 4.6). Po `--rozmisti --znovu` je na desce všech 82 nových dílů.
-  Kondenzátory obou ale skončily daleko, protože hned vedle nebylo místo: C318, C319, C324 asi 8 mm od
-  U303 a C203 17 mm od U201. Při layoutu je přesunout k pinům, jinak blokování nefunguje.
+  Blokovací kondenzátory se od 18. 10. kladou hned po svém IC, na tu stranu, kde je blíž (prokov je spojí):
+  C318, C319, C324 jsou 1,8–2,3 mm od U303, C202 a C203 1,7 a 3,4 mm od U201, C317 pod U302. Dřív se kladly
+  až po všech velkých dílech a skončily 8–17 mm daleko.
 - **DRC** (18. 10.): kromě 153 nepropojených spojů jen varování převzatá z OpenAIO
   (14 `net_conflict` pinů bez padu v ESC a USB-C, 7 `connection_width`, 4 `copper_sliver` a pár dalších).
   Nové díly nejsou trasované.
