@@ -123,14 +123,12 @@ PC11 SDMMC1_D3  SDMMC1
 define FATFS_HAL_DEVICE SDCD1
 define HAL_OS_FATFS_IO 1
 
-# SPI2 - BMI088 U303, second IMU as on MicoAir
+# SPI2 - ICM-42688-P U303, second IMU (MicoAir has a BMI088 here, it did not fit the board)
 PD3  SPI2_SCK        SPI2
 PC2  SPI2_MISO       SPI2
 PC3  SPI2_MOSI       SPI2
-PD5  BMI088_G_CS     CS
-PD4  BMI088_A_CS     CS
-PC15 DRDY1_BMI088_G  INPUT
-PC14 DRDY2_BMI088_A  INPUT
+PD4  ICM42688_CS     CS
+PC14 DRDY1_ICM42688  INPUT
 
 # SPI3 - BMI270 (sheet IMU, U8)
 PB3  SPI3_SCK      SPI3
@@ -142,13 +140,12 @@ PB7  DRDY3_BMI270  INPUT
 # no SPI1 / AT7456E: the VTX is digital, OSD goes over MSP DisplayPort
 
 # SPI devices
-SPIDEV  bmi088_a  SPI2  DEVID1  BMI088_A_CS  MODE3  10*MHZ 10*MHZ
-SPIDEV  bmi088_g  SPI2  DEVID2  BMI088_G_CS  MODE3  10*MHZ 10*MHZ
+SPIDEV  icm42688  SPI2  DEVID1  ICM42688_CS  MODE3   2*MHZ 16*MHZ
 SPIDEV  bmi270    SPI3  DEVID3  BMI270_CS    MODE3   1*MHZ 10*MHZ
 
 # IMUs: the rotations depend on how the chips sit in the layout, set them then
 IMU BMI270 SPI:bmi270 ROTATION_NONE
-IMU BMI088 SPI:bmi088_a SPI:bmi088_g ROTATION_NONE
+IMU Invensensev3 SPI:icm42688 ROTATION_NONE
 
 # serial defaults that follow from the board's wiring
 define DEFAULT_SERIAL2_PROTOCOL SerialProtocol_MSP_DisplayPort

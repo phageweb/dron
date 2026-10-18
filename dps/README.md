@@ -12,7 +12,7 @@ Stav **17. 10. 2026**: rešerše a požadavky hotové. KiCad je ve flaku
 napájení, IMU), nový list VTX a LD06 a prázdný list pro jádro H743, které se
 kreslí ručně. Deska je layout OpenAIO svázaný se schématem a mění se klávesou F8.
 
-Větev pro VTX je **dimenzovaná na DJI O3/O4** (10 V, 3 A buck, 12–16 W), ne na
+Větev pro VTX je **dimenzovaná na DJI O3/O4** (10 V za spínačem 3 A, 12–16 W), ne na
 spotřebu Lite+, kterou nikdo nezměřil. Konektor HD VTX má pinout DJI.
 
 | Dokument | O čem |

@@ -21,11 +21,11 @@ mapa pinů ve schématu ([NAVRH.md](../NAVRH.md#mapa-pinů-h743)) a hwdef říka
 | Kompas | QMC5883L na desce | **jen externí** v GPS, `HAL_I2C_INTERNAL_MASK 1` | na desce kompas není. I2C2 (bus 0) je vnitřní, I2C1 (bus 1) vede ke GPS |
 | Baro | SPL06 0x77 | SPL06 0x77; pro DPS310 vyměnit řádku `BARO` | stejné pouzdro i piny, ale **stejné ID čipu (0x10)**: ArduPilot je nerozezná a dvě řádky by vytvořily dva ovladače na jednom čipu |
 | OSD | AT7456E na SPI1, `OSD_TYPE 1` | **bez SPI1**, `HAL_OSD_TYPE_DEFAULT 5` (MSP DisplayPort) | VTX je digitální |
-| BMI088 | ano | ano, U303 na SPI2 | jako MicoAir |
+| Druhé IMU | BMI088 na SPI2 | **ICM-42688-P**, U303 na SPI2, CS PD4 | BMI088 (4,5 × 3 mm) se na desku nevešel, ICM-42688-P má pouzdro 2,5 × 3 jako BMI270. Jiný výrobce než BMI270 |
 | Rotace IMU | ROLL_180… | `ROTATION_NONE` | **doplnit po layoutu** podle toho, jak čipy sedí |
 | SERIAL7 | telemetrie ESC | bez výchozího protokolu | ESC z OpenESC nemají vodič telemetrie, otáčky jdou přes bidirectional DShot |
 | SERIAL3 | — | GPS | WS-M181 na USART3 |
-| PD13 (PWM8) | výstup | relé VTX: `RELAY1_PIN 57`, `RELAY1_DEFAULT 1`, `SERVO8_FUNCTION -1` | spíná EN bucku U201 |
+| PD13 (PWM8) | výstup | relé VTX: `RELAY1_PIN 57`, `RELAY1_DEFAULT 1`, `SERVO8_FUNCTION -1` | spíná EN spínače U201 |
 
 ## Sestavení
 

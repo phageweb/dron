@@ -33,8 +33,8 @@ ANCHORS = {
 }
 # preferred side for the rest; anything not listed tries the front first
 SIDE = {"B": ["C301", "C302", "C303", "C304", "C305", "C306", "C307", "C308", "C309", "C310", "C311", "C312",
-              "C313", "R309", "R310", "R311", "R312", "R313", "C320", "C321", "U303", "C318", "C319",
-              "U201", "L201", "C201", "C202", "C203", "R201", "R202", "R203", "R204",
+              "C313", "R309", "R310", "R311", "R312", "R313", "C320", "C321", "U303", "C318", "C319", "C324",
+              "U201", "C201", "C202", "C203", "R203", "R204",
               "JP202", "R206", "Q301", "R319", "J304", "J305"]}
 SIDE_OF = {r: s for s, refs in SIDE.items() for r in refs}
 # side-entry SH1.0 connectors as on MicoAir743-AIO, on the edge stretches the motor and battery pads leave
@@ -53,7 +53,7 @@ PAD_PITCH = (1.3, 1.7)
 # parts tied to the H743 as a whole (its supply), not to one ball
 TO_MCU = {f"C{n}" for n in range(301, 314)}
 # supply capacitors of other ICs: placed right after the big parts, next to their IC (they share only power nets)
-DECAP_OF = {"C201": "U201", "C203": "L201", "C317": "U302", "C318": "U303", "C319": "U303"}
+DECAP_OF = {"C201": "U201", "C202": "U201", "C203": "U201", "C317": "U302", "C318": "U303", "C319": "U303", "C324": "U303"}
 POWER = {"GND", "+3.3V", "+5V", "+BATT", "+4v5", "+10V"}
 
 b = pcbnew.LoadBoard(PCB)
@@ -270,6 +270,8 @@ def place_one(f):
 def place_pads(refs):
     """A pad block: the nearest spot to the board centre where the whole grid is free, on either side."""
     pads = [fps[r] for r in refs if fps[r] in todo]
+    if not pads:   # already on the board from an earlier run
+        return True
     cols = 3
     rows = (len(pads) + cols - 1) // cols
     px, py = PAD_PITCH

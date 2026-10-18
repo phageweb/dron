@@ -131,6 +131,13 @@ for p, f in keep.items():
     f.SetSheetfile(comps[p]["file"])
     f.SetExcludedFromBOM(comps[p]["no_bom"])
     f.SetDNP(comps[p]["dnp"])
+    # value and part number follow the symbol (a capacitor that changed its value keeps its footprint)
+    f.SetValue(comps[p]["value"])
+    for k, v in comps[p]["fields"].items():
+        if k not in ("Reference", "Value", "Footprint", "Datasheet", "Description") and v:
+            f.SetField(k, v)
+    if f.HasField("LCSC") and not comps[p]["fields"].get("LCSC"):
+        f.SetField("LCSC", "")
     for pad in f.Pads():
         name = pad_net.get((ref, pad.GetNumber()))
         if name:

@@ -68,7 +68,7 @@ def stock(lib, name):
 
 for lib, name in [("Sensor_Energy", "INA226"), ("Connector_Generic", "Conn_01x06"),
                   ("Connector_Generic", "Conn_01x04"), ("Jumper", "SolderJumper_2_Open"),
-                  ("power", "PWR_FLAG")]:
+                  ("power", "PWR_FLAG"), ("Power_Management", "TPS22810DRV")]:
     LIB[f"{lib}:{name}"] = stock(lib, name)
 
 
@@ -369,14 +369,14 @@ root.write("aio.kicad_sch", "AIO H743 pro Pavo20 Pro", ROOT, comments=[CERN, "Li
 v = Sheet(f"/{ROOT}/{vtx_uuid}")
 v.hier = set(VTX_IF)
 R0201, C0201 = "lib:R_0201_0603Metric", "lib:C_0201_0603Metric"
-v.part("C201", "lib:C", "4.7uF 50v", "lib:C_0805_2012Metric", "C98192", 50.8, 50.8, {"1": "+BATT", "2": "GND"})
-v.part("U201", "lib:LMR51420YDDCR", "LMR51430YFDDCR", "lib:SOT-23-6_L2.9-W1.6-P0.95-LS2.9-BL", "C5219261", 88.9, 50.8,
-       {"1": "GND", "2": "SW_VTX", "3": "+BATT", "4": "FB_VTX", "5": "EN_VTX", "6": "CB_VTX"})
-v.part("C202", "lib:C", "100n", C0201, "C76939", 114.3, 38.1, {"1": "SW_VTX", "2": "CB_VTX"})
-v.part("L201", "lib:XRTC303020D4R7MBCA", "XRTC303020D4R7MBCA", "lib:IND-SMD_L3.0-W3.0_AFE303020S", "C39846837",
-       127, 50.8, {"1": "SW_VTX", "2": "+10V_VTX"})
-v.part("R201", "lib:R", "100k", R0201, "C270364", 144.78, 50.8, {"1": "FB_VTX", "2": "+10V_VTX"})
-v.part("R202", "lib:R", "6.49k", R0201, "C2107920", 154.94, 50.8, {"1": "FB_VTX", "2": "GND"})
+# VTX switched on the +10V rail of fc_power, as OpenAIO feeds its VTX connector from it [Z1], through a load switch
+# (a second buck did not fit). TPS22810DRV: 2.7-18 V, 3 A, 79 mOhm at 12 V; thermal pad to GND as on TI's EVM.
+# CT 4.7 nF: ~0.8 ms rise at 10 V (datasheet table 2), inrush into ~70 uF of VTX input ~0.9 A. QOD on VOUT
+# empties the VTX's capacitors when it is switched off.
+v.part("C201", "lib:C", "1uF 25V", "lib:C_0402_1005Metric", "", 50.8, 50.8, {"1": "+10V", "2": "GND"})
+v.part("U201", "Power_Management:TPS22810DRV", "TPS22810DRVR", "lib:WSON-6-1EP_2x2mm_P0.65mm_EP1x1.6mm", "", 88.9, 50.8,
+       {"1": "+10V_VTX", "2": "+10V_VTX", "3": "CT_VTX", "4": "GND", "5": "EN_VTX", "6": "+10V", "7": "GND"})
+v.part("C202", "lib:C", "4.7nF", C0201, "", 114.3, 50.8, {"1": "CT_VTX", "2": "GND"})
 v.part("C203", "lib:C", "22uF", "lib:C_0603_1608Metric", "C2762594", 165.1, 50.8, {"1": "+10V_VTX", "2": "GND"})
 v.part("R203", "lib:R", "1k", R0201, "", 50.8, 81.28, {"1": "VTX_EN", "2": "EN_VTX"})
 v.part("R204", "lib:R", "100k", R0201, "C270364", 63.5, 81.28, {"1": "EN_VTX", "2": "GND"})
@@ -390,25 +390,23 @@ v.part("R206", "lib:R", "0R", R0201, "", 231.14, 162.56, {"1": "LIDAR_PWM", "2":
 # J201 pin 6 (SBUS from a DJI unit) and the XR1 Nano's TX both want USART6 RX: open by default
 v.part("JP202", "Jumper:SolderJumper_2_Open", "SBUS z DJI", "Jumper:SolderJumper-2_P1.3mm_Open_Pad1.0x1.5mm", "",
        238.76, 132.08, {"1": "VTX_SBUS", "2": "RC_RX"})
-for i, net in enumerate(["+10V_VTX"]):
-    v.place(f"#FLG2{i:02d}", "power:PWR_FLAG", "PWR_FLAG", "", "", 50.8 + 15.24 * i, 190.5, power=True,
-            ref_at=(50.8 + 15.24 * i, 187), val_at=(50.8 + 15.24 * i, 187.96))
-    v.attach(net, 50.8 + 15.24 * i, 190.5, (0, 1), [])
-v.text("Spínaných 10 V pro HD VTX: kopie U3 z fc_power\n(LMR51430, 100k/6,49k = 9,84 V, 3 A). Vlastní buck, protože\n+10V z fc_power napájí budiče ESC a vypínat se nesmí.\nDimenzováno na DJI O3/O4 (12–16 W ≈ 1,6 A).", 38.1, 20.32, 1.8)
+v.text("Spínaných 10 V pro HD VTX: spínač TPS22810 na +10V z fc_power (U3, LMR51430 3 A),\nze které OpenAIO napájí VTX i budiče ESC. Spíná se jen VTX, +10V pro budiče zůstává.\nDimenzováno na DJI O3/O4 (12–16 W ≈ 1,6 A, spínač 3 A). CT 4,7 nF: náběh ~0,8 ms.", 38.1, 20.32, 1.8)
 v.text("EN: výchozí vypnuto (R204), MCU spíná přes VTX_EN\n(RELAYn_PIN, RELAYn_DEFAULT 1).", 99.06, 83.82)
 v.text("Bez měření proudu VTX, jako MicoAir: INA226 a bočník se na desku nevešly (18. 10.).", 182.88, 20.32, 1.8)
 v.text("HD VTX, pinout DJI jako MicoAir: 1 napájení, 2 GND, 3 TX2, 4 RX2, 5 GND, 6 SBUS z DJI. Pro Lite+ redukce 6P → 4P.\nJP202 rozpojená: RX6 patří přijímači na J305. Zapájet jen pro DJI s SBUS a bez přijímače.", 177.8, 101.6, 1.8)
 v.text("LD06/D500 na pady jako u MicoAiru (ZH1.5 se nevešel): TP201 Tx lidaru, TP202 PWM, 5V a GND na TP320/TP321 (rozběh 540 mA).\nPWM uzemněn přes R206; bez něj ho řídí MCU přes LIDAR_PWM.", 177.8, 152.4, 1.8)
-v.write("vtx.kicad_sch", "VTX a LD06", uid(), comments=["Buck: kopie U3 z OpenAIO fc_power (CERN-OHL-S-2.0)", "Licence: CERN-OHL-S-2.0"])
+v.write("vtx.kicad_sch", "VTX a LD06", uid(), comments=["Napájení VTX z +10V jako OpenAIO (CERN-OHL-S-2.0)", "Licence: CERN-OHL-S-2.0"])
 
 # ------------------------------------------------------------------ MCU sheet
 # Pin map: hwdef MicoAir743v2 (same MCU, ArduPilot target exists). Balls: KiCad
 # stock symbol STM32H743VIHx. Supply and decoupling: ST AN4938 rev 6, sec. 2.2.
 rp_src = parse(open(f"{SRC}/fc_rp2350a.kicad_sch").read())
 LIB.update({s[1]: s for s in first(rp_src, "lib_symbols")[1:] if s[1] in ("lib:TYPE-C16PQTWT", "lib:DMN1150UFB-7B")})
+imu_src = parse(open(f"{SRC}/fc_imu.kicad_sch").read())
+LIB.update({s[1]: s for s in first(imu_src, "lib_symbols")[1:] if s[1] == "lib:LSM6DSV16XTR"})
 bb_src = parse(open(f"{SRC}/fc_blackbox.kicad_sch").read())
 LIB.update({s[1]: s for s in first(bb_src, "lib_symbols")[1:] if s[1] == "lib:TF-021B-H265"})
-for _lib, _name in [("Sensor_Pressure", "BMP280"), ("Sensor_Motion", "BMI088"), ("Device", "Crystal_GND24"),
+for _lib, _name in [("Sensor_Pressure", "BMP280"), ("Device", "Crystal_GND24"),
                      ("Transistor_FET", "Q_NMOS_GSD"), ("Device", "D")]:
     LIB[f"{_lib}:{_name}"] = stock(_lib, _name)
 _h7 = {s[1]: s for s in find(parse(open(f"{STOCK}/MCU_ST_STM32H7.kicad_sym").read()), "symbol")}
@@ -442,7 +440,7 @@ H743 = {
     "A7": "IMU_SPI.SCK", "C6": "IMU_SPI.MOSI", "A6": "IMU_SPI.MISO",           # PB3 PD6 PB4, SPI3
     "A8": "IMU_CS", "A5": "IMU_INT",                                          # PA15 PB7, BMI270
     "C7": "IMU2_SCK", "E2": "IMU2_MISO", "F3": "IMU2_MOSI",                   # PD3 PC2_C PC3_C, SPI2
-    "D7": "IMU2_ACC_CS", "B6": "IMU2_GYR_CS", "A1": "IMU2_ACC_INT", "B1": "IMU2_GYR_INT",  # PD4 PD5 PC14 PC15
+    "D7": "IMU2_CS", "A1": "IMU2_INT",                                       # PD4 PC14, ICM-42688-P
     "F1": "VBAT_SENSE", "F2": "ESC_CURRENT",                                  # PC0 PC1, ADC1
     "K7": "SDA", "J7": "SCL",                                                 # PB11 PB10, I2C2 = bus 0
     "A4": "EXT_SDA", "B4": "EXT_SCL",                                         # PB9 PB8, I2C1 = bus 1
@@ -499,12 +497,13 @@ m.part("C323", "lib:C", "15pF C0G", C0402, "", 114.3, 86.36, {"1": "HSE_OUT", "2
 m.part("U302", "Sensor_Pressure:BMP280", "SPL06-001 / DPS310", "Package_LGA:Bosch_LGA-8_2x2.5mm_P0.65mm_ClockwisePinNumbering",
        "C2684428", 360.68, 200.66, {"1": "GND", "7": "GND", "8": "+3.3V", "6": "+3.3V", "2": "+3.3V", "5": "+3.3V",
                                     "3": "SDA", "4": "SCL"})
-# BMI088 on SPI2 as on MicoAir: PS low = SPI, SDO1+SDO2 = MISO, INT1 acc / INT3 gyro data ready
-m.part("U303", "Sensor_Motion:BMI088", "BMI088", "Package_LGA:Bosch_LGA-16_4.5x3mm_P0.5mm_LayoutBorder7x1y_ClockwisePinNumbering",
-       "", 289.56, 200.66, {"1": None, "2": "GND", "3": "+3.3V", "4": "GND", "5": "IMU2_GYR_CS", "6": "GND",
-                            "7": "GND", "8": "IMU2_SCK", "9": "IMU2_MOSI", "10": "IMU2_MISO", "11": "+3.3V",
-                            "12": "IMU2_GYR_INT", "13": None, "14": "IMU2_ACC_CS", "15": "IMU2_MISO",
-                            "16": "IMU2_ACC_INT"})
+# ICM-42688-P on SPI2 (MicoAir has a BMI088 there; its 4.5 x 3 mm did not fit the board). The LGA-14 2.5 x 3 mm
+# footprint and symbol are OpenAIO's "universal IMU" (BMI270, LSM6, TDK), same pins as on the IMU sheet.
+# Datasheet DS-000347 table 9: RESV 2, 3, 10, 11 NC or GND, RESV 7 GND, FSYNC (9) to GND when unused;
+# table 10: VDD 100 nF + 2.2 uF, VDDIO 10 nF.
+m.part("U303", "lib:LSM6DSV16XTR", "ICM-42688-P", "lib:LGA-14_L3.0-W2.5-P0.50-BR", "", 289.56, 200.66,
+       {"1": "IMU2_MISO", "2": "GND", "3": "GND", "4": "IMU2_INT", "5": "+3.3V", "6": "GND", "7": "GND",
+        "8": "+3.3V", "9": "GND", "10": "GND", "11": "GND", "12": "IMU2_CS", "13": "IMU2_SCK", "14": "IMU2_MOSI"})
 # microSD on SDMMC1 (MicoAir); slot from OpenAIO Card1
 m.part("J302", "lib:TF-021B-H265", "TF-021B-H265", "lib:TF-SMD_TF-021B-H265", "C498185", 271.78, 116.84,
        {"1": "SD_D2", "2": "SD_D3", "3": "SD_CMD", "4": "+3.3V", "5": "SD_CK", "6": "GND", "7": "SD_D0",
@@ -514,7 +513,8 @@ for i, (ref, val, fp, lcsc, a, b) in enumerate([
         ("R311", "47k", R0201, "", "+3.3V", "SD_D1"), ("R312", "47k", R0201, "", "+3.3V", "SD_D2"),
         ("R313", "47k", R0201, "", "+3.3V", "SD_D3"), ("C320", "100n", C0201, "C76939", "+3.3V", "GND"),
         ("C321", "4.7uF", C0402, "C23733", "+3.3V", "GND"), ("C318", "100n", C0201, "C76939", "+3.3V", "GND"),
-        ("C319", "100n", C0201, "C76939", "+3.3V", "GND"), ("C317", "100n", C0201, "C76939", "+3.3V", "GND")]):
+        ("C319", "2.2uF", C0201, "", "+3.3V", "GND"), ("C324", "10n", C0201, "", "+3.3V", "GND"),
+        ("C317", "100n", C0201, "C76939", "+3.3V", "GND")]):
     m.part(ref, "lib:R" if ref[0] == "R" else "lib:C", val, fp, lcsc, 147.32 + 12.7 * i, 236.22, {"1": a, "2": b})
 for i, (ref, net) in enumerate([("TP301", "BOOT0"), ("TP302", "+3.3V"), ("TP303", "SWDIO"), ("TP304", "SWCLK"),
                                 ("TP305", "NRST"), ("TP306", "GND")]):
@@ -557,8 +557,9 @@ m.text("""Y301: CL 12 pF, C = 2 × (CL − Cstray) = 2 × (12 − 5) = 14 → 15
 gm_crit = 4·ESR·(2πf)²·(C0+CL)² ≈ 0,5 mA/V (ESR 180 Ω, C0 ≤ 5 pF) < Gmcritmax 1,5 mA/V [DS12110].""", 60.96, 106.68, 1.27)
 m.text("""U302: SPL06-001 a DPS310 mají stejné pouzdro i piny (jako BMP280).
 CSB a SDO na 3,3 V → I2C, adresa 0x77. Osadit podle skladu JLC.""", 330.2, 177.8, 1.27)
-m.text("""U303 BMI088 jako MicoAir: SPI2, PS = GND (SPI),
-SDO1+SDO2 = MISO, INT1 = data ready akcel., INT3 = gyro.""", 266.7, 177.8, 1.27)
+m.text("""U303 ICM-42688-P na SPI2 (MicoAir tu má BMI088, 4,5 × 3 mm se nevešel).
+Pouzdro LGA-14 2,5 × 3 jako BMI270. INT1 = data ready, RESV a FSYNC na GND.
+VDD 100 nF + 2,2 µF (C318, C319), VDDIO 10 nF (C324) podle DS-000347.""", 266.7, 177.8, 1.27)
 m.text("""J302 microSD na SDMMC1, pull-upy 47k na CMD a D0–D3 (SD: 10–100k).""", 251.46, 96.52, 1.27)
 # the IMU SPI bus: hierarchical bus label; members join the IMU_SPI.* labels on the MCU pins by name
 m.items.append([S("hierarchical_label"), "IMU_SPI{SCK,MOSI,MISO}", [S("shape"), S("bidirectional")],
