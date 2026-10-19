@@ -302,7 +302,8 @@ def escaped(pad):
 
 balls = [r for r in balls if not escaped(r[2])]
 if not balls:
-    sys.exit("the BGA is escaped already, nothing done")
+    print("the BGA is escaped already, nothing done")
+    sys.exit(0)
 
 done, left = [], []
 micro_keep = [(L1, VIA_MICRO), (L2, VIA_MICRO)]

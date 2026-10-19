@@ -205,6 +205,24 @@ což je cíl, na kterém běží dnešní MicoAir AIO 45A (board ID 1179, viz
 
 ## 7. Deska (PCB)
 
+**Aktuální směr (20. 10. 2026):** podle nového zadání znovu prověřit celý postup,
+automatizovat ho a jako hlavní referenci použít **MicoAir743v2-AIO-45A**.
+Historie níže popisuje vznik současné desky; její pevná měď ESC již není absolutní
+podmínkou dalšího návrhu. [AUTOMATIZACE.md](./AUTOMATIZACE.md) rozlišuje doložený
+pinout V2, naše adaptace a dosud neověřené rozmístění. Starší obrázek 35A AIO není
+podkladem pro přesné souřadnice V2.
+
+`gen/aktualizuj_desku.sh --auto` nyní vytvoří úplnou pracovní kopii, kontroluje
+netlist proti hwdefu, generuje vybraný profil, synchronizuje desku a hodnotí router
+podle skutečného DRC. Uchovává logy, JSON reporty a nejlepší výsledek; chybný či
+horší pokus vrátí. ERC/parity výjimky jsou konkrétní piny, ne obecné potlačení chyb.
+Profil `micoair-v2` vrací GPS na USART3, RC na USART6, LD06 na UART5, Bluetooth na
+UART8 a BMI270 na SPI3; ICM42688 používá SPI2 s CS/DRDY akcelerometru BMI088.
+Generuje se k němu vlastní hwdef, naše kalibrace napájení zůstávají.
+Připravená varianta před dotrasováním: **30 nespojených, 0 DRC chyb**, žádná nová
+ERC/parity chyba, odstraněno 175 kusů mědi dotčených signálů. Hlavní PCB zatím
+zůstává **22 nespojených / 0 DRC chyb**; referenční profil je pracovní varianta.
+
 `aio.kicad_pcb` je layout OpenAIO [Z1] aktualizovaný ze schématu (18. 10.,
 `gen/aktualizuj_desku.sh`). Převzaté díly (ESC, napájení, IMU, kořen) jsou svázané
 se schématem přes UUID a zůstaly na místě i s vodiči. Co se změnilo:
@@ -348,7 +366,8 @@ a −3,925 mm. Doplněné jsou podle něj, do mezer, které pro ně v potisku z�
 | Pin 1 konektorů | J303, J304, J305 | pořadí z tabulek MicoAiru, pin 1 = GND podle README ArduPilotu. Před prvním zapnutím ověřit multimetrem proti kabelu z MicoAiru |
 | LCSC čísla | díly s „—“ v kusovníku | vybrat podle skladu JLC |
 | Sklad TPS22810DRVR a ICM-42688-P | U201, U303 | nové díly z 18. 10., LCSC číslo vybrat podle skladu JLC. Jiný spínač 18 V ve WSON 2 × 2 má jiný pinout, záměna by znamenala úpravu schématu |
-| Trasování | aio.kicad_pcb | 22 nespojených signálů po přeskládání (kap. 7), postup a seznam v [BACKLOG.md](./BACKLOG.md): po jednom, uvolnit místo a natrasovat napřed. Únik z BGA hotový kromě D2, IMU2_SCK a IMU2_INT. Potisk OpenAIO přepsat |
+| Reference a layout | MicoAir743v2-AIO-45A | Nové zadání: co nejvíc podle V2, promyšleně lze změnit i ESC. Pinový profil a automatické kontroly hotové, přesné rozmístění a měď V2 nedoložené; starší 35A fotografii nezaměnit za V2. Viz [AUTOMATIZACE.md](./AUTOMATIZACE.md) |
+| Trasování | aio.kicad_pcb a varianta V2 | Hlavní deska 22 nespojených / 0 DRC chyb; reference před trasováním 30 / 0. Porovnávat automaticky skutečné DRC, nesnižovat počet spojů za cenu chyb. Starý seznam hlavní desky v [BACKLOG.md](./BACKLOG.md). Potisk OpenAIO a orientace IMU zůstávají otevřené |
 
 ## 9. Kontrola
 

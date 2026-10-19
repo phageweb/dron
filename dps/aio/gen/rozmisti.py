@@ -211,9 +211,9 @@ def target(f):
         return mm(p.x), mm(p.y)
     nets = {p.GetNetname() for p in f.Pads()} - POWER - {""}
     pts = [(mm(p.GetPosition().x), mm(p.GetPosition().y))
-           for r in placed if r != "U24" for p in fps[r].Pads() if p.GetNetname() in nets]
+           for r in sorted(placed) if r != "U24" for p in fps[r].Pads() if p.GetNetname() in nets]
     if not pts:   # power only: next to the nearest placed IC of the same sheet
-        ics = [fps[r] for r in placed if r[0] == "U" and fps[r].GetSheetname() == f.GetSheetname()]
+        ics = [fps[r] for r in sorted(placed) if r[0] == "U" and fps[r].GetSheetname() == f.GetSheetname()]
         if not ics:
             return CX, CY
         p = ics[0].GetPosition()
@@ -228,6 +228,8 @@ def links(f):
 
 for ref, (x, y, rot, side) in ANCHORS.items():
     f = fps[ref]
+    if f not in todo:
+        continue
     put(f, x, y, rot, side)
     block(f)
     placed.add(ref)
@@ -246,6 +248,8 @@ def opening(f):
 
 for ref, (x, y, side, d) in CONN.items():
     f = fps[ref]
+    if f not in todo:
+        continue
     for rot in (0, 90, 180, 270):
         put(f, x, y, rot, side)
         if opening(f) == d:
@@ -378,3 +382,5 @@ if failed:
     print("no room, left outside:", " ".join(failed))
 pcbnew.SaveBoard(PCB, b)
 print("saved", PCB)
+if failed:
+    raise SystemExit(2)

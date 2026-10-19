@@ -1,5 +1,13 @@
 # Backlog: dotrasování desky AIO
 
+**Změna zadání 19.–20. 10. 2026:** znovu projít vznik DPS, co nejvíc automaticky,
+primární vzor **MicoAir743v2-AIO-45A**. Uživatel připouští promyšlené změny
+rozmístění i ostatních částí. Původní omezení níže o nedotknutelné mědi ESC už
+není absolutní; případná změna musí mít technické zdůvodnění a ověření.
+Nový postup, referenční profil, příkazy a meze automatizace jsou v
+[AUTOMATIZACE.md](./AUTOMATIZACE.md). Starý seznam 22 spojů níže platí pro
+nezměněnou hlavní desku, nikoliv pro vygenerovanou variantu V2.
+
 Předávka 19. 10. 2026 večer. Podrobná historie je v [NAVRH.md](./NAVRH.md), kap. 7 (Deska)
 a kap. 8 (Otevřené otázky). Tady je jen to, co zbývá udělat, a jak.
 

@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """Regenerate the tables in NAVRH.md from the schematic.
 
-    nix develop ./dps -c python3 dps/aio/tabulky.py
+    nix develop ./dps -c python3 dps/aio/tabulky.py [PROJECT] [--profile current|micoair-v2]
 
 Exports the netlist with kicad-cli and rewrites everything between the
 <!-- tabulky:NAME --> and <!-- /tabulky:NAME --> markers in NAVRH.md.
 """
-import collections, os, re, subprocess, tempfile
+import argparse, collections, os, re, subprocess, tempfile
 import xml.etree.ElementTree as ET
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("project", nargs="?", default=os.path.dirname(os.path.abspath(__file__)))
+parser.add_argument("--profile", choices=("current", "micoair-v2"), default="current")
+args = parser.parse_args()
+HERE = os.path.abspath(args.project)
 DOC = os.path.join(HERE, "NAVRH.md")
 
 # What each H743 signal does in ArduPilot (hwdef Pavo20AIO: MicoAir743v2, IMUs and three UARTs moved) and where it goes.
@@ -34,6 +38,14 @@ FUNCTION = {
     "LED_B": "LED_BLUE, GPIO 2", "BUZZER": "BUZZER, GPIO 61", "HSE_IN": "OSC_IN, 8 MHz", "HSE_OUT": "OSC_OUT",
     "BOOT0": "BOOT0", "NRST": "reset", "PDR_ON": "napěťový dozor", "VCAP": "výstup LDO jádra",
 }
+if args.profile == "micoair-v2":
+    FUNCTION.update({
+        "IMU_SPI.SCK": "SPI3_SCK", "IMU_SPI.MOSI": "SPI3_MOSI", "IMU_SPI.MISO": "SPI3_MISO",
+        "GPS_TX": "USART3_TX, SERIAL3", "GPS_RX": "USART3_RX, SERIAL3",
+        "RC_TX": "USART6_TX, SERIAL6", "RC_RX": "USART6_RX, SERIAL6",
+        "LIDAR_TX": "UART5_RX, SERIAL5", "UART5_TX": "UART5_TX, SERIAL5",
+        "UART8_TX": "UART8_TX, SERIAL8", "UART8_RX": "UART8_RX, SERIAL8",
+    })
 
 
 def netlist():

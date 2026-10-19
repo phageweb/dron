@@ -3,16 +3,25 @@ sheet and the H743 sheet. Every sheet is rewritten on each run, with stable
 UUIDs, so the schematic is edited here and not in KiCad.
 
     ./dps/check.sh                                    # clones OpenAIO into external/
-    nix develop ./dps -c python3 dps/aio/gen/gen_aio.py [OUT]
+    nix develop ./dps -c python3 dps/aio/gen/gen_aio.py [OUT] [--profile current|micoair-v2]
 
 The board, its rules, the project file and the footprint library are copied
 from OpenAIO only when missing: they are edited in KiCad from then on."""
-import copy, glob, math, os, re, shutil, sys, uuid
+import argparse, copy, glob, math, os, re, shutil, sys, uuid
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from sexp import parse, dump, find, first, Sym
 
-OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.dirname(HERE)
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("out", nargs="?", default=os.path.dirname(HERE))
+parser.add_argument("--profile", choices=("current", "micoair-v2"), default="current")
+args = parser.parse_args()
+OUT = args.out
+MICOAIR = args.profile == "micoair-v2"
+if MICOAIR:
+    import micoair
+    if os.path.realpath(OUT) == os.path.dirname(HERE):
+        parser.error("generate the reference variant in a separate project directory")
 ROOTDIR = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
 SRC = f"{ROOTDIR}/external/opendrone/OpenAIO/hardware"
 
@@ -122,6 +131,8 @@ class Sheet:
                            [S("uuid"), uid()]])
 
     def label(self, net, x, y, d):
+        if MICOAIR:
+            net = micoair.ALIASES.get(net, net)
         ang = LABEL_ANG[d]
         just = {0: "left", 180: "right", 90: "left", 270: "right"}[ang]
         if net in self.hier:
@@ -162,6 +173,8 @@ class Sheet:
         return e
 
     def place(self, ref, lib_id, value, fp, lcsc, x, y, rot=0, dnp=False, power=False, ref_at=None, val_at=None):
+        if MICOAIR and ref in ("TP313", "TP314"):
+            value = value.replace("UART7", "UART8")
         sym = LIB[lib_id]
         if lib_id in ("lib:R", "lib:C") and not ref_at:
             ref_at, val_at = (x + 2.54, y - 1.27), (x + 2.54, y + 1.27)
@@ -462,6 +475,8 @@ H743 = {
     "K4": "PWM5", "K10": "PWM7", "D3": "PWM9", "E3": "PWM10", "H8": "PWM11",  # PB1 PD12 PE5 PE6 PD14
 }
 _balls = pins_of(LIB["MCU_ST_STM32H7:STM32H743VIHx"])
+if MICOAIR:
+    H743 = micoair.remap(H743, {ball: pin[3] for ball, pin in _balls.items()})
 H743.update({b: None for b in _balls if b not in H743})
 R0201, C0201, C0402 = "lib:R_0201_0603Metric", "lib:C_0201_0603Metric", "lib:C_0402_1005Metric"
 TP = "lib:Pad_1.0x1.4mm"
@@ -590,7 +605,11 @@ m.text("""Konektory jako MicoAir743-AIO (SH1.0, boční), pin 1 = GND:
 J303 GPS: 1 GND, 2 5V, 3 TX, 4 RX (UART8 = SERIAL3), 5 SCL, 6 SDA (kompas na I2C1, pull-upy R314/R315).
 J304 UART4 (MTF-02P): 1 GND, 2 5V, 3 TX4, 4 RX4.  J305: 1 GND, 2 5V, 3 TX1, 4 RX1 (USART1 = SERIAL1), 5 TX, 6 RX (přijímač, UART5 = SERIAL6).
 GPS a přijímač jsou na UARTech, jejichž kuličky míří ke konektorům (obvod desky je zrcadlo MicoAiru); čísla SERIALn jako MicoAir.
-Kabely od MicoAiru tak sedí. Pin 1 před prvním zapnutím ověřit multimetrem proti kabelu.""", 30.48, 287.02, 1.27)
+Kabely od MicoAiru tak sedí. Pin 1 před prvním zapnutím ověřit multimetrem proti kabelu.""" if not MICOAIR else
+"""Reference MicoAir743v2-AIO-45A: J303 GPS USART3 (PD8/PD9), J305 RC USART6 (PC6/PC7).
+LD06 UART5 RX PB5; Bluetooth UART8 PE1/PE0. BMI270 SPI3, ICM42688 SPI2.
+Konektory mají náš pinout; orientaci a pin 1 ověřit proti kabelu. Layout této varianty čeká na ověření.""",
+       30.48, 287.02, 1.27)
 m.place("#FLG301", "power:PWR_FLAG", "PWR_FLAG", "", "", 317.5, 30.48, power=True, ref_at=(317.5, 27), val_at=(317.5, 27.94))
 m.attach("+5V_USB", 317.5, 30.48, (1, 0), [])   # USB VBUS comes in from the connector
 # +5V is made in fc_power; ERC wants a flag on a sheet where the rail has other pins too
@@ -606,3 +625,13 @@ if not os.path.exists(f"{OUT}/{PROJ}.kicad_pro"):
     pro["sheets"] = [[ROOT, "Root"]]
     json.dump(pro, open(f"{OUT}/{PROJ}.kicad_pro", "w"), indent=2)
 print("ok")
+if MICOAIR:
+    # Keep firmware and schematic in the same candidate directory, never silently
+    # change the working board's firmware when generating an experimental pinout.
+    hw = os.path.join(OUT, "hwdef", "Pavo20AIO")
+    os.makedirs(hw, exist_ok=True)
+    src_hw = os.path.join(os.path.dirname(HERE), "hwdef", "Pavo20AIO")
+    for name in ("hwdef-bl.dat", "defaults.parm"):
+        shutil.copy(os.path.join(src_hw, name), hw)
+    with open(os.path.join(hw, "hwdef.dat"), "w") as f:
+        f.write(micoair.hwdef(open(os.path.join(src_hw, "hwdef.dat")).read()))

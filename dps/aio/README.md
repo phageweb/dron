@@ -4,7 +4,10 @@ Jedna deska místo MicoAir H743 AIO: STM32H743 s ArduPilotem, 4× ESC s AM32,
 napájení VTX a LD06. Vychází z [OpenAIO](https://github.com/OpenDrone-hw/OpenAIO)
 `986ce1e` (CERN-OHL-S-2.0), viz [návrh](../docs/02_navrh.md) a [požadavky](../docs/04_pozadavky.md).
 
-Stav **18. 10. 2026: schéma rev A, všechny díly na desce.** Převzaté a jisté části jsou nakreslené,
+Stav **20. 10. 2026: schéma rev A, hlavní deska 22 nespojených / 0 DRC chyb.**
+Probíhá přechod k opakovatelnému postupu a referenci MicoAir743v2-AIO-45A;
+připravená varianta má samostatné schéma, desku a hwdef, viz
+[AUTOMATIZACE.md](./AUTOMATIZACE.md). Převzaté a jisté části jsou nakreslené,
 včetně jádra H743 (napájení podle AN4938, piny podle hwdefu MicoAiru), krystalu,
 barometru, druhé IMU ICM-42688-P, microSD, konektorů periferií, RGB LED a spínače bzučáku.
 
@@ -48,7 +51,8 @@ Od 18. 10. odpovídá schématu: díly vypuštěných listů a jejich měď jsou
 ESC, napájení, IMU a kořen zůstaly na místě i s vodiči. Nové díly mají **hrubé
 rozmístění** (`aktualizuj_desku.sh --rozmisti --znovu`, pak `--vycisti`). Všechny čtyři
 konektory periferií jako na MicoAir743-AIO jsou na hraně. Všech 82 nových dílů je na desce
-(od 18. 10., kdy buck VTX nahradil spínač a BMI088 ICM-42688-P), nic není trasované ([NAVRH kap. 7](./NAVRH.md#7-deska-pcb)).
+(od 18. 10., kdy buck VTX nahradil spínač a BMI088 ICM-42688-P).
+Po trasování zbývá 22 spojů ([NAVRH kap. 7](./NAVRH.md#7-deska-pcb)).
 
 Schéma se do desky propisuje bez GUI (dělá totéž co F8, viz hlavička skriptu):
 
@@ -58,8 +62,9 @@ kicad-cli pcb drc --schematic-parity --refill-zones dps/aio/aio.kicad_pcb
 ```
 
 Před spuštěním zavři desku v KiCadu, jinak ji při uložení přepíše svou kopií.
-DRC po aktualizaci: 153 nepropojených (nové díly), zbytek jsou varování převzatá
-z OpenAIO na stejných místech.
+Pro opakované kontroly a varianty použij `aktualizuj_desku.sh --auto`; pracuje na
+kopii a uchová skutečné ERC/DRC reporty. Výsledky včetně známých výjimek jsou
+popsané v [automatickém postupu](./AUTOMATIZACE.md).
 
 ## Kontrola
 

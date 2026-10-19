@@ -1,6 +1,6 @@
 """Update aio.kicad_pcb from the schematic without the GUI, like F8 (Update PCB from Schematic).
 
-    nix develop ./dps -c dps/aio/gen/aktualizuj_desku.sh [--dry-run]
+    nix develop ./dps -c dps/aio/gen/aktualizuj_desku.sh [board] [--dry-run] [--disconnect-changed]
 
 Footprints are matched to symbols by their UUID path. The script
 - removes footprints whose symbol is gone (the sheets dropped from OpenAIO), and
@@ -13,19 +13,25 @@ Footprints are matched to symbols by their UUID path. The script
   of nets left on nothing we keep.
 Close the board in KiCad first: it would save its own copy over this one.
 """
-import collections, os, subprocess, sys, tempfile
+import argparse, collections, os, subprocess, sys, tempfile
 import xml.etree.ElementTree as ET
 import pcbnew
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-AIO = os.path.dirname(HERE)
-PCB = f"{AIO}/aio.kicad_pcb"
-DRY = "--dry-run" in sys.argv
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("board", nargs="?", default=f"{os.path.dirname(HERE)}/aio.kicad_pcb")
+parser.add_argument("--dry-run", action="store_true")
+parser.add_argument("--disconnect-changed", action="store_true",
+                    help="remove signal tracks of nets whose kept pads changed assignment (use on a copy)")
+args = parser.parse_args()
+PCB = os.path.abspath(args.board)
+AIO = os.path.dirname(PCB)
+DRY = args.dry_run
 FPDIR = os.environ["KICAD10_FOOTPRINT_DIR"]
 
 with tempfile.TemporaryDirectory() as tmp:
     subprocess.run(["kicad-cli", "sch", "export", "netlist", "--format", "kicadxml", "-o", f"{tmp}/n.xml",
-                    f"{AIO}/aio.kicad_sch"], check=True, capture_output=True)
+                    os.path.splitext(PCB)[0] + ".kicad_sch"], check=True, capture_output=True)
     root = ET.parse(f"{tmp}/n.xml").getroot()
 
 
@@ -65,6 +71,21 @@ drop = [f for p, f in fps.items() if p not in comps or p in changed]
 add = [p for p in comps if p not in fps or p in changed]
 keep = {p: f for p, f in fps.items() if p in comps and p not in changed}
 print(f"footprints: {len(keep)} kept, {len(drop)} removed, {len(add)} added")
+
+disconnect = []
+if args.disconnect_changed:
+    affected = set()
+    for path, f in keep.items():
+        for pad in f.Pads():
+            old, new = pad.GetNetname(), pad_net.get((comps[path]["ref"], pad.GetNumber()), "")
+            if old != new:
+                affected.update(n for n in (old, new) if n and not n.startswith("unconnected-"))
+    if any(n == "GND" or n.startswith("+") for n in affected):
+        raise SystemExit("power-net reassignment requires an explicit layout migration: " + str(sorted(affected)))
+    for t in list(b.GetTracks()):
+        if t.GetNetname() in affected:
+            disconnect.append(t)
+    print(f"disconnecting {len(disconnect)} tracks/vias on changed signal nets: {sorted(affected)}")
 
 # old net name -> new names, read on the kept pads before they change
 moves = collections.defaultdict(set)
@@ -148,7 +169,10 @@ for p, f in keep.items():
 # copper on nets that are gone: renamed when unambiguous, removed when orphaned
 renamed, removed, unclear = collections.Counter(), collections.Counter(), collections.Counter()
 items = list(b.GetTracks()) + list(b.Zones())
+disconnect_ids = {t.m_Uuid.AsString() for t in disconnect}
 for t in items:
+    if t.m_Uuid.AsString() in disconnect_ids:
+        continue
     old = t.GetNetname()
     if not old or old in new_nets:
         continue
@@ -168,5 +192,14 @@ if unclear:
 
 if not DRY:
     b.BuildConnectivity()
+    # KiCad 10's SWIG removal invalidates some subsequently wrapped types.
+    # Finish all footprint/net access before removing copper and saving.
+    for t in disconnect:
+        if t.GetParentGroup():
+            t.GetParentGroup().RemoveItem(t)
+        b.Remove(t)
     pcbnew.SaveBoard(PCB, b)
     print("saved", PCB)
+    if disconnect:
+        sys.stdout.flush()
+        os._exit(0)

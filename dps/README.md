@@ -4,13 +4,14 @@ Návrhy vlastních DPS pro stavbu [Pavo20 Pro](../spec/realna_stavba_dronu/10_pa
 Kreslí se v **KiCadu**, a pokud to jde, nekreslí se od nuly: vychází se
 z otevřených projektů, které už někdo vyrobil a létal.
 
-Stav **17. 10. 2026**: rešerše a požadavky hotové. KiCad je ve flaku
+Stav **20. 10. 2026**: schéma AIO hotové, layout rozpracovaný. KiCad je ve flaku
 (`nix develop ./dps`), projekty OpenDrone jsou naklonované a prověřené přes ERC/DRC
 (`nix run ./dps#check`, výsledek v [návrhu](./docs/02_navrh.md#erc-a-drc-převzatých-projektů)).
 **Všechno na jedné desce** (rozhodnuto 17. 10.): vlastní AIO s H743 místo MicoAiru.
 **Schéma rev A je v [aio](./aio/README.md)**: převzaté listy OpenAIO (4× ESC,
-napájení, IMU), nový list VTX a LD06 a prázdný list pro jádro H743, které se
-kreslí ručně. Deska je layout OpenAIO svázaný se schématem a mění se klávesou F8.
+napájení, IMU), nový list VTX a LD06 a kompletní jádro H743. Schéma se generuje
+ze zdrojového Pythonu. Nové zadání upřednostňuje referenci MicoAir743v2-AIO-45A
+a [automatický postup na pracovních kopiích](./aio/AUTOMATIZACE.md).
 
 Větev pro VTX je **dimenzovaná na DJI O3/O4** (10 V za spínačem 3 A, 12–16 W), ne na
 spotřebu Lite+, kterou nikdo nezměřil. Konektor HD VTX má pinout DJI.

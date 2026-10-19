@@ -1,0 +1,39 @@
+{
+  "description": "Reviewed exceptions documented in aio/README.md and NAVRH.md. Match exact issue, pin UUIDs/descriptions and sheet, never just counts or check types.",
+  "erc": [
+    "[\"/ESC1/\", \"pin_not_driven\", \"Input pin not driven by any Output pins\", [[\"58b9a101-96da-49e3-a550-e34a7f64e33e\", \"Symbol C37 Pin 1 [1, Input, Line]\"]]]",
+    "[\"/ESC1/\", \"pin_not_driven\", \"Input pin not driven by any Output pins\", [[\"a7e2b490-20cc-406f-82e6-d7256e463bc9\", \"Symbol C40 Pin 2 [2, Input, Line]\"]]]",
+    "[\"/ESC1/\", \"pin_not_driven\", \"Input pin not driven by any Output pins\", [[\"094bebec-affa-4fcc-b8ca-aa8b7dc855d0\", \"Symbol C41 Pin 2 [2, Input, Line]\"]]]",
+    "[\"/ESC1/\", \"pin_not_driven\", \"Input pin not driven by any Output pins\", [[\"20ccc572-8914-4b6f-ad1d-24f7c95f5950\", \"Symbol C42 Pin 2 [2, Input, Line]\"]]]",
+    "[\"/ESC2/\", \"pin_not_driven\", \"Input pin not driven by any Output pins\", [[\"58b9a101-96da-49e3-a550-e34a7f64e33e\", \"Symbol C44 Pin 1 [1, Input, Line]\"]]]",
+    "[\"/ESC2/\", \"pin_not_driven\", \"Input pin not driven by any Output pins\", [[\"a7e2b490-20cc-406f-82e6-d7256e463bc9\", \"Symbol C47 Pin 2 [2, Input, Line]\"]]]",
+    "[\"/ESC2/\", \"pin_not_driven\", \"Input pin not driven by any Output pins\", [[\"094bebec-affa-4fcc-b8ca-aa8b7dc855d0\", \"Symbol C48 Pin 2 [2, Input, Line]\"]]]",
+    "[\"/ESC2/\", \"pin_not_driven\", \"Input pin not driven by any Output pins\", [[\"20ccc572-8914-4b6f-ad1d-24f7c95f5950\", \"Symbol C49 Pin 2 [2, Input, Line]\"]]]",
+    "[\"/ESC3/\", \"pin_not_driven\", \"Input pin not driven by any Output pins\", [[\"58b9a101-96da-49e3-a550-e34a7f64e33e\", \"Symbol C51 Pin 1 [1, Input, Line]\"]]]",
+    "[\"/ESC3/\", \"pin_not_driven\", \"Input pin not driven by any Output pins\", [[\"a7e2b490-20cc-406f-82e6-d7256e463bc9\", \"Symbol C54 Pin 2 [2, Input, Line]\"]]]",
+    "[\"/ESC3/\", \"pin_not_driven\", \"Input pin not driven by any Output pins\", [[\"094bebec-affa-4fcc-b8ca-aa8b7dc855d0\", \"Symbol C55 Pin 2 [2, Input, Line]\"]]]",
+    "[\"/ESC3/\", \"pin_not_driven\", \"Input pin not driven by any Output pins\", [[\"20ccc572-8914-4b6f-ad1d-24f7c95f5950\", \"Symbol C56 Pin 2 [2, Input, Line]\"]]]",
+    "[\"/ESC4/\", \"pin_not_driven\", \"Input pin not driven by any Output pins\", [[\"58b9a101-96da-49e3-a550-e34a7f64e33e\", \"Symbol C58 Pin 1 [1, Input, Line]\"]]]",
+    "[\"/ESC4/\", \"pin_not_driven\", \"Input pin not driven by any Output pins\", [[\"a7e2b490-20cc-406f-82e6-d7256e463bc9\", \"Symbol C61 Pin 2 [2, Input, Line]\"]]]",
+    "[\"/ESC4/\", \"pin_not_driven\", \"Input pin not driven by any Output pins\", [[\"094bebec-affa-4fcc-b8ca-aa8b7dc855d0\", \"Symbol C62 Pin 2 [2, Input, Line]\"]]]",
+    "[\"/ESC4/\", \"pin_not_driven\", \"Input pin not driven by any Output pins\", [[\"20ccc572-8914-4b6f-ad1d-24f7c95f5950\", \"Symbol C63 Pin 2 [2, Input, Line]\"]]]",
+    "[\"/VTX a LD06/\", \"pin_to_pin\", \"Pins of type Open collector and Power output are connected\", [[\"1e6320c7-f7d8-57fe-b102-b65c6156b3ea\", \"Symbol U201 Pin 1 [VOUT, Power output, Line]\"], [\"c235dbc9-0166-5e57-bef5-1debf794daf5\", \"Symbol U201 Pin 2 [QOD, Open collector, Line]\"]]]",
+    "[\"/MCU H743/\", \"pin_to_pin\", \"Pins of type Power output and Power output are connected\", [[\"1da13926-b77a-5c50-aed5-bc461b7cc522\", \"Symbol U301 Pin F8 [VCAP, Power output, Line]\"], [\"91d9919a-0b57-5814-8c15-5ac5ff9c1c32\", \"Symbol U301 Pin E7 [VCAP, Power output, Line]\"]]]"
+  ],
+  "parity": [
+    "[\"\", \"net_conflict\", \"No pad found for pin 23 in schematic\", [[\"40723755-cc19-4dbc-a5e4-485feb12de91\", \"Footprint U13\"]]]",
+    "[\"\", \"net_conflict\", \"No pad found for pin 2 in schematic\", [[\"40723755-cc19-4dbc-a5e4-485feb12de91\", \"Footprint U13\"]]]",
+    "[\"\", \"net_conflict\", \"No pad found for pin 7 in schematic\", [[\"2cfe9272-8862-4c6f-8600-1eb45da3d3ff\", \"Footprint U14\"]]]",
+    "[\"\", \"net_conflict\", \"No pad found for pin 2 in schematic\", [[\"ea96ceef-4a46-4f9e-a08c-4e5114d31724\", \"Footprint U15\"]]]",
+    "[\"\", \"net_conflict\", \"No pad found for pin 7 in schematic\", [[\"8c5c3fdb-46ef-4455-9932-71ee2d095733\", \"Footprint U16\"]]]",
+    "[\"\", \"net_conflict\", \"No pad found for pin 8 in schematic\", [[\"8c5c3fdb-46ef-4455-9932-71ee2d095733\", \"Footprint U16\"]]]",
+    "[\"\", \"net_conflict\", \"No pad found for pin 2 in schematic\", [[\"1ab7d3ff-1802-421b-a603-3f433177dd03\", \"Footprint U17\"]]]",
+    "[\"\", \"net_conflict\", \"No pad found for pin 23 in schematic\", [[\"021c4486-5e2a-48f9-b8e2-f4c9830e1bb5\", \"Footprint U19\"]]]",
+    "[\"\", \"net_conflict\", \"No pad found for pin 24 in schematic\", [[\"021c4486-5e2a-48f9-b8e2-f4c9830e1bb5\", \"Footprint U19\"]]]",
+    "[\"\", \"net_conflict\", \"No pad found for pin 2 in schematic\", [[\"021c4486-5e2a-48f9-b8e2-f4c9830e1bb5\", \"Footprint U19\"]]]",
+    "[\"\", \"net_conflict\", \"No pad found for pin 7 in schematic\", [[\"a49fa492-3423-42fe-8218-5eeb81b0fd22\", \"Footprint U20\"]]]",
+    "[\"\", \"net_conflict\", \"No pad found for pin 2 in schematic\", [[\"c8b8ec95-a0bb-4984-9ef7-faf28c6d6f88\", \"Footprint U6\"]]]",
+    "[\"\", \"net_conflict\", \"No pad found for pin A8 in schematic\", [[\"16b4d2cb-7239-4dad-b560-5facd8f8fab5\", \"Footprint J301\"]]]",
+    "[\"\", \"net_conflict\", \"No pad found for pin B8 in schematic\", [[\"16b4d2cb-7239-4dad-b560-5facd8f8fab5\", \"Footprint J301\"]]]"
+  ]
+}
