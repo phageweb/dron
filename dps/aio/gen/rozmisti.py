@@ -8,7 +8,10 @@ connects to, without courtyard overlaps, so the layout begins from something.
   RP2354 was, USB-C, microSD, baro, the SH-6 connector, the pads).
 - Every other part goes as close as it fits to the pads it shares a net with,
   searched on a 0.1 mm grid on its preferred side first, then on the other.
-- The loose pads go in blocks of three per row, as the pad field on MicoAir743-AIO.
+- No part on the front within KEEP of the BGA's centre: the ring is for its escape and the tracks
+  turning towards their parts. Loose pads go one by one next to their ball (19. 10.; they were blocks).
+- NEAR puts a part that only shares power with another next to it (the BMI270's regulator, the
+  VTX switch by its connector).
 Only parts that are still outside the board move, so it can be run again;
 --znovu first puts every part of the new sheets back outside and starts over.
 """
@@ -26,34 +29,41 @@ ANCHORS = {
     "J301": (61.88, 55.51, -90, "F"),    # USB1, same footprint
     "J302": (66.81, 65.99, 90, "F"),     # Card1, same footprint
     "U302": (81.23, 67.38, -90, "B"),    # U26 BMP580
-    # pads on the spots of OpenAIO's small pads
-    "TP301": (69.67, 53.23, 0, "F"), "TP302": (71.67, 53.23, 0, "F"), "TP303": (73.67, 53.23, 0, "F"),
-    "TP304": (75.70, 53.26, 0, "F"), "TP305": (77.67, 53.26, 0, "F"), "TP306": (79.67, 53.23, 0, "F"),
-
+    "Y301": (82.60, 65.70, 90, "F"),     # crystal right of the BGA, by HSE_IN/OUT (C1, D1), past the escape ring
+    # SWD pads together right under the SWD balls (A10, A9, bottom left corner of the BGA)
+    "TP303": (71.00, 71.00, 0, "F"), "TP304": (72.50, 71.00, 0, "F"),
 }
 # preferred side for the rest; anything not listed tries the front first
 SIDE = {"B": ["C301", "C302", "C303", "C304", "C305", "C306", "C307", "C308", "C309", "C310", "C311", "C312",
-              "C313", "R309", "R310", "R311", "R312", "R313", "C320", "C321", "U303", "C318", "C319", "C324",
-              "U201", "C201", "C202", "C203", "R203", "R204",
-              "JP202", "R206", "Q301", "R319", "J304", "J305"]}
+              "C313", "R309", "R310", "R311", "R312", "R313", "C320", "C321",
+              "R203", "R204", "R206", "Q301", "R319", "J304", "J305"]}
 SIDE_OF = {r: s for s, refs in SIDE.items() for r in refs}
 # side-entry SH1.0 connectors as on MicoAir743-AIO, on the edge stretches the motor and battery pads leave
 # free, where no kept OpenAIO part is in the way (found by a search over the board).
+# Our edge (motors, battery) is MicoAir's mirrored top to bottom, so the connectors sit as on MicoAir mirrored:
+# GPS at the bottom right corner, the VTX on the right edge, UART1+6 at the bottom on the back, UART4 on the right.
 # (x, y, side, direction the opening faces)
-CONN = {"J201": (80.0, 73.5, "F", (0, 1)),    # DJI VTX: front bottom, where OpenAIO's SH-6 was
-        "J303": (88.5, 65.5, "F", (1, 0)),    # GPS: front right, below motor 4
-        "J305": (88.0, 65.5, "B", (1, 0)),    # UART1+UART6: back right
-        "J304": (81.0, 73.5, "B", (0, 1))}    # UART4: back bottom
+CONN = {"J303": (80.0, 73.5, "F", (0, 1)),    # GPS: front bottom, where OpenAIO's SH-6 was
+        "J201": (88.5, 65.5, "F", (1, 0)),    # DJI VTX: front right, below motor 4
+        "J304": (88.0, 65.5, "B", (1, 0)),    # UART4: back right
+        "J305": (81.0, 73.5, "B", (0, 1))}    # UART1+UART6: back bottom
 EDGE = {}
 # the loose pads in one block, three per row, as the pad field on MicoAir743-AIO
-PAD_BLOCKS = [["TP320", "TP321", "TP322", "TP323", "TP313", "TP314"],             # 5V GND BZ+ BZ- TX8 RX8
-              ["TP315", "TP316", "TP317", "TP318", "TP319", "TP201", "TP202"]]    # PWM5 7 9 10 11, LD06 TX, PWM
+# (19. 10.: no blocks, each pad goes next to its ball like any other part, so no track crosses the BGA for it)
+PAD_BLOCKS = []
 PADS = [r for blk in PAD_BLOCKS for r in blk]
 PAD_PITCH = (1.3, 1.7)
 # parts tied to the H743 as a whole (its supply), not to one ball
 TO_MCU = {f"C{n}" for n in range(301, 314)}
 # supply capacitors of other ICs: placed right after the big parts, next to their IC (they share only power nets)
-DECAP_OF = {"C201": "U201", "C202": "U201", "C203": "U201", "C317": "U302", "C318": "U303", "C319": "U303", "C324": "U303"}
+DECAP_OF = {"C201": "U201", "C202": "U201", "C203": "U201", "C317": "U302", "C318": "U303", "C319": "U303", "C324": "U303",
+            "C29": "U8", "C30": "U8", "C25": "U6", "C27": "U6", "C322": "Y301", "C323": "Y301"}
+# parts that only share power with their partner: next to it (the BMI270's 1.8 V regulator and its parts)
+NEAR = {"U6": "U8", "R23": "U6", "D7": "U6",
+        "U201": "J201"}   # the VTX switch by its connector: +10V comes from the L5 plane, the switched 10 V stays short
+# the ring around the BGA where its escape leaves: no part on the front within KEEP of its centre (the escape
+# ends at 4.1 mm; the rest is room for the tracks to turn towards their parts)
+KEEP = 5.0
 POWER = {"GND", "+3.3V", "+5V", "+BATT", "+4v5", "+10V"}
 
 b = pcbnew.LoadBoard(PCB)
@@ -190,6 +200,9 @@ def target(f):
     ref = f.GetReference()
     if ref in EDGE:
         return EDGE[ref]
+    if ref in NEAR and NEAR[ref] in placed:
+        p = fps[NEAR[ref]].GetPosition()
+        return mm(p.x), mm(p.y)
     if ref in DECAP_OF and DECAP_OF[ref] in placed:
         p = fps[DECAP_OF[ref]].GetPosition()
         return mm(p.x), mm(p.y)
@@ -218,6 +231,8 @@ for ref, (x, y, rot, side) in ANCHORS.items():
     put(f, x, y, rot, side)
     block(f)
     placed.add(ref)
+_u = fps["U301"].GetPosition()
+obst["F"].append((mm(_u.x) - KEEP, mm(_u.y) - KEEP, mm(_u.x) + KEEP, mm(_u.y) + KEEP))
 
 
 def opening(f):
@@ -323,10 +338,17 @@ def by_links(fs):
 
 # the H743's decoupling right under it, then the big parts each followed by its supply capacitors, the pad blocks,
 # the rest by what they tie to
+for f in [f for f in rest if DECAP_OF.get(f.GetReference()) in ANCHORS]:   # the crystal's load capacitors
+    place_decap(f)
+for n in [n for n in rest if NEAR.get(n.GetReference()) in CONN]:          # the VTX switch, then its capacitors
+    rest.remove(n)
+    place_one(n)
+    for c in [c for c in rest if DECAP_OF.get(c.GetReference()) == n.GetReference()]:
+        place_decap(c)
 for f in [f for f in rest if f.GetReference() in TO_MCU]:
     place_one(f)
 rest = [f for f in rest if f.GetReference() not in TO_MCU]
-big = [f for f in rest if f.GetReference()[0] in "UJYLQ"]
+big = [f for f in rest if f.GetReference()[0] in "UJYLQ" and f.GetReference() not in NEAR]
 rest = [f for f in rest if f not in big]
 while big:
     f = by_links(big).pop(0)
@@ -335,6 +357,12 @@ while big:
     # its supply capacitors right after it, before other parts take the space around it
     for c in [c for c in rest if DECAP_OF.get(c.GetReference()) == f.GetReference()]:
         place_decap(c)
+    # and what only sits next to it, with its own capacitors
+    for n in [n for n in rest if NEAR.get(n.GetReference()) == f.GetReference()]:
+        rest.remove(n)
+        place_one(n)
+        for c in [c for c in rest if DECAP_OF.get(c.GetReference()) == n.GetReference()]:
+            place_decap(c)
 for f in [f for f in rest if f.GetReference() in DECAP_OF and f.GetReference() not in placed]:
     place_one(f)
 rest = [f for f in rest if f.GetReference() not in DECAP_OF]

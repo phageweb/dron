@@ -29,30 +29,31 @@ STORAGE_FLASH_PAGE 14
 # default to all pins low to avoid ESD issues
 DEFAULTGPIO OUTPUT LOW PULLDOWN
 
-# order of UARTs (and USB)
-SERIAL_ORDER  OTG1 USART1 USART2 USART3 UART4 UART5 USART6 UART7 UART8
+# order of UARTs (and USB). SERIALn as on MicoAir743v2, but GPS and the receiver sit on the UARTs
+# whose balls face their connectors (our board's edge is MicoAir's mirrored, NAVRH.md chapter 7)
+SERIAL_ORDER  OTG1 USART1 USART2 UART8 UART4 USART3 UART5 USART6 UART7
 
 # USB
 PA11 OTG_FS_DM OTG1
 PA12 OTG_FS_DP OTG1
 
 # UARTs
-PA9  USART1_TX USART1     # telemetry, J305 pin 3
+PA9  USART1_TX USART1     # SERIAL1 telemetry, J305 pin 3
 PA10 USART1_RX USART1
-PA2  USART2_TX USART2     # HD VTX, J201 pin 3
+PA2  USART2_TX USART2     # SERIAL2 HD VTX, J201 pin 3
 PA3  USART2_RX USART2     # HD VTX, J201 pin 4
-PD8  USART3_TX USART3     # GPS WS-M181
-PD9  USART3_RX USART3
-PA0  UART4_TX  UART4      # MTF-02P, J304 pin 3
+PE1  UART8_TX  UART8      # SERIAL3 GPS WS-M181, J303 pin 3
+PE0  UART8_RX  UART8      # J303 pin 4
+PA0  UART4_TX  UART4      # SERIAL4 MTF-02P, J304 pin 3
 PA1  UART4_RX  UART4
-PB6  UART5_TX  UART5
-PB5  UART5_RX  UART5      # LD06 / D500 Tx, pad TP201
-PC6  USART6_TX USART6     # receiver, J305 pin 5
-PC7  USART6_RX USART6     # receiver TX, J305 pin 6; HD VTX J201 pin 6 (SBUS from DJI) only via JP202
-PE8  UART7_TX  UART7
+PD8  USART3_TX USART3     # SERIAL5, TX not wired
+PD9  USART3_RX USART3     # LD06 / D500 Tx, pad TP201
+PB6  UART5_TX  UART5      # SERIAL6 receiver, J305 pin 5
+PB5  UART5_RX  UART5      # receiver TX, J305 pin 6; HD VTX J201 pin 6 (SBUS from DJI) only via JP202
+PC6  USART6_TX USART6     # SERIAL7, not wired
+PC7  USART6_RX USART6
+PE8  UART7_TX  UART7      # SERIAL8, pads TP313, TP314
 PE7  UART7_RX  UART7
-PE1  UART8_TX  UART8
-PE0  UART8_RX  UART8
 
 # SWD (TP303, TP304)
 PA13 JTMS-SWDIO SWD
@@ -123,25 +124,25 @@ PC11 SDMMC1_D3  SDMMC1
 define FATFS_HAL_DEVICE SDCD1
 define HAL_OS_FATFS_IO 1
 
-# SPI2 - ICM-42688-P U303, second IMU (MicoAir has a BMI088 here, it did not fit the board)
-PD3  SPI2_SCK        SPI2
+# SPI2 - ICM-42688-P U303, second IMU (MicoAir has a BMI088 here, it did not fit the board).
+# SCK, CS and DRDY moved off MicoAir's pins (PD3, PD4, PC14) to balls on the side of the BGA the IMU sits on
+PB13 SPI2_SCK        SPI2
 PC2  SPI2_MISO       SPI2
 PC3  SPI2_MOSI       SPI2
-PD4  ICM42688_CS     CS
-PC14 DRDY1_ICM42688  INPUT
+PB12 ICM42688_CS     CS
+PE12 DRDY1_ICM42688  INPUT
 
-# SPI3 - BMI270 (sheet IMU, U8)
-PB3  SPI3_SCK      SPI3
-PB4  SPI3_MISO     SPI3
-PD6  SPI3_MOSI     SPI3
-PA15 BMI270_CS     CS
-PB7  DRDY3_BMI270  INPUT
-
-# no SPI1 / AT7456E: the VTX is digital, OSD goes over MSP DisplayPort
+# SPI1 - BMI270 (sheet IMU, U8). MicoAir has it on SPI3 (PB3 PB4 PD6, CS PA15, DRDY PB7), whose balls face
+# away from the IMU on our board; SPI1 is free, MicoAir's AT7456E OSD on it is not on this board
+PA5  SPI1_SCK      SPI1
+PA6  SPI1_MISO     SPI1
+PA7  SPI1_MOSI     SPI1
+PA4  BMI270_CS     CS
+PC4  DRDY3_BMI270  INPUT
 
 # SPI devices
 SPIDEV  icm42688  SPI2  DEVID1  ICM42688_CS  MODE3   2*MHZ 16*MHZ
-SPIDEV  bmi270    SPI3  DEVID3  BMI270_CS    MODE3   1*MHZ 10*MHZ
+SPIDEV  bmi270    SPI1  DEVID1  BMI270_CS    MODE3   1*MHZ 10*MHZ
 
 # IMUs: the rotations depend on how the chips sit in the layout, set them then
 IMU BMI270 SPI:bmi270 ROTATION_NONE

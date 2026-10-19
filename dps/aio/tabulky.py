@@ -12,22 +12,22 @@ import xml.etree.ElementTree as ET
 HERE = os.path.dirname(os.path.abspath(__file__))
 DOC = os.path.join(HERE, "NAVRH.md")
 
-# What each H743 signal does in ArduPilot (hwdef MicoAir743v2) and where it goes.
+# What each H743 signal does in ArduPilot (hwdef Pavo20AIO: MicoAir743v2, IMUs and three UARTs moved) and where it goes.
 FUNCTION = {
     "MOTOR1": "PWM1, TIM1_CH4, BIDIR DShot", "MOTOR2": "PWM2, TIM1_CH3", "MOTOR3": "PWM3, TIM1_CH2, BIDIR DShot",
     "MOTOR4": "PWM4, TIM1_CH1", "PWM5": "PWM5, TIM3_CH4, GPIO 54", "LIDAR_PWM": "PWM6, TIM3_CH3, GPIO 55",
     "PWM7": "PWM7, TIM4_CH1, GPIO 56", "VTX_EN": "PWM8 jako GPIO 57 (RELAYn_PIN 57)", "PWM9": "PWM9, TIM15_CH1, GPIO 58",
     "PWM10": "PWM10, TIM15_CH2, GPIO 59", "PWM11": "PWM11, TIM4_CH3, GPIO 60 (LED pad)",
-    "IMU_SPI.SCK": "SPI3_SCK", "IMU_SPI.MOSI": "SPI3_MOSI", "IMU_SPI.MISO": "SPI3_MISO", "IMU_CS": "BMI270_CS",
+    "IMU_SPI.SCK": "SPI1_SCK", "IMU_SPI.MOSI": "SPI1_MOSI", "IMU_SPI.MISO": "SPI1_MISO", "IMU_CS": "BMI270_CS",
     "IMU_INT": "DRDY3_BMI270", "IMU2_SCK": "SPI2_SCK", "IMU2_MISO": "SPI2_MISO", "IMU2_MOSI": "SPI2_MOSI",
     "IMU2_CS": "ICM42688_CS", "IMU2_INT": "DRDY1_ICM42688", "VBAT_SENSE": "ADC1 ch10, BATT_VOLTAGE_SENS",
     "ESC_CURRENT": "ADC1 ch11, BATT_CURRENT_SENS", "SDA": "I2C2_SDA (bus 0)", "SCL": "I2C2_SCL (bus 0)",
     "EXT_SDA": "I2C1_SDA (bus 1)", "EXT_SCL": "I2C1_SCL (bus 1)", "UART1_TX": "USART1_TX, SERIAL1",
     "UART1_RX": "USART1_RX, SERIAL1", "VTX_TX": "USART2_TX, SERIAL2", "VTX_RX": "USART2_RX, SERIAL2",
-    "GPS_TX": "USART3_TX, SERIAL3", "GPS_RX": "USART3_RX, SERIAL3", "FLOW_TX": "UART4_TX, SERIAL4",
-    "FLOW_RX": "UART4_RX, SERIAL4", "UART5_TX": "UART5_TX, SERIAL5", "LIDAR_TX": "UART5_RX, SERIAL5",
-    "RC_TX": "USART6_TX, SERIAL6", "RC_RX": "USART6_RX, SERIAL6", "UART7_TX": "UART7_TX, SERIAL7",
-    "UART7_RX": "UART7_RX, SERIAL7", "UART8_TX": "UART8_TX, SERIAL8", "UART8_RX": "UART8_RX, SERIAL8",
+    "GPS_TX": "UART8_TX, SERIAL3", "GPS_RX": "UART8_RX, SERIAL3", "FLOW_TX": "UART4_TX, SERIAL4",
+    "FLOW_RX": "UART4_RX, SERIAL4", "UART3_TX": "USART3_TX, SERIAL5", "LIDAR_TX": "USART3_RX, SERIAL5",
+    "RC_TX": "UART5_TX, SERIAL6", "RC_RX": "UART5_RX, SERIAL6", "UART7_TX": "UART7_TX, SERIAL8",
+    "UART7_RX": "UART7_RX, SERIAL8",
     "USB_DM": "OTG_FS_DM, SERIAL0", "USB_DP": "OTG_FS_DP, SERIAL0", "SWDIO": "SWD", "SWCLK": "SWD",
     "SD_CK": "SDMMC1_CK", "SD_CMD": "SDMMC1_CMD", "SD_D0": "SDMMC1_D0", "SD_D1": "SDMMC1_D1",
     "SD_D2": "SDMMC1_D2", "SD_D3": "SDMMC1_D3", "LED_R": "LED_RED, GPIO 0", "LED_G": "LED_GREEN, GPIO 1",
@@ -82,7 +82,7 @@ def main():
     tables["kusovnik"] = "\n".join(out)
 
     # H743 pin map
-    out = ["| Kulička | Pin | Síť | Funkce (hwdef MicoAir743v2) | Kam vede |", "| --- | --- | --- | --- | --- |"]
+    out = ["| Kulička | Pin | Síť | Funkce (hwdef Pavo20AIO) | Kam vede |", "| --- | --- | --- | --- | --- |"]
     rows = []
     for ball, (net, func) in pins["U301"].items():
         pin = func.rsplit("_", 1)[0]

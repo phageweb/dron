@@ -387,13 +387,13 @@ v.part("J201", "Connector_Generic:Conn_01x06", "HD VTX",
 v.part("TP201", "lib:TestPoint", "LD06 TX", "lib:Pad_1.0x1.4mm", "", 203.2, 162.56, {"1": "LIDAR_TX"})
 v.part("TP202", "lib:TestPoint", "LD06 PWM", "lib:Pad_1.0x1.4mm", "", 215.9, 162.56, {"1": "LIDAR_PWM"})
 v.part("R206", "lib:R", "0R", R0201, "", 231.14, 162.56, {"1": "LIDAR_PWM", "2": "GND"})
-# J201 pin 6 (SBUS from a DJI unit) and the XR1 Nano's TX both want USART6 RX: open by default
+# J201 pin 6 (SBUS from a DJI unit) and the XR1 Nano's TX both want the receiver's RX (UART5, SERIAL6): open by default
 v.part("JP202", "Jumper:SolderJumper_2_Open", "SBUS z DJI", "Jumper:SolderJumper-2_P1.3mm_Open_Pad1.0x1.5mm", "",
        238.76, 132.08, {"1": "VTX_SBUS", "2": "RC_RX"})
 v.text("Spínaných 10 V pro HD VTX: spínač TPS22810 na +10V z fc_power (U3, LMR51430 3 A),\nze které OpenAIO napájí VTX i budiče ESC. Spíná se jen VTX, +10V pro budiče zůstává.\nDimenzováno na DJI O3/O4 (12–16 W ≈ 1,6 A, spínač 3 A). CT 4,7 nF: náběh ~0,8 ms.", 38.1, 20.32, 1.8)
 v.text("EN: výchozí vypnuto (R204), MCU spíná přes VTX_EN\n(RELAYn_PIN, RELAYn_DEFAULT 1).", 99.06, 83.82)
 v.text("Bez měření proudu VTX, jako MicoAir: INA226 a bočník se na desku nevešly (18. 10.).", 182.88, 20.32, 1.8)
-v.text("HD VTX, pinout DJI jako MicoAir: 1 napájení, 2 GND, 3 TX2, 4 RX2, 5 GND, 6 SBUS z DJI. Pro Lite+ redukce 6P → 4P.\nJP202 rozpojená: RX6 patří přijímači na J305. Zapájet jen pro DJI s SBUS a bez přijímače.", 177.8, 101.6, 1.8)
+v.text("HD VTX, pinout DJI jako MicoAir: 1 napájení, 2 GND, 3 TX2, 4 RX2, 5 GND, 6 SBUS z DJI. Pro Lite+ redukce 6P → 4P.\nJP202 rozpojená: RX přijímače (UART5, SERIAL6) patří přijímači na J305. Zapájet jen pro DJI s SBUS a bez přijímače.", 177.8, 101.6, 1.8)
 v.text("LD06/D500 na pady jako u MicoAiru (ZH1.5 se nevešel): TP201 Tx lidaru, TP202 PWM, 5V a GND na TP320/TP321 (rozběh 540 mA).\nPWM uzemněn přes R206; bez něj ho řídí MCU přes LIDAR_PWM.", 177.8, 152.4, 1.8)
 v.write("vtx.kicad_sch", "VTX a LD06", uid(), comments=["Napájení VTX z +10V jako OpenAIO (CERN-OHL-S-2.0)", "Licence: CERN-OHL-S-2.0"])
 
@@ -435,23 +435,25 @@ H743 = {
     "C2": "GND", "E4": "GND", "E5": "GND", "E6": "GND", "J1": "GND", "G1": "GND",
     "E7": "VCAP", "F8": "VCAP", "F7": "PDR_ON", "D5": "BOOT0", "E1": "NRST",
     "C1": "HSE_IN", "D1": "HSE_OUT",
-    # hwdef MicoAir743v2
+    # hwdef MicoAir743v2, except three UARTs (19. 10.): our board's edge is MicoAir's mirrored, so GPS and the
+    # receiver take the UARTs whose balls face the connectors (bottom edge); SERIAL_ORDER keeps MicoAir's numbers
     "G7": "MOTOR1", "K6": "MOTOR2", "H6": "MOTOR3", "K5": "MOTOR4",            # PE14 PE13 PE11 PE9, TIM1
-    "A7": "IMU_SPI.SCK", "C6": "IMU_SPI.MOSI", "A6": "IMU_SPI.MISO",           # PB3 PD6 PB4, SPI3
-    "A8": "IMU_CS", "A5": "IMU_INT",                                          # PA15 PB7, BMI270
-    "C7": "IMU2_SCK", "E2": "IMU2_MISO", "F3": "IMU2_MOSI",                   # PD3 PC2_C PC3_C, SPI2
-    "D7": "IMU2_CS", "A1": "IMU2_INT",                                       # PD4 PC14, ICM-42688-P
+    # both IMUs sit above the BGA (19. 10.): BMI270 on SPI1 (free, MicoAir's OSD) instead of SPI3, whose
+    # balls face down; the ICM's SCK, CS and DRDY on balls of the top rows
+    "H3": "IMU_SPI.SCK", "K3": "IMU_SPI.MOSI", "J3": "IMU_SPI.MISO",           # PA5 PA7 PA6, SPI1
+    "G3": "IMU_CS", "G4": "IMU_INT",                                          # PA4 PC4, BMI270
+    "J8": "IMU2_SCK", "E2": "IMU2_MISO", "F3": "IMU2_MOSI",                   # PB13 PC2_C PC3_C, SPI2
+    "K8": "IMU2_CS", "J6": "IMU2_INT",                                       # PB12 PE12, ICM-42688-P
     "F1": "VBAT_SENSE", "F2": "ESC_CURRENT",                                  # PC0 PC1, ADC1
     "K7": "SDA", "J7": "SCL",                                                 # PB11 PB10, I2C2 = bus 0
     "A4": "EXT_SDA", "B4": "EXT_SCL",                                         # PB9 PB8, I2C1 = bus 1
     "C9": "UART1_TX", "D10": "UART1_RX",                                      # PA9 PA10, SERIAL1
     "J2": "VTX_TX", "K2": "VTX_RX",                                           # PA2 PA3, USART2 = SERIAL2
-    "K9": "GPS_TX", "J9": "GPS_RX",                                           # PD8 PD9, USART3 = SERIAL3
+    "C4": "GPS_TX", "D4": "GPS_RX",                                           # PE1 PE0, UART8 = SERIAL3
     "G2": "FLOW_TX", "H2": "FLOW_RX",                                         # PA0 PA1, UART4 = SERIAL4
-    "B5": "UART5_TX", "C5": "LIDAR_TX",                                       # PB6 PB5, UART5 = SERIAL5
-    "F10": "RC_TX", "E10": "RC_RX",                                           # PC6 PC7, USART6 = SERIAL6
-    "J5": "UART7_TX", "H5": "UART7_RX",                                       # PE8 PE7, SERIAL7
-    "C4": "UART8_TX", "D4": "UART8_RX",                                       # PE1 PE0, SERIAL8
+    "K9": "UART3_TX", "J9": "LIDAR_TX",                                       # PD8 PD9, USART3 = SERIAL5
+    "B5": "RC_TX", "C5": "RC_RX",                                             # PB6 PB5, UART5 = SERIAL6
+    "J5": "UART7_TX", "H5": "UART7_RX",                                       # PE8 PE7, SERIAL8
     "C10": "USB_DM", "B10": "USB_DP",                                         # PA11 PA12, OTG_FS
     "A10": "SWDIO", "A9": "SWCLK",                                            # PA13 PA14
     "C8": "SD_CK", "B7": "SD_CMD", "F9": "SD_D0", "E9": "SD_D1", "B9": "SD_D2", "B8": "SD_D3",  # SDMMC1
@@ -569,24 +571,25 @@ m.items.append([S("label"), "IMU_SPI{SCK,MOSI,MISO}", [S("at"), 246.38, 167.64, 
                 font([S("justify"), S("left"), S("bottom")]), [S("uuid"), uid()]])
 # peripherals: connectors as on MicoAir743-AIO (ArduPilot hwdef/MicoAir743-AIO, ports picture), SH1.0 side entry.
 # MicoAir's tables list pin 6 first: its README says pin 1 of the DJI connector is 12 V, the last row.
-m.part("J303", "Connector_Generic:Conn_01x06", "GPS (UART3+I2C1)", "Connector_JST:JST_SH_SM06B-SRSS-TB_1x06-1MP_P1.00mm_Horizontal",
+m.part("J303", "Connector_Generic:Conn_01x06", "GPS (SERIAL3+I2C1)", "Connector_JST:JST_SH_SM06B-SRSS-TB_1x06-1MP_P1.00mm_Horizontal",
        "C160405", 50.8, 266.7, {"1": "GND", "2": "+5V", "3": "GPS_TX", "4": "GPS_RX", "5": "EXT_SCL", "6": "EXT_SDA"})
 m.part("R314", "lib:R", "4.7k", R0201, "", 76.2, 266.7, {"1": "+3.3V", "2": "EXT_SCL"})
 m.part("R315", "lib:R", "4.7k", R0201, "", 88.9, 266.7, {"1": "+3.3V", "2": "EXT_SDA"})
 m.part("J304", "Connector_Generic:Conn_01x04", "UART4 (MTF-02P)", "Connector_JST:JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal",
        "", 119.38, 266.7, {"1": "GND", "2": "+5V", "3": "FLOW_TX", "4": "FLOW_RX"})
-m.part("J305", "Connector_Generic:Conn_01x06", "UART1+UART6 (RX, telemetrie)",
+m.part("J305", "Connector_Generic:Conn_01x06", "SERIAL1+SERIAL6 (RX, telemetrie)",
        "Connector_JST:JST_SH_SM06B-SRSS-TB_1x06-1MP_P1.00mm_Horizontal", "C160405", 297.18, 266.7,
        {"1": "GND", "2": "+5V", "3": "UART1_TX", "4": "UART1_RX", "5": "RC_TX", "6": "RC_RX"})
-# pads: UART8 (Bluetooth or spare), free PWM, 5V and GND (also for the LD06)
+# pads: UART7 (Bluetooth or spare), free PWM, 5V and GND (also for the LD06)
 for i, (ref, val, net) in enumerate([
-        ("TP313", "UART8 TX", "UART8_TX"), ("TP314", "UART8 RX", "UART8_RX"), ("TP315", "PWM5", "PWM5"),
+        ("TP313", "UART7 TX", "UART7_TX"), ("TP314", "UART7 RX", "UART7_RX"), ("TP315", "PWM5", "PWM5"),
         ("TP316", "PWM7", "PWM7"), ("TP317", "PWM9", "PWM9"), ("TP318", "PWM10", "PWM10"), ("TP319", "PWM11", "PWM11"),
         ("TP320", "5V", "+5V"), ("TP321", "GND", "GND")]):
     m.part(ref, "lib:TestPoint", val, TP, "", 147.32 + 15.24 * i, 264.16, {"1": net})
 m.text("""Konektory jako MicoAir743-AIO (SH1.0, boční), pin 1 = GND:
-J303 GPS: 1 GND, 2 5V, 3 TX3, 4 RX3, 5 SCL, 6 SDA (kompas na I2C1, pull-upy R314/R315).
-J304 UART4 (MTF-02P): 1 GND, 2 5V, 3 TX4, 4 RX4.  J305 UART1+UART6: 1 GND, 2 5V, 3 TX1, 4 RX1, 5 TX6, 6 RX6 (přijímač na UART6).
+J303 GPS: 1 GND, 2 5V, 3 TX, 4 RX (UART8 = SERIAL3), 5 SCL, 6 SDA (kompas na I2C1, pull-upy R314/R315).
+J304 UART4 (MTF-02P): 1 GND, 2 5V, 3 TX4, 4 RX4.  J305: 1 GND, 2 5V, 3 TX1, 4 RX1 (USART1 = SERIAL1), 5 TX, 6 RX (přijímač, UART5 = SERIAL6).
+GPS a přijímač jsou na UARTech, jejichž kuličky míří ke konektorům (obvod desky je zrcadlo MicoAiru); čísla SERIALn jako MicoAir.
 Kabely od MicoAiru tak sedí. Pin 1 před prvním zapnutím ověřit multimetrem proti kabelu.""", 30.48, 287.02, 1.27)
 m.place("#FLG301", "power:PWR_FLAG", "PWR_FLAG", "", "", 317.5, 30.48, power=True, ref_at=(317.5, 27), val_at=(317.5, 27.94))
 m.attach("+5V_USB", 317.5, 30.48, (1, 0), [])   # USB VBUS comes in from the connector

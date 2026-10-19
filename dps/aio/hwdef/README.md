@@ -15,6 +15,8 @@ mapa pinů ve schématu ([NAVRH.md](../NAVRH.md#mapa-pinů-h743)) a hwdef říka
 
 | Co | MicoAir743v2 | Pavo20AIO | Proč |
 | --- | --- | --- | --- |
+| IMU BMI270 | SPI3 (PB3 PB4 PD6, CS PA15) | **SPI1** (PA5 PA6 PA7, CS PA4, DRDY PC4) | kuličky SPI3 míří na naší desce od IMU; SPI1 je volné, OSD na něm nemáme |
+| ICM-42688-P | — | SPI2 se SCK **PB13**, CS **PB12**, DRDY **PE12** | totéž, kuličky na straně, kde čip sedí |
 | `APJ_BOARD_ID` | AP_HW_MicoAir743v2 (1179) | **25026**, soukromé | uploader nesmí nahrát cizí firmware. Rozsah 1000–19999 přiděluje ArduPilot jen přes PR, 25026 není v `board_types.txt` použité. Před zveřejněním desky požádat o jméno `AP_HW_…` |
 | Dělič baterie | 21.12 | **11.0** | R303 100k / R304 10k |
 | Proud | 40.2 | **50.0** A/V | INA186A3 100 V/V × 0,2 mΩ = 20 mV/A |
@@ -23,8 +25,10 @@ mapa pinů ve schématu ([NAVRH.md](../NAVRH.md#mapa-pinů-h743)) a hwdef říka
 | OSD | AT7456E na SPI1, `OSD_TYPE 1` | **bez SPI1**, `HAL_OSD_TYPE_DEFAULT 5` (MSP DisplayPort) | VTX je digitální |
 | Druhé IMU | BMI088 na SPI2 | **ICM-42688-P**, U303 na SPI2, CS PD4 | BMI088 (4,5 × 3 mm) se na desku nevešel, ICM-42688-P má pouzdro 2,5 × 3 jako BMI270. Jiný výrobce než BMI270 |
 | Rotace IMU | ROLL_180… | `ROTATION_NONE` | **doplnit po layoutu** podle toho, jak čipy sedí |
-| SERIAL7 | telemetrie ESC | bez výchozího protokolu | ESC z OpenESC nemají vodič telemetrie, otáčky jdou přes bidirectional DShot |
-| SERIAL3 | — | GPS | WS-M181 na USART3 |
+| SERIAL7 | telemetrie ESC | bez výchozího protokolu, USART6 bez vývodu | ESC z OpenESC nemají vodič telemetrie, otáčky jdou přes bidirectional DShot |
+| SERIAL3 | USART3 | GPS na **UART8** (PE1/PE0) | WS-M181. Obvod desky je zrcadlo MicoAiru, GPS konektor je proto u dolní hrany, kam míří kuličky UART8. `SERIAL_ORDER` drží číslo 3 |
+| SERIAL5, 6 | UART5, USART6 | LD06 na **USART3** RX (PD9), přijímač na **UART5** (PB6/PB5) | totéž: J305 je u dolní hrany vedle kuliček UART5, LD06 jde na pad u kuliček USART3 |
+| SERIAL7, 8 | UART7, UART8 | USART6 nezapojený, pady TP313/TP314 na **UART7** | |
 | PD13 (PWM8) | výstup | relé VTX: `RELAY1_PIN 57`, `RELAY1_DEFAULT 1`, `SERVO8_FUNCTION -1` | spíná EN spínače U201 |
 
 ## Sestavení

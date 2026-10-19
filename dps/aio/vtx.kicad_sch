@@ -3078,7 +3078,7 @@
 		)
 		(uuid "4b594192-bf70-5e99-8ffd-9a75a423f0db")
 	)
-	(text "HD VTX, pinout DJI jako MicoAir: 1 napájení, 2 GND, 3 TX2, 4 RX2, 5 GND, 6 SBUS z DJI. Pro Lite+ redukce 6P → 4P.\nJP202 rozpojená: RX6 patří přijímači na J305. Zapájet jen pro DJI s SBUS a bez přijímače."
+	(text "HD VTX, pinout DJI jako MicoAir: 1 napájení, 2 GND, 3 TX2, 4 RX2, 5 GND, 6 SBUS z DJI. Pro Lite+ redukce 6P → 4P.\nJP202 rozpojená: RX přijímače (UART5, SERIAL6) patří přijímači na J305. Zapájet jen pro DJI s SBUS a bez přijímače."
 		(exclude_from_sim no)
 		(at 177.8 101.6 0)
 		(effects

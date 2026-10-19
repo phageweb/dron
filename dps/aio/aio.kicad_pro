@@ -520,6 +520,7 @@
       "pin_to_pin": "warning",
       "power_pin_not_driven": "error",
       "same_local_global_label": "warning",
+      "same_local_global_power": "warning",
       "similar_label_and_power": "warning",
       "similar_labels": "warning",
       "similar_power": "warning",
@@ -1017,8 +1018,8 @@
     "subpart_id_separator": 0,
     "top_level_sheets": [
       {
-        "filename": "OpenAIO.kicad_sch",
-        "name": "OpenAIO",
+        "filename": "aio.kicad_sch",
+        "name": "aio",
         "uuid": "fb88b6f9-ee39-4640-a9d4-04a17ceeac64"
       }
     ],
