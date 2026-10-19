@@ -115,14 +115,28 @@
             pkgs.dfu-util
             pkgs.usbutils
             pkgs.mavproxy
-            pkgs.qgroundcontrol
+            (pkgs.python3.withPackages (p: [ p.pymavlink p.pyserial ]))
           ];
           shellHook = ''
             export FIRMWARE=${self.packages.${pkgs.stdenv.hostPlatform.system}.firmware}
             export FIRMWARE_MASTER=${self.packages.${pkgs.stdenv.hostPlatform.system}.firmware-master}
             echo "ArduCopter ${builds.stable.version} for ${board} is in \$FIRMWARE, ${builds.master.version} in \$FIRMWARE_MASTER"
-            echo "flash | flash-dfu | flash-master | flash-dfu-master | qgroundcontrol | mavproxy.py"
+            echo "flash | flash-dfu | flash-master | flash-dfu-master | mavproxy.py"
           '';
+        };
+
+        # Its own shell, because it is not in the binary cache for this
+        # nixpkgs and builds from source for a long time.
+        gcs = pkgs.mkShell {
+          packages = [
+            # A newer GCC turns an unused variable in QGCTileCacheWorker.cpp
+            # into an error.
+            (pkgs.qgroundcontrol.overrideAttrs (o: {
+              env = (o.env or { }) // {
+                NIX_CFLAGS_COMPILE = toString (o.env.NIX_CFLAGS_COMPILE or "") + " -Wno-error";
+              };
+            }))
+          ];
         };
       });
     };

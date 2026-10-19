@@ -22,7 +22,8 @@ stable, ne to, co se letělo v SITL.
 nix build ./firmware          # result/ — arducopter.apj, arducopter_with_bl.{hex,bin}
 nix run ./firmware#flash      # deska s ArduPilot bootloaderem
 nix run ./firmware#flash-dfu  # deska v DFU režimu (BOOT + USB)
-nix develop ./firmware        # flash, flash-dfu, qgroundcontrol, mavproxy, lsusb
+nix develop ./firmware        # flash, flash-dfu, mavproxy, lsusb
+nix develop ./firmware#gcs    # qgroundcontrol (builds from source, takes long)
 ```
 
 Flake je uvnitř gitu, takže Nix vidí jen soubory, které git zná — nový soubor
@@ -94,7 +95,7 @@ Další aktualizace už jdou cestou 2a.
 ### 3. Ověřit
 
 ```sh
-nix develop ./firmware -c qgroundcontrol
+nix develop ./firmware#gcs -c qgroundcontrol
 ```
 
 QGroundControl se má připojit sám a ukázat **ArduCopter V4.7.1**. Bez
