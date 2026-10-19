@@ -171,7 +171,7 @@ bude čip na desce otočený.
 ## 6. ArduPilot
 
 Hwdef desky je hotový v [`hwdef/Pavo20AIO`](./hwdef/README.md) a ArduPilot
-z něj sestaví bootloader i ArduCopter (1,44 MB, 268 kB flash volno), viz
+z něj sestaví bootloader i ArduCopter (1,44 MB, 266 kB flash volno, ověřeno 19. 10. po přeřazení pinů), viz
 `dps/aio/hwdef/sestav.sh`. Vychází z `MicoAir743v2` [Z5],
 což je cíl, na kterém běží dnešní MicoAir AIO 45A (board ID 1179, viz
 [firmware](../../firmware/README.md)). Piny I2C, PWM, ADC a SDMMC zůstaly stejné,
@@ -348,8 +348,7 @@ a −3,925 mm. Doplněné jsou podle něj, do mezer, které pro ně v potisku z�
 | Pin 1 konektorů | J303, J304, J305 | pořadí z tabulek MicoAiru, pin 1 = GND podle README ArduPilotu. Před prvním zapnutím ověřit multimetrem proti kabelu z MicoAiru |
 | LCSC čísla | díly s „—“ v kusovníku | vybrat podle skladu JLC |
 | Sklad TPS22810DRVR a ICM-42688-P | U201, U303 | nové díly z 18. 10., LCSC číslo vybrat podle skladu JLC. Jiný spínač 18 V ve WSON 2 × 2 má jiný pinout, záměna by znamenala úpravu schématu |
-| Trasování | aio.kicad_pcb | 22 nespojených signálů po přeskládání (kap. 7): rip-up a reroute v `trasuj.py`, nebo ručně v KiCadu. Únik z BGA hotový kromě D2, IMU2_SCK a IMU2_INT. Potisk OpenAIO přepsat |
-| Hwdef po přeřazení | hwdef/Pavo20AIO | `chibios_hwdef.py` hwdef přijme (SPI1, UART8 jako SERIAL3…); celé sestavení `sestav.sh` po změně pinů ještě neproběhlo |
+| Trasování | aio.kicad_pcb | 22 nespojených signálů po přeskládání (kap. 7), postup a seznam v [BACKLOG.md](./BACKLOG.md): po jednom, uvolnit místo a natrasovat napřed. Únik z BGA hotový kromě D2, IMU2_SCK a IMU2_INT. Potisk OpenAIO přepsat |
 
 ## 9. Kontrola
 

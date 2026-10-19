@@ -33,6 +33,9 @@ elif [ "${1:-}" = "--trasuj" ]; then
   kicad-cli pcb drc --refill-zones --save-board -o /dev/null "$pcb" >/dev/null
   run "$(dirname "$0")/trasuj.py" "$pcb" ${3:+"$3"}
   kicad-cli pcb drc --refill-zones --save-board -o /dev/null "$pcb" >/dev/null
+elif [ "${1:-}" = "--okoli" ]; then
+  shift
+  run "$(dirname "$0")/okoli.py" "$@"
 elif [ "${1:-}" = "--prosij" ]; then
   pcb="${2:-$(dirname "$0")/../aio.kicad_pcb}"
   kicad-cli pcb drc --refill-zones --save-board -o /dev/null "$pcb" >/dev/null
