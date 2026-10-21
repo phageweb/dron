@@ -13,9 +13,12 @@ ne na kusu. Kde to tak není, je to napsané.
 
 ## Stav na stole k 21. 10. 2026
 
-Deska 2 (`49002F…`), ArduCopter 4.8-dev, zdroj 14–16 V místo baterie.
+Deska 2 (`49002F…`), ArduCopter 4.7.1 (git `dbe79216`, ověřeno 21. 10. přes
+`AUTOPILOT_VERSION`), zdroj 14–16 V nebo baterie 4S.
 Parametry jsou v
-[`deska2_na_stole_2026-10-21.parm`](../../firmware/params/deska2_na_stole_2026-10-21.parm).
+[`deska2_na_stole_2026-10-21.parm`](../../firmware/params/deska2_na_stole_2026-10-21.parm),
+po motor testu, BDShot, gainech a baterii v
+[`deska2_po_motorech_2026-10-21.parm`](../../firmware/params/deska2_po_motorech_2026-10-21.parm).
 
 Hotovo a vyzkoušené:
 
@@ -137,13 +140,23 @@ Deska se napájí z USB, baterie ani zdroj nejsou potřeba.
 
 Teď už z baterie (nebo ze zdroje s limitem zvýšeným na 2–3 A). Dron přidržet.
 
-- [ ] `MOT_PWM_TYPE 6` (DShot600). Bidirectional DShot (`SERVO_BLH_BDMASK 15`,
+- [x] `MOT_PWM_TYPE 6` (DShot600). Bidirectional DShot (`SERVO_BLH_BDMASK 15`,
       `SERVO_BLH_POLES 14`) jen pokud ho target na výstupech 1–4 umí —
-      **neověřeno**; počet pólů ověřit spočítáním magnetů ve zvonu.
-- [ ] Motor test v QGC/Mission Planneru, 5–10 % plynu: test A musí roztočit
+      počet pólů ještě ověřit spočítáním magnetů ve zvonu. Umí (`BIDIR` na
+      TIM1 v hwdef) a funguje, zapnuto 21. 10. Dvě pasti:
+      - AM32 pozná bidirectional režim jen při svém startu. Po změně
+        `SERVO_BLH_BDMASK` nestačí restart FC, musí se odpojit baterie i USB.
+      - Se sinusovým rozběhem hlásí AM32 na nízkém plynu otáčky 0 (motor
+        běží naslepo, bez back-EMF). Na 5 % nula, na 15 % motor test
+        5 040–5 510 ot./min na všech čtyřech, s nulovou chybovostí v logu
+        (`ESC.Err`). Telemetrie v `ESC_TELEMETRY_1_TO_4` je podle výstupů:
+        A = 1, C = 2, D = 3, B = 4.
+- [x] Motor test v QGC/Mission Planneru, 5–10 % plynu: test A musí roztočit
       **přední pravý**, B zadní pravý, C zadní levý, D přední levý (ArduPilot
       testuje po obvodu). Nesedí-li to, přeházet `SERVO1..4_FUNCTION`
-      (33–36), ne pájet znovu.
+      (33–36), ne pájet znovu. Sedí s výchozími `SERVO1..4_FUNCTION`
+      33–36 (21. 10., z baterie 4S, 7 % po 2 s a po 10 s, pymavlink
+      `MAV_CMD_DO_MOTOR_TEST`).
 - [x] Směry: přední pravý a zadní levý **CCW**, přední levý a zadní pravý
       **CW** (pohled shora). Pravidlo, které platí i při pohledu zespodu:
       lopatky na předku i na zadku dronu jdou **ke středové ose**.
@@ -157,8 +170,12 @@ Teď už z baterie (nebo ze zdroje s limitem zvýšeným na 2–3 A). Dron přid
       Webové configuratory AM32 2.19 neumí, jen desktopový ESC Config Tool
       1.97 (`appimage-run`); po jeho zavření zůstane FC v passthrough a
       potřebuje restart napájení.
-- [ ] `MOT_SPIN_ARM` a `MOT_SPIN_MIN` z motor testu: nejnižší hodnota, kdy se
-      všechny čtyři točí spolehlivě, + rezerva.
+- [x] `MOT_SPIN_ARM` a `MOT_SPIN_MIN` z motor testu: nejnižší hodnota, kdy se
+      všechny čtyři točí spolehlivě, + rezerva. Bez vrtulí se to zjistit
+      nedá: 21. 10. se všechny čtyři točily plynule i na 1 % (po 6 s), AM32
+      se sinusovým rozběhem roztočí motor bez zátěže skoro na čemkoli.
+      Zůstává výchozí `MOT_SPIN_ARM 0.10`, `MOT_SPIN_MIN 0.15`; snížit až
+      podle logu z letu (klesání, desync).
 - [ ] Nic se nepřehřívá, nedrhne, nehrká.
 
 ## 6. Senzory
@@ -208,10 +225,17 @@ Hodnoty ze simulace (`ardupilot_params_pavo20.parm`):
       opravit `BATT_VOLT_MULT`. Proud ověřit až za letu.
 - [x] `BATT_LOW_VOLT 14.0`, `BATT_CRT_VOLT 13.2`, `BATT_FS_LOW_ACT 1`,
       `BATT_FS_CRT_ACT 1`, `BATT_LOW_TIMER 10` — přistát, ne vracet se.
-- [ ] Rate gainy ze simulace (`ATC_RAT_RLL/PIT_P 0.060` atd.) brát jako
+- [x] Rate gainy ze simulace (`ATC_RAT_RLL/PIT_P 0.060` atd.) brát jako
       **strop**, ne startovní hodnotu: simulace nemá šum gyra ani rezonance
       rámu. **Nepřebírat** `MOT_PWM_MIN/MAX`, `MOT_THST_EXPO 1.0` a `SIM_*` —
-      to jsou hodnoty modelu, ne dronu.
+      to jsou hodnoty modelu, ne dronu. Nastaveno 21. 10. místo výchozích:
+      roll/pitch P 0,060, I 0,060, D 0,0005 (bylo 0,135 / 0,135 / 0,0036),
+      yaw P 0,023, I 0,0023 (bylo 0,18 / 0,018).
+- [x] `BATT_CAPACITY 750` (bylo 3300; s 550mAh baterií procenta nesedí).
+      Kompenzace napětí pro LiHV 4S: `MOT_BAT_VOLT_MAX 17.4`,
+      `MOT_BAT_VOLT_MIN 13.2`.
+- [x] Pro spektrum po prvním letu: `INS_LOG_BAT_MASK 1`,
+      `INS_LOG_BAT_OPT 4` (gyro před filtrem i po něm).
 
 ## 9. Vrtule a první let
 
