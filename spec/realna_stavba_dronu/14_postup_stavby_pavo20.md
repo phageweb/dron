@@ -11,6 +11,45 @@ nasazují až v kroku 9.
 Parametry jsou ověřené z dokumentace ArduPilotu a karty MicoAir k 2. 10. 2026,
 ne na kusu. Kde to tak není, je to napsané.
 
+## Stav na stole k 21. 10. 2026
+
+Deska 2 (`49002F…`), ArduCopter 4.8-dev, zdroj 14–16 V místo baterie.
+Parametry jsou v
+[`deska2_na_stole_2026-10-21.parm`](../../firmware/params/deska2_na_stole_2026-10-21.parm).
+
+Hotovo a vyzkoušené:
+
+- **XR1 na UART6** (`SERIAL6_PROTOCOL 23`, `RSSI_TYPE 3`), spárovaný s TX15,
+  16 kanálů, RSSI 254. Kalibrace RC v QGC; QGC sám obrátil pitch
+  (`RC2_REVERSED 1`).
+- **Přepínače na TX15:** **SE** → CH5 → arm/disarm (`RC5_OPTION 153`),
+  **SA** → CH6 → režimy (`FLTMODE_CH 6`): nahoře Stabilize, uprostřed
+  AltHold, dole Loiter. CH7 a CH8 zatím bez funkce.
+- **Akcelerometr** v 6 polohách. `AHRS_TRIM_X` vyšel 3,5°, deska ještě nebyla
+  v rámu — **Level Horizon zopakovat po přišroubování**.
+- **Arm/disarm** přepínačem SE, motory na volnoběhu (`MOT_SPIN_ARM 0.1`).
+- **Failsafe:** vypnutý TX15 → `Radio Failsafe - Disarming`.
+- **Baterie 4S:** `BATT_LOW_VOLT 14.0`, `BATT_CRT_VOLT 13.2`,
+  `BATT_FS_LOW_ACT 1`, `BATT_FS_CRT_ACT 1`. Battery failsafe zůstává
+  zapnutý až do restartu FC, i když napětí vystoupá.
+- **ESC (AM32 2.19)** srovnaná na stejné hodnoty a **směry motorů** ověřené,
+  viz krok 5.
+
+Dočasně vypnuto, aby šel arm bez GPS a lidaru. Při zapojování vrátit:
+
+| Parametr | Teď | Původně |
+| --- | --- | --- |
+| `GPS1_TYPE` | 0 | 1 |
+| `COMPASS_ENABLE` | 0 | 1 |
+| `PRX1_TYPE` | 0 | 15 (lidar přes Lua skript) |
+| `EK3_SRC1_POSXY` / `VELXY` / `YAW` | 0 / 0 / 0 | 3 / 3 / 1 |
+
+Bez zdroje polohy poletí jen Stabilize a AltHold, do Loiteru FC nepřepne.
+
+Nesoulad s rozvržením UARTů níže: lidar má Scripting na **SERIAL4**
+(`SERIAL4_PROTOCOL 28`), SERIAL5 je vypnutý — UART4 je přitom určený pro
+MTF-02P. Ověřit, na kterém padu lidar fyzicky je.
+
 ## 0. Příprava
 
 - [ ] Každý díl zvážit (váha s rozlišením 0,01 g) a hmotnost zapsat do
@@ -105,9 +144,19 @@ Teď už z baterie (nebo ze zdroje s limitem zvýšeným na 2–3 A). Dron přid
       **přední pravý**, B zadní pravý, C zadní levý, D přední levý (ArduPilot
       testuje po obvodu). Nesedí-li to, přeházet `SERVO1..4_FUNCTION`
       (33–36), ne pájet znovu.
-- [ ] Směry: přední pravý a zadní levý **CCW**, přední levý a zadní pravý
-      **CW** (pohled shora). Špatný směr otočit `SERVO_BLH_RVMASK` nebo v AM32
-      konfigurátoru přes passthrough.
+- [x] Směry: přední pravý a zadní levý **CCW**, přední levý a zadní pravý
+      **CW** (pohled shora). Pravidlo, které platí i při pohledu zespodu:
+      lopatky na předku i na zadku dronu jdou **ke středové ose**.
+      `SERVO_BLH_RVMASK` na AM32 2.19 nefunguje (zkoušeno 21. 10.), otáčí se
+      v ESC: **Reverse Rotation na M3 a M4** (výstup 3 = přední levý D,
+      výstup 4 = zadní pravý B).
+- [x] ESC srovnaná na výrobní hodnoty + sinusový rozběh, na všech čtyřech:
+      Complementary PWM ☑, Stuck Rotor Protection ☑, Sinusoidal Startup ☑,
+      Variable PWM ☑, Timing 14,06, KV 5220, 14 pólů, Startup Power 100.
+      Dřív se lišila (M2 bez Complementary PWM se točil znatelně rychleji).
+      Webové configuratory AM32 2.19 neumí, jen desktopový ESC Config Tool
+      1.97 (`appimage-run`); po jeho zavření zůstane FC v passthrough a
+      potřebuje restart napájení.
 - [ ] `MOT_SPIN_ARM` a `MOT_SPIN_MIN` z motor testu: nejnižší hodnota, kdy se
       všechny čtyři točí spolehlivě, + rezerva.
 - [ ] Nic se nepřehřívá, nedrhne, nehrká.
@@ -157,7 +206,7 @@ Hodnoty ze simulace (`ardupilot_params_pavo20.parm`):
 
 - [ ] `BATT_MONITOR 4`; napětí na desce porovnat s multimetrem, případně
       opravit `BATT_VOLT_MULT`. Proud ověřit až za letu.
-- [ ] `BATT_LOW_VOLT 14.0`, `BATT_CRT_VOLT 13.2`, `BATT_FS_LOW_ACT 1`,
+- [x] `BATT_LOW_VOLT 14.0`, `BATT_CRT_VOLT 13.2`, `BATT_FS_LOW_ACT 1`,
       `BATT_FS_CRT_ACT 1`, `BATT_LOW_TIMER 10` — přistát, ne vracet se.
 - [ ] Rate gainy ze simulace (`ATC_RAT_RLL/PIT_P 0.060` atd.) brát jako
       **strop**, ne startovní hodnotu: simulace nemá šum gyra ani rezonance

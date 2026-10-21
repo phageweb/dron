@@ -95,7 +95,7 @@ Další aktualizace už jdou cestou 2a.
 ### 3. Ověřit
 
 ```sh
-nix develop ./firmware#gcs -c qgroundcontrol
+nix develop ./firmware#gcs -c QGroundControl
 ```
 
 QGroundControl se má připojit sám a ukázat **ArduCopter V4.7.1**. Bez
