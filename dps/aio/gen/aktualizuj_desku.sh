@@ -55,6 +55,32 @@ elif [ "${1:-}" = "--rucne" ]; then
   pcb="${2:-$(dirname "$0")/../aio.kicad_pcb}"
   run "$(dirname "$0")/rucne.py" "$pcb"
   kicad-cli pcb drc --refill-zones --save-board -o /dev/null "$pcb" >/dev/null
+elif [ "${1:-}" = "--vyjednej" ]; then
+  # negotiate: route what is left, letting a pair rip up the signal copper in its way; the ripped
+  # nets come back in the next run, with the crossed cells dearer (TRASUJ_HIST); the best board stays
+  pcb="${2:-$(dirname "$0")/../aio.kicad_pcb}"
+  passes="${3:-6}"
+  [[ "$passes" =~ ^[1-9][0-9]*$ ]] || { echo "passes must be a positive integer" >&2; exit 2; }
+  work=$(mktemp -d)
+  cp "$pcb" "$work/best.kicad_pcb"
+  trap 'cp "$work/best.kicad_pcb" "$pcb"; rm -rf "$work"' EXIT
+  kicad-cli pcb drc --refill-zones --save-board --format json -o "$work/drc.json" "$pcb" >/dev/null
+  best=$(jq '.unconnected_items | length' "$work/drc.json")
+  echo "start: $best unconnected"
+  for i in $(seq 1 "$passes"); do
+    TRASUJ_RIP=1 TRASUJ_PASS="$i" TRASUJ_HIST="$work/hist.json" run "$(dirname "$0")/trasuj.py" "$pcb" > "$work/log"
+    grep -e "^-- " -e "ripping" "$work/log" || true
+    kicad-cli pcb drc --refill-zones --save-board --format json -o "$work/drc.json" "$pcb" >/dev/null
+    left=$(jq '.unconnected_items | length' "$work/drc.json")
+    errors=$(jq '[.violations[] | select(.severity == "error")] | length' "$work/drc.json")
+    echo "pass $i: DRC $errors errors, $left unconnected (best $best)"
+    if [ "$errors" -eq 0 ] && [ "$left" -lt "$best" ]; then
+      best=$left
+      cp "$pcb" "$work/best.kicad_pcb"
+    fi
+    [ "$left" -eq 0 ] && break
+  done
+  cp "$work/best.kicad_pcb" "$pcb"
 elif [ "${1:-}" = "--pretrasuj" ]; then
   # route everything again, a few times: each pass takes off what the router placed and puts
   # the nets that earlier passes left first; the board of the best pass stays

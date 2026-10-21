@@ -4,7 +4,15 @@ Jedna deska místo MicoAir H743 AIO: STM32H743 s ArduPilotem, 4× ESC s AM32,
 napájení VTX a LD06. Vychází z [OpenAIO](https://github.com/OpenDrone-hw/OpenAIO)
 `986ce1e` (CERN-OHL-S-2.0), viz [návrh](../docs/02_navrh.md) a [požadavky](../docs/04_pozadavky.md).
 
-Stav **20. 10. 2026: schéma rev A, hlavní deska 22 nespojených / 0 DRC chyb.**
+Stav **21. 10. 2026: hlavní deska 22 nespojených, pracovní varianta MicoAir V2
+po trasování 21 nespojených; obě 0 DRC chyb kategorie error.** Spoje nejsou hotové.
+Nová kontrola, výsledek trasování a zbývající varování jsou v
+[STAV-2026-10-21.md](./STAV-2026-10-21.md).
+**Aktuální zadání: rešerše a předávka pro dokončení přes rozmístění součástek.**
+Závěry, zdroje a návrh jsou v [RESERSE_LAYOUTU_V2.md](./RESERSE_LAYOUTU_V2.md),
+konkrétní kroky a archiv správného výchozího projektu v
+[PREDAVKA_LAYOUTU_V2.md](./PREDAVKA_LAYOUTU_V2.md). Tato předávka nahrazuje starší
+doporučení pokračovat plošným přetrasováním.
 Probíhá přechod k opakovatelnému postupu a referenci MicoAir743v2-AIO-45A;
 připravená varianta má samostatné schéma, desku a hwdef, viz
 [AUTOMATIZACE.md](./AUTOMATIZACE.md). Převzaté a jisté části jsou nakreslené,

@@ -1,0 +1,1427 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-10-21T14:23:21",
+    "ignored_checks": [
+        {
+            "description": "Via is not connected or connected on only one layer",
+            "key": "via_dangling"
+        },
+        {
+            "description": "Board edge clearance violation",
+            "key": "copper_edge_clearance"
+        },
+        {
+            "description": "Drilled holes co-located",
+            "key": "holes_co_located"
+        },
+        {
+            "description": "Courtyards overlap",
+            "key": "courtyards_overlap"
+        },
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Footprint has malformed courtyard",
+            "key": "malformed_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Silkscreen clearance",
+            "key": "silk_overlap"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "key": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by board edge",
+            "key": "silk_edge_clearance"
+        },
+        {
+            "description": "Text height out of range",
+            "key": "text_height"
+        },
+        {
+            "description": "Text thickness out of range",
+            "key": "text_thickness"
+        },
+        {
+            "description": "Copper zones intersect",
+            "key": "zones_intersect"
+        },
+        {
+            "description": "PTH inside courtyard",
+            "key": "pth_inside_courtyard"
+        },
+        {
+            "description": "NPTH inside courtyard",
+            "key": "npth_inside_courtyard"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning"
+    ],
+    "kicad_version": "10.0.7",
+    "schematic_parity": [
+        {
+            "description": "No pad found for pin 23 in schematic",
+            "items": [
+                {
+                    "description": "Footprint U13",
+                    "pos": {
+                        "x": 69.124657,
+                        "y": 64.541862
+                    },
+                    "uuid": "40723755-cc19-4dbc-a5e4-485feb12de91"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "No pad found for pin 2 in schematic",
+            "items": [
+                {
+                    "description": "Footprint U13",
+                    "pos": {
+                        "x": 69.124657,
+                        "y": 64.541862
+                    },
+                    "uuid": "40723755-cc19-4dbc-a5e4-485feb12de91"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "No pad found for pin 7 in schematic",
+            "items": [
+                {
+                    "description": "Footprint U14",
+                    "pos": {
+                        "x": 68.088125,
+                        "y": 69.275
+                    },
+                    "uuid": "2cfe9272-8862-4c6f-8600-1eb45da3d3ff"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "No pad found for pin 2 in schematic",
+            "items": [
+                {
+                    "description": "Footprint U15",
+                    "pos": {
+                        "x": 75.419721,
+                        "y": 64.528749
+                    },
+                    "uuid": "ea96ceef-4a46-4f9e-a08c-4e5114d31724"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "No pad found for pin 7 in schematic",
+            "items": [
+                {
+                    "description": "Footprint U16",
+                    "pos": {
+                        "x": 74.383189,
+                        "y": 69.261887
+                    },
+                    "uuid": "8c5c3fdb-46ef-4455-9932-71ee2d095733"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "No pad found for pin 8 in schematic",
+            "items": [
+                {
+                    "description": "Footprint U16",
+                    "pos": {
+                        "x": 74.383189,
+                        "y": 69.261887
+                    },
+                    "uuid": "8c5c3fdb-46ef-4455-9932-71ee2d095733"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "No pad found for pin 2 in schematic",
+            "items": [
+                {
+                    "description": "Footprint U17",
+                    "pos": {
+                        "x": 75.475279,
+                        "y": 57.256251
+                    },
+                    "uuid": "1ab7d3ff-1802-421b-a603-3f433177dd03"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "No pad found for pin 23 in schematic",
+            "items": [
+                {
+                    "description": "Footprint U19",
+                    "pos": {
+                        "x": 81.740343,
+                        "y": 57.260969
+                    },
+                    "uuid": "021c4486-5e2a-48f9-b8e2-f4c9830e1bb5"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "No pad found for pin 24 in schematic",
+            "items": [
+                {
+                    "description": "Footprint U19",
+                    "pos": {
+                        "x": 81.740343,
+                        "y": 57.260969
+                    },
+                    "uuid": "021c4486-5e2a-48f9-b8e2-f4c9830e1bb5"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "No pad found for pin 2 in schematic",
+            "items": [
+                {
+                    "description": "Footprint U19",
+                    "pos": {
+                        "x": 81.740343,
+                        "y": 57.260969
+                    },
+                    "uuid": "021c4486-5e2a-48f9-b8e2-f4c9830e1bb5"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "No pad found for pin 7 in schematic",
+            "items": [
+                {
+                    "description": "Footprint U20",
+                    "pos": {
+                        "x": 82.776875,
+                        "y": 52.527831
+                    },
+                    "uuid": "a49fa492-3423-42fe-8218-5eeb81b0fd22"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "No pad found for pin 2 in schematic",
+            "items": [
+                {
+                    "description": "Footprint U6",
+                    "pos": {
+                        "x": 81.7,
+                        "y": 53.809999
+                    },
+                    "uuid": "c8b8ec95-a0bb-4984-9ef7-faf28c6d6f88"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "No pad found for pin A8 in schematic",
+            "items": [
+                {
+                    "description": "Footprint J301",
+                    "pos": {
+                        "x": 61.88,
+                        "y": 55.51
+                    },
+                    "uuid": "16b4d2cb-7239-4dad-b560-5facd8f8fab5"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "No pad found for pin B8 in schematic",
+            "items": [
+                {
+                    "description": "Footprint J301",
+                    "pos": {
+                        "x": 61.88,
+                        "y": 55.51
+                    },
+                    "uuid": "16b4d2cb-7239-4dad-b560-5facd8f8fab5"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        }
+    ],
+    "source": "aio.kicad_pcb",
+    "unconnected_items": [
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [/MCU H743/UART8_TX] of TP313 on L1.Top",
+                    "pos": {
+                        "x": 74.8,
+                        "y": 51.51
+                    },
+                    "uuid": "06814d2e-2d05-4a6f-b967-cb54ca8006e8"
+                },
+                {
+                    "description": "Micro via [/MCU H743/UART8_TX] on L1.Top - L2.GND",
+                    "pos": {
+                        "x": 77.1,
+                        "y": 66.099999
+                    },
+                    "uuid": "f204712b-a62a-4806-a19d-e099b4839b80"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad K9 [/MCU H743/GPS_TX] of U301 on L1.Top",
+                    "pos": {
+                        "x": 73.1,
+                        "y": 60.499999
+                    },
+                    "uuid": "02a5256b-2497-4660-a47f-ae8d90e813c3"
+                },
+                {
+                    "description": "Pad 3 [/MCU H743/GPS_TX] of J303 on L1.Top",
+                    "pos": {
+                        "x": 79.5,
+                        "y": 71.5
+                    },
+                    "uuid": "f4fbe9b4-159f-485a-b925-bf3ccf30120a"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 4 [/MCU H743/GPS_RX] of J303 on L1.Top",
+                    "pos": {
+                        "x": 80.5,
+                        "y": 71.5
+                    },
+                    "uuid": "bd3ac0cb-2b6d-432d-83b7-8b18567e3b67"
+                },
+                {
+                    "description": "Track [/MCU H743/GPS_RX] on L1.Top, length 0.5657 mm",
+                    "pos": {
+                        "x": 73.1,
+                        "y": 61.299999
+                    },
+                    "uuid": "16c3004a-ed0f-45c6-b700-bd465767f0a2"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad A4 [/MCU H743/EXT_SDA] of U301 on L1.Top",
+                    "pos": {
+                        "x": 77.1,
+                        "y": 67.699999
+                    },
+                    "uuid": "620d8d9d-cc2a-445b-a98f-77d4098dabf4"
+                },
+                {
+                    "description": "Track [/MCU H743/EXT_SDA] on L1.Top, length 0.1000 mm",
+                    "pos": {
+                        "x": 81.2,
+                        "y": 69.61
+                    },
+                    "uuid": "7b6488b7-2c07-4741-88ac-dd518e08a2cf"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [/MCU H743/SWCLK] of TP304 on L1.Top",
+                    "pos": {
+                        "x": 72.5,
+                        "y": 71.0
+                    },
+                    "uuid": "1fdd7cc7-5722-4dc2-b4de-f5678cfb297a"
+                },
+                {
+                    "description": "Pad A9 [/MCU H743/SWCLK] of U301 on L1.Top",
+                    "pos": {
+                        "x": 73.1,
+                        "y": 67.699999
+                    },
+                    "uuid": "2d2b8b74-7800-4521-9211-95b42b21f2d7"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad A6 [/IMU_SPI.MISO] of U301 on L1.Top",
+                    "pos": {
+                        "x": 75.5,
+                        "y": 67.699999
+                    },
+                    "uuid": "a77bcff8-1d95-447c-a57c-cf1ff2aa5ed1"
+                },
+                {
+                    "description": "Pad 1 [/IMU_SPI.MISO] of U8 on L1.Top",
+                    "pos": {
+                        "x": 78.95,
+                        "y": 52.84
+                    },
+                    "uuid": "2096c118-e97d-4b24-a3d4-8f7cc88bd06b"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad A5 [/IMU_INT] of U301 on L1.Top",
+                    "pos": {
+                        "x": 76.3,
+                        "y": 67.699999
+                    },
+                    "uuid": "eb7e86b5-288c-4ce5-8490-77bda04c5044"
+                },
+                {
+                    "description": "Pad 4 [/IMU_INT] of U8 on L1.Top",
+                    "pos": {
+                        "x": 77.45,
+                        "y": 52.84
+                    },
+                    "uuid": "29ded865-60e6-4c1e-a49c-137e3d7b5fa9"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad A8 [/IMU_CS] of U301 on L1.Top",
+                    "pos": {
+                        "x": 73.9,
+                        "y": 67.699999
+                    },
+                    "uuid": "aae6220f-1bd0-414b-9896-49829445bc54"
+                },
+                {
+                    "description": "Pad 1 [/IMU_CS] of R25 on L1.Top",
+                    "pos": {
+                        "x": 79.8,
+                        "y": 58.529999
+                    },
+                    "uuid": "981b0f0c-5541-456a-aa6c-b2abd0662d61"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad A7 [/IMU_SPI.SCK] of U301 on L1.Top",
+                    "pos": {
+                        "x": 74.7,
+                        "y": 67.699999
+                    },
+                    "uuid": "4dc8877e-9aed-4262-895f-3137c9c57184"
+                },
+                {
+                    "description": "Pad 13 [/IMU_SPI.SCK] of U8 on L1.Top",
+                    "pos": {
+                        "x": 79.12,
+                        "y": 54.01
+                    },
+                    "uuid": "d2e385a0-c7f7-4077-98b1-1726f90a9141"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad C6 [/IMU_SPI.MOSI] of U301 on L1.Top",
+                    "pos": {
+                        "x": 75.5,
+                        "y": 66.099999
+                    },
+                    "uuid": "f0fa9451-08cd-46f4-93c5-e78b7451775e"
+                },
+                {
+                    "description": "Pad 14 [/IMU_SPI.MOSI] of U8 on L1.Top",
+                    "pos": {
+                        "x": 79.12,
+                        "y": 53.51
+                    },
+                    "uuid": "155d72ad-2221-4e7d-9b80-0930a56d6b52"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [/VTX a LD06/+10V_VTX] of C203 on L1.Top",
+                    "pos": {
+                        "x": 81.525,
+                        "y": 56.01
+                    },
+                    "uuid": "b97d363b-cd81-4398-bf4c-07264429cd94"
+                },
+                {
+                    "description": "Track [/VTX a LD06/+10V_VTX] on L6.Signal_5V, length 0.5657 mm",
+                    "pos": {
+                        "x": 82.15,
+                        "y": 59.36
+                    },
+                    "uuid": "8c20c4ed-f207-4754-8016-914b40e2bba8"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 2 [/MCU H743/PDR_ON] of R301 on L1.Top",
+                    "pos": {
+                        "x": 73.32,
+                        "y": 69.61
+                    },
+                    "uuid": "708c83be-c910-43ac-9489-a510da003e72"
+                },
+                {
+                    "description": "Pad F7 [/MCU H743/PDR_ON] of U301 on L1.Top",
+                    "pos": {
+                        "x": 74.7,
+                        "y": 63.699999
+                    },
+                    "uuid": "19e8ea8a-bd17-4b13-828b-1469a606a41a"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [/LIDAR_TX] on L2.GND, length 0.4950 mm",
+                    "pos": {
+                        "x": 76.3,
+                        "y": 66.099999
+                    },
+                    "uuid": "c474be4b-3b61-41dd-be37-a5ad784702a3"
+                },
+                {
+                    "description": "Pad 1 [/LIDAR_TX] of TP201 on L1.Top",
+                    "pos": {
+                        "x": 74.9,
+                        "y": 54.709999
+                    },
+                    "uuid": "18e39e3f-d10a-4ef1-b2b9-4254f95868aa"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad C7 [/MCU H743/IMU2_SCK] of U301 on L1.Top",
+                    "pos": {
+                        "x": 74.7,
+                        "y": 66.099999
+                    },
+                    "uuid": "f05e4e74-590e-463d-adcb-a5f25cf15a2c"
+                },
+                {
+                    "description": "Pad 13 [/MCU H743/IMU2_SCK] of U303 on L1.Top",
+                    "pos": {
+                        "x": 76.0,
+                        "y": 58.53
+                    },
+                    "uuid": "2a81804e-1534-4f40-a7c6-c56f7189d5aa"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 3 [/MCU H743/UART1_TX] of J305 on L8.Bottom",
+                    "pos": {
+                        "x": 81.5,
+                        "y": 71.5
+                    },
+                    "uuid": "979f6a3b-ae5a-4a22-b618-33d2e171a7d3"
+                },
+                {
+                    "description": "Track [/MCU H743/UART1_TX] on L1.Top, length 0.5657 mm",
+                    "pos": {
+                        "x": 73.1,
+                        "y": 66.099999
+                    },
+                    "uuid": "a518293b-c2d7-4440-acbf-b50138aa5cda"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [/MCU H743/UART8_RX] of TP314 on L1.Top",
+                    "pos": {
+                        "x": 72.6,
+                        "y": 52.11
+                    },
+                    "uuid": "96de6e0c-14ff-41ba-9a5a-b864e5ce1d66"
+                },
+                {
+                    "description": "Micro via [/MCU H743/UART8_RX] on L1.Top - L2.GND",
+                    "pos": {
+                        "x": 77.1,
+                        "y": 65.299999
+                    },
+                    "uuid": "2ec7b4f1-cfd2-4313-94d3-be8c62607457"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 2 [/RC_RX] of JP202 on L1.Top",
+                    "pos": {
+                        "x": 69.9,
+                        "y": 52.76
+                    },
+                    "uuid": "ec9a9ff0-9f2d-4445-a3f1-f9796d7c71d2"
+                },
+                {
+                    "description": "Pad E10 [/RC_RX] of U301 on L1.Top",
+                    "pos": {
+                        "x": 72.3,
+                        "y": 64.499999
+                    },
+                    "uuid": "1e6ce2a0-105d-4181-aa69-387d07e99cbc"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad E10 [/RC_RX] of U301 on L1.Top",
+                    "pos": {
+                        "x": 72.3,
+                        "y": 64.499999
+                    },
+                    "uuid": "1e6ce2a0-105d-4181-aa69-387d07e99cbc"
+                },
+                {
+                    "description": "Pad 6 [/RC_RX] of J305 on L8.Bottom",
+                    "pos": {
+                        "x": 78.5,
+                        "y": 71.5
+                    },
+                    "uuid": "50985e67-f555-4396-80ff-7ef369fb8222"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Buried via [/ESC_CURRENT] on L2.GND - L7.GND",
+                    "pos": {
+                        "x": 71.156183,
+                        "y": 65.3775
+                    },
+                    "uuid": "ba1fc266-a52b-439b-b6ca-ae8eb0095831"
+                },
+                {
+                    "description": "Track [/ESC_CURRENT] on L1.Top, length 0.1500 mm",
+                    "pos": {
+                        "x": 78.7,
+                        "y": 63.699999
+                    },
+                    "uuid": "2ee50572-981a-4332-87ee-5163ca0ed994"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad F10 [/MCU H743/RC_TX] of U301 on L1.Top",
+                    "pos": {
+                        "x": 72.3,
+                        "y": 63.699999
+                    },
+                    "uuid": "9648e1ef-ca9b-4ce4-9861-d7c2ed353018"
+                },
+                {
+                    "description": "Pad 5 [/MCU H743/RC_TX] of J305 on L8.Bottom",
+                    "pos": {
+                        "x": 79.5,
+                        "y": 71.5
+                    },
+                    "uuid": "165d8759-85ad-46d1-9d5a-450f1a2fb03f"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [/MCU H743/PWM11] on L2.GND, length 2.1000 mm",
+                    "pos": {
+                        "x": 73.9,
+                        "y": 62.099999
+                    },
+                    "uuid": "20ff7be8-8ec9-4bf8-b741-ba23b4871147"
+                },
+                {
+                    "description": "Pad 1 [/MCU H743/PWM11] of TP319 on L1.Top",
+                    "pos": {
+                        "x": 67.7,
+                        "y": 51.61
+                    },
+                    "uuid": "a760027e-9a3b-4412-882d-e73738819a2c"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        }
+    ],
+    "violations": [
+        {
+            "description": "Items not allowed (rule 'HDI 1+6+1: no mechanical blind vias')",
+            "items": [
+                {
+                    "description": "Blind via [/MOTOR3] on L6.Signal_5V - L8.Bottom",
+                    "pos": {
+                        "x": 78.62,
+                        "y": 60.88
+                    },
+                    "uuid": "90b6ece4-8bc2-42a3-a11a-f8aa1898ca31"
+                }
+            ],
+            "severity": "warning",
+            "type": "items_not_allowed"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [+BATT] on L1.Top, length 0.7000 mm",
+                    "pos": {
+                        "x": 70.615104,
+                        "y": 56.6225
+                    },
+                    "uuid": "930caff1-e41e-4cb1-bd37-d9a8a83619b9"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [+3.3V] on L1.Top, length 0.0029 mm",
+                    "pos": {
+                        "x": 78.12096,
+                        "y": 58.665
+                    },
+                    "uuid": "c0314156-ab5c-4cee-ae74-fef09e0571d3"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/MCU H743/UART8_TX] on L3.Signal, length 1.7500 mm",
+                    "pos": {
+                        "x": 77.5,
+                        "y": 66.499999
+                    },
+                    "uuid": "9e4d4c55-92ac-4a23-a72e-f42f67ef0059"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/MCU H743/GPS_RX] on L1.Top, length 0.9000 mm",
+                    "pos": {
+                        "x": 72.7,
+                        "y": 60.899998
+                    },
+                    "uuid": "b264c3f5-c965-4928-bd8e-537b8c4998fa"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/MCU H743/EXT_SCL] on L1.Top, length 0.0707 mm",
+                    "pos": {
+                        "x": 76.65,
+                        "y": 67.81
+                    },
+                    "uuid": "85607839-d9c2-463a-8887-602f58adf05b"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/MCU H743/LED_B] on L3.Signal, length 2.0500 mm",
+                    "pos": {
+                        "x": 78.0,
+                        "y": 65.999999
+                    },
+                    "uuid": "6f0769b0-dd7b-4c0c-bbcc-d38825cdc679"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/VTX_TX] on L1.Top, length 0.9000 mm",
+                    "pos": {
+                        "x": 79.1,
+                        "y": 60.899998
+                    },
+                    "uuid": "1e177f49-6d75-4aa6-9c23-e23eefaa7b8d"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/MCU H743/LED_R] on L1.Top, length 0.9500 mm",
+                    "pos": {
+                        "x": 77.5,
+                        "y": 67.299999
+                    },
+                    "uuid": "6d581cc6-e407-4374-80ed-595657a76935"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/MCU H743/UART5_TX] on L1.Top, length 1.5000 mm",
+                    "pos": {
+                        "x": 78.3,
+                        "y": 66.749999
+                    },
+                    "uuid": "6d20030a-f45b-4402-95ae-488280d21d0d"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/MCU H743/SD_D3] on L1.Top, length 1.7500 mm",
+                    "pos": {
+                        "x": 73.5,
+                        "y": 66.499999
+                    },
+                    "uuid": "9644605a-b8bc-4ff5-87ce-dc4135774800"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/MCU H743/SD_CK] on L3.Signal, length 1.8000 mm",
+                    "pos": {
+                        "x": 73.55,
+                        "y": 66.449998
+                    },
+                    "uuid": "7704330f-56bd-410f-b007-fa117b71849e"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/MCU H743/UART1_TX] on L1.Top, length 0.9500 mm",
+                    "pos": {
+                        "x": 72.7,
+                        "y": 65.699998
+                    },
+                    "uuid": "0d888299-3f03-4501-bd83-d3323b70e4b7"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/MCU H743/IMU2_MISO] on L1.Top, length 0.7000 mm",
+                    "pos": {
+                        "x": 79.35,
+                        "y": 63.299999
+                    },
+                    "uuid": "07f15e83-71e4-47df-bec4-6df63d902228"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/ESC_CURRENT] on L1.Top, length 0.7000 mm",
+                    "pos": {
+                        "x": 79.35,
+                        "y": 62.499998
+                    },
+                    "uuid": "17b9063b-ea11-46a9-b119-95a6b79da961"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/MCU H743/IMU2_MOSI] on L3.Signal, length 2.1500 mm",
+                    "pos": {
+                        "x": 77.9,
+                        "y": 63.699999
+                    },
+                    "uuid": "22de1571-2357-4336-abe0-24dba02da706"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/MCU H743/SD_D0] on L1.Top, length 3.3000 mm",
+                    "pos": {
+                        "x": 73.5,
+                        "y": 63.299999
+                    },
+                    "uuid": "63d8d4a6-24af-44f8-848c-9eb8f492cad8"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/MCU H743/FLOW_TX] on L1.Top, length 0.7000 mm",
+                    "pos": {
+                        "x": 79.35,
+                        "y": 61.699999
+                    },
+                    "uuid": "d3caa59c-09e1-4b72-82ad-488972dec1c8"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/MCU H743/FLOW_RX] on L1.Top, length 1.7000 mm",
+                    "pos": {
+                        "x": 78.3,
+                        "y": 61.699999
+                    },
+                    "uuid": "4bbe62e6-269c-40e6-b7a6-8a5e33f01acc"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/LIDAR_PWM] on L1.Top, length 0.9000 mm",
+                    "pos": {
+                        "x": 76.7,
+                        "y": 60.899998
+                    },
+                    "uuid": "75c1f1f6-ca65-4acb-b665-4a9af2f8a920"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [/MCU H743/SCL] on L1.Top, length 1.4500 mm",
+                    "pos": {
+                        "x": 77.5,
+                        "y": 61.449999
+                    },
+                    "uuid": "1a75bb99-8a92-43fa-bb90-29b81043d6eb"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Isolated copper fill",
+            "items": [
+                {
+                    "description": "Zone 'fill_1' [+3.3V] on L8.Bottom, priority 48",
+                    "pos": {
+                        "x": 76.07,
+                        "y": 75.86
+                    },
+                    "uuid": "218a3891-7336-4258-91a8-bf043f58be84"
+                }
+            ],
+            "severity": "warning",
+            "type": "isolated_copper"
+        },
+        {
+            "description": "Copper connection too narrow (board setup constraints minimum connection width 0.0900 mm; actual 0.0512 mm) (L1.Top)",
+            "items": [
+                {
+                    "description": "Micro via [/LIDAR_PWM] on L1.Top - L2.GND",
+                    "pos": {
+                        "x": 77.0,
+                        "y": 60.96
+                    },
+                    "uuid": "6477e5e6-f7bb-4ec8-95f1-36b572cbc8e0"
+                },
+                {
+                    "description": "Track [/LIDAR_PWM] on L1.Top, length 0.5657 mm",
+                    "pos": {
+                        "x": 77.1,
+                        "y": 61.299999
+                    },
+                    "uuid": "61fee080-d8e6-434f-9484-4ba1c2b25729"
+                }
+            ],
+            "severity": "warning",
+            "type": "connection_width"
+        },
+        {
+            "description": "Copper connection too narrow (board setup constraints minimum connection width 0.0900 mm; actual 0.0597 mm) (L8.Bottom)",
+            "items": [
+                {
+                    "description": "Track [+3.3V] on L8.Bottom, length 0.6364 mm",
+                    "pos": {
+                        "x": 80.55,
+                        "y": 64.86
+                    },
+                    "uuid": "442ac481-63e5-4b62-8ac9-9750d870a1dc"
+                },
+                {
+                    "description": "Track [+3.3V] on L8.Bottom, length 0.0707 mm",
+                    "pos": {
+                        "x": 80.5,
+                        "y": 64.91
+                    },
+                    "uuid": "b886eb89-bc0b-4a95-864a-501c7eb4723b"
+                }
+            ],
+            "severity": "warning",
+            "type": "connection_width"
+        },
+        {
+            "description": "Copper connection too narrow (board setup constraints minimum connection width 0.0900 mm; actual 0.0728 mm) (L8.Bottom)",
+            "items": [
+                {
+                    "description": "Via [/1A] on L1.Top - L8.Bottom",
+                    "pos": {
+                        "x": 58.36,
+                        "y": 64.69
+                    },
+                    "uuid": "9354111a-b5fe-4d98-abef-d8f4af55729c"
+                },
+                {
+                    "description": "Zone [/1A] on L1.Top and L8.Bottom, priority 19",
+                    "pos": {
+                        "x": 57.700006,
+                        "y": 64.526326
+                    },
+                    "uuid": "90f80c4d-55ac-4632-9abf-5dd23e8d66e4"
+                }
+            ],
+            "severity": "warning",
+            "type": "connection_width"
+        },
+        {
+            "description": "Copper connection too narrow (board setup constraints minimum connection width 0.0900 mm; actual 0.0728 mm) (L1.Top)",
+            "items": [
+                {
+                    "description": "Via [/1A] on L1.Top - L8.Bottom",
+                    "pos": {
+                        "x": 58.36,
+                        "y": 64.69
+                    },
+                    "uuid": "9354111a-b5fe-4d98-abef-d8f4af55729c"
+                },
+                {
+                    "description": "Zone [/1A] on L1.Top and L8.Bottom, priority 19",
+                    "pos": {
+                        "x": 57.700006,
+                        "y": 64.526326
+                    },
+                    "uuid": "90f80c4d-55ac-4632-9abf-5dd23e8d66e4"
+                }
+            ],
+            "severity": "warning",
+            "type": "connection_width"
+        },
+        {
+            "description": "Copper connection too narrow (board setup constraints minimum connection width 0.0900 mm; actual 0.0010 mm) (L8.Bottom)",
+            "items": [
+                {
+                    "description": "Via [/3B] on L1.Top - L8.Bottom",
+                    "pos": {
+                        "x": 80.27,
+                        "y": 45.19
+                    },
+                    "uuid": "301fc5f9-500f-4321-b816-801952defcf8"
+                },
+                {
+                    "description": "Zone [/3B] on L1.Top and L8.Bottom, priority 16",
+                    "pos": {
+                        "x": 80.100412,
+                        "y": 43.121421
+                    },
+                    "uuid": "74bcd4cb-100f-438a-9252-641eca981112"
+                }
+            ],
+            "severity": "warning",
+            "type": "connection_width"
+        },
+        {
+            "description": "Copper connection too narrow (board setup constraints minimum connection width 0.0900 mm; actual 0.0010 mm) (L8.Bottom)",
+            "items": [
+                {
+                    "description": "Via [/3B] on L1.Top - L8.Bottom",
+                    "pos": {
+                        "x": 80.27,
+                        "y": 44.79
+                    },
+                    "uuid": "6ec5b408-4c12-4e56-825c-3bba0d8c18a9"
+                },
+                {
+                    "description": "Zone [/3B] on L1.Top and L8.Bottom, priority 16",
+                    "pos": {
+                        "x": 80.100412,
+                        "y": 43.121421
+                    },
+                    "uuid": "74bcd4cb-100f-438a-9252-641eca981112"
+                }
+            ],
+            "severity": "warning",
+            "type": "connection_width"
+        },
+        {
+            "description": "Copper connection too narrow (board setup constraints minimum connection width 0.0900 mm; actual 0.0755 mm) (L1.Top)",
+            "items": [
+                {
+                    "description": "Zone 'fill' [GND] on L1.Top, L8.Bottom and 5 more, priority 0",
+                    "pos": {
+                        "x": 55.2,
+                        "y": 41.2
+                    },
+                    "uuid": "59036eb3-77b4-4581-8077-0f43fcf28f8d"
+                }
+            ],
+            "severity": "warning",
+            "type": "connection_width"
+        },
+        {
+            "description": "Copper connection too narrow (board setup constraints minimum connection width 0.0900 mm; actual 0.0746 mm) (L1.Top)",
+            "items": [
+                {
+                    "description": "Zone 'fill' [GND] on L1.Top, L8.Bottom and 5 more, priority 0",
+                    "pos": {
+                        "x": 55.2,
+                        "y": 41.2
+                    },
+                    "uuid": "59036eb3-77b4-4581-8077-0f43fcf28f8d"
+                }
+            ],
+            "severity": "warning",
+            "type": "connection_width"
+        },
+        {
+            "description": "Copper connection too narrow (board setup constraints minimum connection width 0.0900 mm; actual 0.0659 mm) (L8.Bottom)",
+            "items": [
+                {
+                    "description": "Zone 'fill' [GND] on L1.Top, L8.Bottom and 5 more, priority 0",
+                    "pos": {
+                        "x": 55.2,
+                        "y": 41.2
+                    },
+                    "uuid": "59036eb3-77b4-4581-8077-0f43fcf28f8d"
+                },
+                {
+                    "description": "Zone [GND] on L8.Bottom, priority 49",
+                    "pos": {
+                        "x": 62.2,
+                        "y": 53.458472
+                    },
+                    "uuid": "b5d5d824-c387-4478-b875-ee1a220fe164"
+                }
+            ],
+            "severity": "warning",
+            "type": "connection_width"
+        },
+        {
+            "description": "Footprint 'QFN-28_L4.0-W4.0-P0.40-TL-EP2.4' does not match copy in library 'lib'",
+            "items": [
+                {
+                    "description": "Footprint U19",
+                    "pos": {
+                        "x": 81.740343,
+                        "y": 57.260969
+                    },
+                    "uuid": "021c4486-5e2a-48f9-b8e2-f4c9830e1bb5"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'QFN-28_L4.0-W4.0-P0.40-TL-EP2.4' does not match copy in library 'lib'",
+            "items": [
+                {
+                    "description": "Footprint U17",
+                    "pos": {
+                        "x": 75.475279,
+                        "y": 57.256251
+                    },
+                    "uuid": "1ab7d3ff-1802-421b-a603-3f433177dd03"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'QFN-24_L4.0-W4.0-P0.50-TL-EP2.8' does not match copy in library 'lib'",
+            "items": [
+                {
+                    "description": "Footprint U18",
+                    "pos": {
+                        "x": 76.511811,
+                        "y": 52.523113
+                    },
+                    "uuid": "42c5181d-ad0b-4ed2-8820-d0f917bc78d9"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'QFN-24_L4.0-W4.0-P0.50-TL-EP2.8' does not match copy in library 'lib'",
+            "items": [
+                {
+                    "description": "Footprint U16",
+                    "pos": {
+                        "x": 74.383189,
+                        "y": 69.261887
+                    },
+                    "uuid": "8c5c3fdb-46ef-4455-9932-71ee2d095733"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Footprint 'QFN-28_L4.0-W4.0-P0.40-TL-EP2.4' does not match copy in library 'lib'",
+            "items": [
+                {
+                    "description": "Footprint U15",
+                    "pos": {
+                        "x": 75.419721,
+                        "y": 64.528749
+                    },
+                    "uuid": "ea96ceef-4a46-4f9e-a08c-4e5114d31724"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "Rear solder mask aperture bridges items with different nets",
+            "items": [
+                {
+                    "description": "Pad 2 [GND] of C44 on L8.Bottom",
+                    "pos": {
+                        "x": 73.695,
+                        "y": 61.213774
+                    },
+                    "uuid": "13101f78-9b5b-4faa-9b4a-a147739253fc"
+                },
+                {
+                    "description": "Pad 1 [/ESC3/FBA] of R83 on L8.Bottom",
+                    "pos": {
+                        "x": 73.45,
+                        "y": 60.589057
+                    },
+                    "uuid": "0f12ed63-2273-4c8d-9598-169f7d62c01e"
+                }
+            ],
+            "severity": "warning",
+            "type": "solder_mask_bridge"
+        },
+        {
+            "description": "Copper sliver (L8.Bottom)",
+            "items": [],
+            "severity": "warning",
+            "type": "copper_sliver"
+        },
+        {
+            "description": "Copper sliver (L8.Bottom)",
+            "items": [],
+            "severity": "warning",
+            "type": "copper_sliver"
+        },
+        {
+            "description": "Copper sliver (L8.Bottom)",
+            "items": [],
+            "severity": "warning",
+            "type": "copper_sliver"
+        },
+        {
+            "description": "Copper sliver (L8.Bottom)",
+            "items": [],
+            "severity": "warning",
+            "type": "copper_sliver"
+        }
+    ]
+}

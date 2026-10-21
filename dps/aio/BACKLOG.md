@@ -1,4 +1,109 @@
-# Backlog: dotrasování desky AIO
+# Backlog: dokončení vlastní AIO DPS
+
+## Aktuální předávka — 21. 10. 2026
+
+**Rešerše a návrh dalšího postupu jsou dokončené a zapsané. Layout dokončený
+není.** Tento soubor je hlavní rozcestník a seznam úkolů pro navazujícího agenta.
+Zadání uživatele: co nejvíc se přiblížit **MicoAir743v2-AIO-45A**, součástkami
+i bloky se smí hýbat; problémy řešit rozmístěním, bez obchvatů a oslabování pravidel.
+
+Podrobné zdůvodnění a primární zdroje:
+[RESERSE_LAYOUTU_V2.md](./RESERSE_LAYOUTU_V2.md).
+Prováděcí postup, přesné souřadnice kandidátů, příkazy a kontrolní podmínky:
+[PREDAVKA_LAYOUTU_V2.md](./PREDAVKA_LAYOUTU_V2.md).
+
+### Ověřený stav a správný výchozí projekt
+
+- Hlavní `dps/aio/` stále obsahuje původní profil: **22 nespojených**.
+- Výchozí V2 projekt je celý adresář
+  `build/aio/micoair-route-20261021/project/`: **21 nespojených, 0 DRC error,
+  0 neočekávaných ERC/parity hlášení, soulad schématu a hwdefu V2**.
+  PCB, schémata, knihovny a hwdef používat společně.
+- Jeho úplná záloha je [research-v2/baseline-v2.tar.gz](./research-v2/baseline-v2.tar.gz).
+  Kontrolní součty všech 69 souborů byly ověřeny;
+  [manifest](./research-v2/baseline-manifest.json),
+  [audit](./reports/2026-10-21/summary.json),
+  [naměřená geometrie](./research-v2/geometry.json).
+- Nula DRC error **není** hotová výrobní kontrola. Zůstává 41 varování a část
+  mechanických kontrol je globálně vypnutá. Hlavní PCB se rešerší nezměnilo.
+
+### Hlavní poznatky
+
+1. **Pinout V2 už máme, odpovídající rozmístění ještě ne.** Uvnitř zůstává
+   značná část geometrie OpenAIO. Další plošný autoroute tento rozpor neřeší.
+2. **Kontakty microSD míří od MCU.** J302 nyní 90° má kontakty na x=65,56 mm;
+   při 270° se stejným středem budou na x=68,06 mm směrem k MCU.
+   To je první kandidát k ověření, nikoliv schválené umístění: otočí se také
+   tělo a vstup karty. Nutné ověřit prostor pro celou kartu a její vytažení.
+3. **BMI270 je na opačné straně než jeho vývody MCU.** U8 leží severně od
+   U301, ale nový pinout používá převážně jižní řadu A. Chybí všech pět spojů
+   skupiny. Prověřit přesun celého bloku k jižní straně MCU, společně se SD,
+   servisními pady a případně konektory; zkontrolovat i spínací měď ESC pod ním.
+4. **U8, U303, J301 a J302 nemají courtyard.** Prázdný seznam kolizí zde
+   neznamená volné místo. Výrobní podklady pro senzory a konkrétní USB/microSD
+   jsou dohledané v rešerši; jejich rozměrovou shodu s footprinty ještě ověřit.
+5. **L2/L7 nejsou souvislé zemní roviny jen proto, že mají GND v názvu.**
+   Zděděné signály a výkonovou měď prověřit po vrstvách. Nové koridory vytvořit
+   rozmístěním; nepřidávat obchvaty přes GND pro lepší počet nespojených.
+6. **Router umí automaticky zúžit silový spoj z 0,3 na 0,09 mm.** Před dalším
+   použitím na napájení odstranit obecný fallback na šířku třídy Default.
+   Dosud jde o zjištění a úkol, nikoliv provedenou opravu skriptu.
+7. **MicoAir je reference funkce a rozmístění, ne zdroj ověřené vnitřní mědi.**
+   Máme ICM-42688-P místo BMI088, vlastní 10V napájení a jiné měření proudu/napětí.
+   Nepřebírat jeho firmware binárku, kalibrace ani deklarovaných 45 A pro naše ESC.
+
+### Vyhodnocení dosavadních pokusů
+
+- `micoair-placement-20261021`: přesuny R301/TP304/TP319 umožnily připojit
+  SWCLK, ale zůstal otevřený SD_CMD; celkem opět **21**, bez zlepšení.
+  TP304 navíc zasahuje do courtyard MCU. Souřadnice nepřebírat jako hotové řešení.
+- `micoair-reroute-20261021`: **20** s dodatečným SWCLK po L2. **Nepoužít jako
+  základ**, neodpovídá požadavku řešit problém rozmístěním. Experimentální
+  `micoair-layout-20261021` rovněž nepřebírat.
+- Doporučený výchozí projekt zůstává výše uvedený **V2 s 21 nespojenými**.
+
+### Další úkoly v pořadí
+
+- [x] Ověřit referenci správné revize V2, datasheety, pinout a stav kandidáta.
+- [x] Zapsat naměřené příčiny, návrh přesunů a výsledky neúspěšných pokusů.
+- [x] Uchovat celý výchozí projekt a ověřit jeho kontrolní součty.
+- [ ] Doplnit mechanické obrysy a zapnout kontroly kolizí/okraje na pracovní kopii;
+  vyhodnotit pouzdra, obě strany desky, kabely, kartu a montáž v rámu.
+- [ ] Zakázat automatické zúžení silových sítí v routeru.
+- [ ] Prověřit J302 270°, přesun jeho okolí a oddělený přístup SWD/PDR_ON.
+  Přijmout až celý blok se všemi větvemi SD a SWD připojenými.
+- [ ] Přesunout BMI270 s lokálními pasivy a napájením; posoudit obě IMU společně.
+  Umístit GPS, RC a volné pady podle skutečných úniků BGA a přístupu kabelů.
+- [ ] Pokud se jen vymění chybějící spoje, porovnat čtyři společná rozmístění FC
+  s rotacemi MCU dle předávky. Neopakovat dlouhé autorouty bez změny geometrie.
+- [ ] Dotrasovat zbývající skupiny a znovu ověřit napájení/analogové měření;
+  změny ESC dělat po funkčních blocích se zachováním výkonových a gate smyček.
+- [ ] Opravit nevhodný blind via MOTOR3 L6–L8 a ostatní výrobní nálezy,
+  zejména zúžení silové mědi, masku C44/R83 a rozdíly footprintů.
+- [ ] Určit rotace IMU podle os pouzder a směru letu, ověřit konektory,
+  schéma–PCB–hwdef, DRC/ERC, proudové cesty a konkrétní výrobní stackup.
+- [ ] Převzít dokončený projekt společně s profilem generování; do tohoto
+  backlogu zapsat skutečný konečný výsledek a oddělit čekající DFM/prototyp.
+
+Při přesouvání se počet nespojených může dočasně zvýšit. Hodnotit celý dokončený
+blok, všechny jeho sítě a mechaniku; ne pouze nejlepší číslo z routeru.
+Za hotovou desku neoznačovat kandidáta s otevřenými spoji nebo nevyřešenými
+výrobními nálezy. Pro navázání stačí zadání: **„Pokračuj podle aktuální části
+dps/aio/BACKLOG.md a podrobné PREDAVKA_LAYOUTU_V2.md.“**
+
+---
+
+## Historický backlog hlavní desky
+
+Následující text uchovává starší stav a souřadnice původního profilu. **Není
+aktuální mapou pinů V2 ani návodem, který má přednost před předávkou výše.**
+
+**Aktualizace 21. 10. 2026:** čerstvá kontrola hlavní desky potvrzuje 22 nespojených.
+Varianta V2 po jednom průchodu routeru a prošití GND má **21 nespojených / 0 DRC
+error**, proti 30 před trasováním. Dokončený kandidát běhu je v
+`build/aio/micoair-route-20261021/project/`; schéma, PCB a hwdef patří k sobě.
+Seznam zbývajících sítí a varování: [STAV-2026-10-21.md](./STAV-2026-10-21.md).
+Níže uvedené souřadnice a staré přiřazení pinů platí pouze pro hlavní desku.
 
 **Změna zadání 19.–20. 10. 2026:** znovu projít vznik DPS, co nejvíc automaticky,
 primární vzor **MicoAir743v2-AIO-45A**. Uživatel připouští promyšlené změny

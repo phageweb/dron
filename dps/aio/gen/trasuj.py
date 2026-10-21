@@ -23,6 +23,13 @@ Each path is pulled straight (any 0/45/90 degree shortcut that fits) before it i
 Everything placed goes into the group "trasuj": `--smaz` takes it all off again.
 A pair that finds no way is reported and left. The wrapper refills the zones before and after.
 At the end the SD bus lengths are printed (all of each net's tracks, escape included).
+
+TRASUJ_RIP=1 lets a pair that finds no way go through signal copper an earlier run placed (the group
+"trasuj"; not supplies, current-carrying classes or USB D+/D-): each cell of it costs TRASUJ_RIP_COST
+grid steps more, times the cell's history and TRASUJ_PASS, and each branch it crosses (a piece of
+rippable copper connected without passing a pad) is taken off before the new path is built. Their
+pairs wait for the next run (`--vyjednej` repeats the runs and keeps the best). TRASUJ_HIST is the history file: a cell crossed in one run costs more in the next, so
+the nets that compete for it settle on different ways (negotiated congestion, as in PathFinder).
 """
 import array, heapq, json, math, os, re, subprocess, sys, tempfile
 import pcbnew
@@ -71,7 +78,18 @@ WINDOW = float(os.environ.get("TRASUJ_OKNO", 4.0))  # mm around a pair
 NODES = int(os.environ.get("TRASUJ_UZLY", 1500000))  # search limit per pair
 # nets that go before all the others (one name per line): the ones an earlier pass left
 FIRST = set(open(os.environ["TRASUJ_PRVNI"]).read().split("\n")) - {""} if os.environ.get("TRASUJ_PRVNI") else set()
+# areas some nets must stay out of (JSON file): [{"nets": regex, "box": [x0, y0, x1, y1],
+# "layers": ["L3.Signal", ...]}]; a via stack may not pass such a layer there either.
+# E.g. the ESC's copper kept off L3/L6 under the H743, which needs them for its BGA fanout.
+ZAKAZ = json.load(open(os.environ["TRASUJ_ZAKAZ"])) if os.environ.get("TRASUJ_ZAKAZ") else []
+# a Phase or Gate net's branch to a small part (a divider, a driver's sense pin, a cap) carries no
+# load current: it may be a line of this width, as OpenAIO drew them; the load path never
+SENSE = 0.1
 GREED = 1.5  # weighted A*: the pull towards the goal, against the extra cost of a step off the plane
+RIP = os.environ.get("TRASUJ_RIP") == "1"
+RIP_COST = float(os.environ.get("TRASUJ_RIP_COST", 60)) * int(os.environ.get("TRASUJ_PASS", 1))
+HIST_FILE = os.environ.get("TRASUJ_HIST")
+HIST = json.load(open(HIST_FILE)) if HIST_FILE and os.path.exists(HIST_FILE) else {}  # "k,cell" -> count
 
 with tempfile.TemporaryDirectory() as tmp:
     subprocess.run(["kicad-cli", "pcb", "drc", "--format", "json", "-o", f"{tmp}/d.json", PCB],
@@ -122,20 +140,92 @@ for code, ni in b.GetNetsByNetcode().items():
 # copper of other nets, per layer index: (net, kind, data, reach, clearance)
 copper = [[] for _ in LN]
 holes = []  # (x, y, r)
+# with TRASUJ_RIP, the copper that may be taken off: per layer as copper, its holes, its items per net
+soft = [[] for _ in LN]  # (net, kind, data, reach, clearance, item index)
+soft_holes = []  # (x, y, r, net, item index)
+soft_items = []  # item index -> [track or via, net, branch]
+routed = set()
+for grp in b.Groups():
+    if grp.GetName() == "trasuj":
+        routed |= {it.m_Uuid.AsString() for it in grp.GetItems()}
+
+
+def rippable(t):
+    if not RIP or t.m_Uuid.AsString() not in routed:
+        return False
+    ni = t.GetNet()
+    name, cls = ni.GetNetname(), (ni.GetNetClassName() or "Default").split(",")[0]
+    return not (name == "GND" or name.startswith("+") or cls in ("Power", "VBAT", "Phase", "Gate") or
+                re.search(r"USB_D[PM]$", name))
+
+
 for t in b.GetTracks():
     net = t.GetNetCode() or -1
     cl = net_clear.get(net, 0.09)
+    soft_t = rippable(t)
+    cu = soft if soft_t else copper
+    tag = ()
+    if soft_t:
+        tag = (len(soft_items),)
+        soft_items.append([t, net, None])
     if t.GetClass() == "PCB_VIA":
         p = t.GetPosition()
-        holes.append((p.x / MM, p.y / MM, t.GetDrillValue() / MM / 2))
+        if soft_t:
+            soft_holes.append((p.x / MM, p.y / MM, t.GetDrillValue() / MM / 2, net, *tag))
+        else:
+            holes.append((p.x / MM, p.y / MM, t.GetDrillValue() / MM / 2))
         for k, l in enumerate(LID):
             if t.IsOnLayer(l):
-                copper[k].append((net, "c", (p.x / MM, p.y / MM), t.GetWidth(l) / MM / 2, cl))
+                cu[k].append((net, "c", (p.x / MM, p.y / MM), t.GetWidth(l) / MM / 2, cl, *tag))
     else:
         s, e = t.GetStart(), t.GetEnd()
         if t.GetLayer() in LID:
-            copper[LID.index(t.GetLayer())].append(
-                (net, "s", (s.x / MM, s.y / MM, e.x / MM, e.y / MM), t.GetWidth() / MM / 2, cl))
+            cu[LID.index(t.GetLayer())].append(
+                (net, "s", (s.x / MM, s.y / MM, e.x / MM, e.y / MM), t.GetWidth() / MM / 2, cl, *tag))
+
+
+def branches():
+    """Group the rippable items of each net into branches: items that touch each other (a track's
+    end on a track or via of the same layer, a via on a track) without a pad in between."""
+    by_net = {}
+    for n, (t, net, _) in enumerate(soft_items):
+        by_net.setdefault(net, []).append(n)
+    up = list(range(len(soft_items)))
+
+    def root(n):
+        while up[n] != n:
+            up[n] = up[up[n]]
+            n = up[n]
+        return n
+
+    def touch(t, u):
+        if t.GetClass() == "PCB_VIA" and u.GetClass() == "PCB_VIA":
+            return t.GetPosition() == u.GetPosition()
+        if t.GetClass() == "PCB_VIA":
+            t, u = u, t
+        if u.GetClass() == "PCB_VIA":
+            if not u.IsOnLayer(t.GetLayer()):
+                return False
+            q = u.GetPosition()
+            r = (u.GetWidth(t.GetLayer()) + t.GetWidth()) / 2 / MM
+            return segdist(q.x / MM, q.y / MM, t.GetStart().x / MM, t.GetStart().y / MM,
+                           t.GetEnd().x / MM, t.GetEnd().y / MM) <= r
+        if t.GetLayer() != u.GetLayer():
+            return False
+        r = max(t.GetWidth(), u.GetWidth()) / 2 / MM
+        ends = lambda o: [(o.GetStart().x / MM, o.GetStart().y / MM), (o.GetEnd().x / MM, o.GetEnd().y / MM)]
+        return any(segdist(*p, *(ends(u)[0] + ends(u)[1])) <= r for p in ends(t)) or \
+            any(segdist(*p, *(ends(t)[0] + ends(t)[1])) <= r for p in ends(u))
+    for items in by_net.values():
+        for a in range(len(items)):
+            for c in range(a + 1, len(items)):
+                if root(items[a]) != root(items[c]) and touch(soft_items[items[a]][0], soft_items[items[c]][0]):
+                    up[root(items[a])] = root(items[c])
+    for n in range(len(soft_items)):
+        soft_items[n][2] = root(n)
+
+
+branches()
 HOLE_CLEAR = pro["board"]["design_settings"]["rules"].get("min_hole_clearance", 0.25)
 pads_of = {}
 for f in b.GetFootprints():
@@ -253,6 +343,13 @@ def blocking(k, keep, clear, fills):
 
 
 def mark(g, net, kind, data, r):
+    for k in cells_of(kind, data, r):
+        v = g[k]
+        g[k] = net if v in (0, net) else -1
+
+
+def cells_of(kind, data, r):
+    """Grid indexes of the cells within r of a circle ("c"), a segment ("s") or a polygon."""
     if kind == "c":
         x0, y0, x1, y1 = data[0] - r, data[1] - r, data[0] + r, data[1] + r
     elif kind == "s":
@@ -276,9 +373,7 @@ def mark(g, net, kind, data, r):
             else:
                 hit = grown.Contains(pcbnew.VECTOR2I(int(x * MM), int(y * MM)))
             if hit:
-                k = i * NY + j
-                v = g[k]
-                g[k] = net if v in (0, net) else -1
+                yield i * NY + j
 
 
 grids = {}
@@ -303,6 +398,36 @@ def free(g, i, j, net):
     return v == 0 or v == net
 
 
+soft_grids = {}
+
+
+def soft_grid(k, keep, clear):
+    """{cell: nets} of the rippable copper on route layer k, grown as grid() grows the fixed copper."""
+    key = (k, round(keep, 4), round(clear, 4))
+    if key not in soft_grids:
+        g = {}
+        for net, kind, data, reach, cl, idx in soft[k]:
+            for c in cells_of(kind, data, reach + max(cl, clear) + keep):
+                g.setdefault(c, set()).add(idx)
+        soft_grids[key] = g
+    return soft_grids[key]
+
+
+def soft_at(k, keep, clear, n, net):
+    """The branches of other nets whose rippable copper is in the way at cell n of layer k."""
+    got = soft_grid(k, keep, clear).get(n) if soft[k] else None
+    return {soft_items[i][2] for i in got if soft_items[i][1] != net} if got else ()
+
+
+def hist(k, n):
+    return HIST.get(f"{k},{n}", 0)
+
+
+def soft_hole_nets(x, y, hole, net):
+    return {soft_items[idx][2] for hx, hy, hr, hn, idx in soft_holes
+            if hn != net and abs(x - hx) < 1 and abs(y - hy) < 1 and math.hypot(x - hx, y - hy) < hole / 2 + hr + HOLE_GAP}
+
+
 def stack(a, z):
     """The vias that take a track from route layer index a to z: [(top, bottom, (land, hole))]."""
     lo, hi = min(a, z), max(a, z)
@@ -314,15 +439,29 @@ def stack(a, z):
     return vias
 
 
-def stack_fits(x, y, net, vias, clear):
+def stack_fits(x, y, net, vias, clear, rip=False, victims=None):
+    """None where the vias do not fit, else their extra cost: rippable copper in the way (rip only).
+    victims, a set, collects the nets of that copper."""
     i, j = cell(x, y)
+    pen = 0.0
     for top, bot, (land, hole) in vias:
         if any(math.hypot(x - hx, y - hy) < hole / 2 + hr + HOLE_GAP for hx, hy, hr in holes_near(x, y)):
-            return False
+            return None
+        hit = soft_hole_nets(x, y, hole, net) if soft_holes else ()
         for k in range(top, bot + 1):
             if not free(grid(k, land / 2 + MARGIN, clear, False), i, j, net):
-                return False
-    return True
+                return None
+            others = soft_at(k, land / 2 + MARGIN, clear, i * NY + j, net)
+            if others:
+                hit = set(hit) | others
+                pen += RIP_COST * (1 + hist(k, i * NY + j))
+        if hit:
+            if not rip:
+                return None
+            pen += RIP_COST if not pen else 0
+            if victims is not None:
+                victims |= set(hit)
+    return pen
 
 
 def plane_vias(k, pk):
@@ -367,11 +506,27 @@ def item_cells(uuid):
     return sorted(out), planes, anchors
 
 
-def route(net, starts, goals, width, clear, planes, here, there, layers, via_cost, ref, follow=None):
+def banned(net):
+    """{layer index: set of grid cells} this net may not use."""
+    name = b.FindNet(net).GetNetname() if isinstance(net, int) else net
+    out = {}
+    for z in ZAKAZ:
+        if not re.search(z["nets"], name):
+            continue
+        (i0, j0), (i1, j1) = cell(*z["box"][:2]), cell(*z["box"][2:])
+        cells = {i * NY + j for i in range(i0, i1 + 1) for j in range(j0, j1 + 1)}
+        for ln in z["layers"]:
+            out.setdefault(LN.index(ln), set()).update(cells)
+    return out
+
+
+def route(net, starts, goals, width, clear, planes, here, there, layers, via_cost, ref, follow=None, rip=False):
     """A* over the allowed route layers. planes: {inner layer index: fill islands} that are also a
     goal. ref: a step off the GND plane costs REF_COST. follow: {layer: cells} a step outside costs more."""
     keep = width / 2 + MARGIN
     g = {k: grid(k, keep, clear) for k in layers}
+    ban = banned(net)
+    starts = [s for s in starts if s[1] * NY + s[2] not in ban.get(s[0], ())] or starts
     pm = {k: has_plane(k) for k in layers} if ref else None
     starts = [s for s in starts if s[0] in layers]
     goalset = {s for s in goals if s[0] in layers}
@@ -392,7 +547,7 @@ def route(net, starts, goals, width, clear, planes, here, there, layers, via_cos
         for pk, isl in planes.items():
             vias = plane_vias(k, pk)
             if any(all(f.Contains(p) and f.Outline(n).PointInside(p) for p in around) for f, n in isl) and \
-                    stack_fits(x, y, net, vias, clear):
+                    stack_fits(x, y, net, vias, clear) is not None:
                 return vias
         return None
 
@@ -418,7 +573,7 @@ def route(net, starts, goals, width, clear, planes, here, there, layers, via_cos
             ni, nj = i + di, j + dj
             if abs(ni - ci) > span or abs(nj - cj) > span or not (0 <= ni < NX and 0 <= nj < NY):
                 continue
-            if not free(g[k], ni, nj, net):
+            if not free(g[k], ni, nj, net) or (ni * NY + nj) in ban.get(k, ()):
                 continue
             turn = 0 if d < 0 or d == nd else TURN_COST * min((nd - d) % 8, (d - nd) % 8)
             step = math.hypot(di, dj)
@@ -426,6 +581,10 @@ def route(net, starts, goals, width, clear, planes, here, there, layers, via_cos
                 step *= REF_COST
             if follow is not None and (ni * NY + nj) not in follow.get(k, ()):
                 step *= 1.6
+            if soft[k] and soft_at(k, keep, clear, ni * NY + nj, net):
+                if not rip:
+                    continue
+                step += RIP_COST * (1 + hist(k, ni * NY + nj))
             nc = cost + step + turn
             if nc < best.get((k, ni, nj), 1e18):
                 best[(k, ni, nj)] = nc
@@ -436,7 +595,13 @@ def route(net, starts, goals, width, clear, planes, here, there, layers, via_cos
             if nk == k:
                 continue
             nc = cost + via_cost * len(stack(k, nk))
-            if nc < best.get((nk, i, j), 1e18) and stack_fits(x, y, net, stack(k, nk), clear):
+            if any(i * NY + j in ban.get(q, ()) for top, bot, _ in stack(k, nk) for q in range(top, bot + 1)):
+                continue
+            if nc >= best.get((nk, i, j), 1e18):
+                continue
+            pen = stack_fits(x, y, net, stack(k, nk), clear, rip)
+            if pen is not None and nc + pen < best.get((nk, i, j), 1e18):
+                nc += pen
                 best[(nk, i, j)] = nc
                 prev[(nk, i, j)] = node
                 heapq.heappush(heap, (nc + h(i, j), nc, nk, i, j, -1))
@@ -464,13 +629,13 @@ def straight(a, z):
     return di == 0 or dj == 0 or abs(di) == abs(dj)
 
 
-def clear_run(k, a, z, net, g, pm):
+def clear_run(k, a, z, net, g, pm, keep, clear):
     """Every cell of the straight run a-z is free (and on the plane, if pm)."""
     n = max(abs(z[0] - a[0]), abs(z[1] - a[1]))
     for t in range(n + 1):
         i = a[0] + (z[0] - a[0]) * t // n if n else a[0]
         j = a[1] + (z[1] - a[1]) * t // n if n else a[1]
-        if not free(g, i, j, net) or (pm and not pm[i * NY + j]):
+        if not free(g, i, j, net) or (pm and not pm[i * NY + j]) or soft_at(k, keep, clear, i * NY + j, net):
             return False
     return True
 
@@ -484,7 +649,7 @@ def pull(k, cells, net, width, clear, ref):
     while a < len(cells) - 1:
         z = a + 1
         for c in range(min(len(cells) - 1, a + 400), a + 1, -1):
-            if straight(cells[a], cells[c]) and clear_run(k, cells[a], cells[c], net, g, pm):
+            if straight(cells[a], cells[c]) and clear_run(k, cells[a], cells[c], net, g, pm, width / 2 + MARGIN, clear):
                 z = c
                 break
         out.append(cells[z])
@@ -616,6 +781,42 @@ for *_, net, a, z in todo:
             if HALF + 0.1 < max(abs(x - BGA[0]), abs(y - BGA[1])):
                 exit_from(code, x, y)
 
+def victims_of(net, path, end_vias, width, clear):
+    """The branches a found path crosses; the crossed cells go into the history."""
+    out, keep = set(), width / 2 + MARGIN
+    for n, (k, i, j) in enumerate(path):
+        others = soft_at(k, keep, clear, i * NY + j, net)
+        if others:
+            out |= others
+            HIST[f"{k},{i * NY + j}"] = hist(k, i * NY + j) + 1
+        if n and path[n - 1][0] != k:
+            stack_fits(*xy(i, j), net, stack(path[n - 1][0], k), clear, True, out)
+    if end_vias:
+        stack_fits(*xy(path[-1][1], path[-1][2]), net, end_vias, clear, True, out)
+    return out
+
+
+def rip_up(gone):
+    """Take the branches off the board and out of the way; their nets' names."""
+    global conn
+    idx = {n for n, (t, net, br) in enumerate(soft_items) if br in gone and t is not None}
+    names = set()
+    for n in idx:
+        t = soft_items[n][0]
+        names.add(t.GetNetname())
+        group.RemoveItem(t)
+        b.Remove(t)
+        soft_items[n][0] = None
+    for k in range(len(LN)):
+        soft[k] = [c for c in soft[k] if c[5] not in idx]
+    soft_holes[:] = [h for h in soft_holes if h[4] not in idx]
+    soft_grids.clear()
+    b.BuildConnectivity()
+    conn = b.GetConnectivity()
+    return sorted(names)
+
+
+ripped = []
 done, left = [], []
 for *_, d, net, a, z in todo:
     ni = b.FindNet(net)
@@ -637,25 +838,41 @@ for *_, d, net, a, z in todo:
     # (a net can have several separate fills on one layer)
     opts = (layers, via_cost, ref, follow)
     found = None
-    # a wide class (supplies) necks down to the line minimum where the full width does not fit
-    for w in dict.fromkeys((width, CLASS["Default"][0])):
-        found = route(code, starts, goals, w, clear, islands(code, anchors_z), pa, pz, *opts) or \
-            route(code, goals, starts, w, clear, islands(code, anchors_a), pz, pa, *opts)
+    # a signal class may neck down to the line minimum where its full width does not fit;
+    # a class that carries current never does: a 0.09 mm supply only looks connected
+    carries = (ni.GetNetClassName() or "Default").split(",")[0] in ("Power", "VBAT", "Phase", "Gate")
+    ends = [re.search(r" of (\S+)", it["description"]) for it in (a, z)]
+    if carries and (ni.GetNetClassName() or "").split(",")[0] in ("Phase", "Gate") and \
+            any(m and re.match(r"(R|C|U(?!24\b))\d", m.group(1)) for m in ends):
+        width, carries = SENSE, True
+    for rip in (False, True) if RIP and not carries else (False,):
+        for w in (width,) if carries else dict.fromkeys((width, CLASS["Default"][0])):
+            found = route(code, starts, goals, w, clear, islands(code, anchors_z), pa, pz, *opts, rip) or \
+                route(code, goals, starts, w, clear, islands(code, anchors_a), pz, pa, *opts, rip)
+            if found:
+                width = w
+                break
         if found:
-            width = w
             break
     if found:
         path, end_vias = found
-        build(ni, path, end_vias, width, clear, ref)
         how = "into its plane" if end_vias else ""
+        if rip:
+            gone = victims_of(code, path, end_vias, width, clear)
+            names = rip_up(gone)
+            ripped.extend(names)
+            how += f" ripping {', '.join(names)}"
+        build(ni, path, end_vias, width, clear, ref)
         done.append(f"{net}: {d:.1f} mm {how}")
     else:
         left.append(f"{net}: {d:.1f} mm, no way ({a['description']} / {z['description']})")
 
 print("\n".join(done))
-print(f"-- {len(done)} routed, {len(left)} left:")
+print(f"-- {len(done)} routed, {len(left)} left" + (f", {len(ripped)} ripped up" if RIP else "") + ":")
 print("\n".join(left))
 pcbnew.SaveBoard(PCB, b)
+if HIST_FILE:
+    json.dump(HIST, open(HIST_FILE, "w"))
 
 
 def path_length(net, pa, pz):
@@ -724,3 +941,6 @@ if length:
     got = [v for v in length.values() if v is not None]
     if len(got) > 1:
         print(f"SD spread {max(got) - min(got):.1f} mm")
+if ripped:
+    sys.stdout.flush()
+    os._exit(0)  # the ripped-up items crash swig's cleanup on a normal exit

@@ -223,6 +223,12 @@ Připravená varianta před dotrasováním: **30 nespojených, 0 DRC chyb**, ž�
 ERC/parity chyba, odstraněno 175 kusů mědi dotčených signálů. Hlavní PCB zatím
 zůstává **22 nespojených / 0 DRC chyb**; referenční profil je pracovní varianta.
 
+**Ověření 21. 10. 2026:** hlavní deska znovu 22 nespojených. Varianta V2 po
+trasování a prošití GND nyní **21 nespojených / 0 DRC error**, bez neočekávaných
+ERC/parity hlášení. Zůstávají výrobní a geometrická varování. Přesný výsledek,
+umístění kandidáta a další práce: [STAV-2026-10-21.md](./STAV-2026-10-21.md).
+Správná fotografie V2 je nově dostupná v [referencích](./reference/README.md).
+
 `aio.kicad_pcb` je layout OpenAIO [Z1] aktualizovaný ze schématu (18. 10.,
 `gen/aktualizuj_desku.sh`). Převzaté díly (ESC, napájení, IMU, kořen) jsou svázané
 se schématem přes UUID a zůstaly na místě i s vodiči. Co se změnilo:
@@ -367,7 +373,7 @@ a −3,925 mm. Doplněné jsou podle něj, do mezer, které pro ně v potisku z�
 | LCSC čísla | díly s „—“ v kusovníku | vybrat podle skladu JLC |
 | Sklad TPS22810DRVR a ICM-42688-P | U201, U303 | nové díly z 18. 10., LCSC číslo vybrat podle skladu JLC. Jiný spínač 18 V ve WSON 2 × 2 má jiný pinout, záměna by znamenala úpravu schématu |
 | Reference a layout | MicoAir743v2-AIO-45A | Nové zadání: co nejvíc podle V2, promyšleně lze změnit i ESC. Pinový profil a automatické kontroly hotové, přesné rozmístění a měď V2 nedoložené; starší 35A fotografii nezaměnit za V2. Viz [AUTOMATIZACE.md](./AUTOMATIZACE.md) |
-| Trasování | aio.kicad_pcb a varianta V2 | Hlavní deska 22 nespojených / 0 DRC chyb; reference před trasováním 30 / 0. Porovnávat automaticky skutečné DRC, nesnižovat počet spojů za cenu chyb. Starý seznam hlavní desky v [BACKLOG.md](./BACKLOG.md). Potisk OpenAIO a orientace IMU zůstávají otevřené |
+| Trasování | aio.kicad_pcb a varianta V2 | K 21. 10.: hlavní deska 22 nespojených / 0 DRC error; V2 po trasování a prošití 21 / 0 (původně 30 / 0). Zbývají také varování, viz [aktuální stav](./STAV-2026-10-21.md). Starý seznam hlavní desky v [BACKLOG.md](./BACKLOG.md). Potisk OpenAIO a orientace IMU zůstávají otevřené |
 
 ## 9. Kontrola
 

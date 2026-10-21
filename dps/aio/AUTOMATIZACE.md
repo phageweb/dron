@@ -1,5 +1,11 @@
 # Automatický postup a reference MicoAir V2
 
+**Aktuální směr 21. 10. 2026:** rešerše a návrh přesunů jsou v
+[RESERSE_LAYOUTU_V2.md](./RESERSE_LAYOUTU_V2.md), provedení v
+[PREDAVKA_LAYOUTU_V2.md](./PREDAVKA_LAYOUTU_V2.md). Níže popsané nástroje zůstávají
+k dispozici, ale před dalším trasováním je nutné řešit rozmístění a uvedené
+limity kontrol, zejména chybějící courtyard a zúžení silových spojů routerem.
+
 Rozhodnutí uživatele z 19.–20. 10. 2026: znovu projít vznik DPS, co nejvíc kroků
 automatizovat a co nejvíc se řídit **MicoAir743v2-AIO-45A**. Rozmístění ani měď ESC
 nejsou nedotknutelné; změna má mít technický důvod a ověřený výsledek. Starý cíl
@@ -20,8 +26,10 @@ Pozor na varianty: místní obrázek
 patří **starší 35A AIO**, nikoliv V2. Starší AIO má odlišný pinout IMU, LED i I2C.
 Fotografie spodku navíc není ve stejné projekci jako horní pohled PCB.
 Před převodem poloh z fotografie sjednotit revizi, stranu desky, orientaci a měřítko.
-Odkaz výrobce na originál fotografie V2 při kontrole vracel HTTP 404; přesné nové
-souřadnice součástek se proto zatím z této fotografie neurčovaly.
+Odkaz na fotografii na hlavním webu výrobce vrací HTTP 404 i 21. 10. 2026.
+Funkční fotografie V2 a diagram zapojení byly nyní nalezeny na jeho e-shopu:
+[reference/README.md](./reference/README.md). Dokládají vnější uspořádání;
+přesné souřadnice pouzder a vnitřní měď z nich stále nejsou ověřené.
 
 ## Dvě porovnatelné varianty
 
@@ -112,6 +120,13 @@ Nový pinout rovněž není nový layout: na začátku se zachovají současné 
 Tyto limity jsou záměrně viditelné, aby se automatický běh nezaměňoval za hotovou DPS.
 
 ## Zjištění a další návrhový krok
+
+**21. 10. 2026:** nový audit potvrdil hlavní desku 22 / 0. Dokončený běh V2
+`build/aio/micoair-route-20261021` snížil 30 nespojených na 23 po trasování
+a na **21 po prošití GND**, bez DRC error a neočekávaných ERC/parity hlášení.
+Výsledný hwdef odpovídá netlistu. Varování včetně nevhodného prokovu MOTOR3
+zůstávají; podrobnosti a příkaz pro pokračování jsou v
+[STAV-2026-10-21.md](./STAV-2026-10-21.md). Hlavní projekt se tímto během neměnil.
 
 Kontrola původního projektu potvrdila 22 nespojených a 0 DRC chyb. Referenční mapa
 má oproti němu 16 odchylek (včetně změn názvů UART sítí). Převod na V2 odstranil

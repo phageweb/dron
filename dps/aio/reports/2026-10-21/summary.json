@@ -1,0 +1,68 @@
+{
+  "current": {
+    "run": "build/aio/audit-20261021",
+    "kicad": "10.0.7",
+    "status": "incomplete",
+    "score": {
+      "drc_errors": 0,
+      "unconnected": 22,
+      "unexpected_parity": 0,
+      "unexpected_erc": 0,
+      "warnings": {
+        "items_not_allowed": 1,
+        "track_dangling": 24,
+        "isolated_copper": 1,
+        "connection_width": 8,
+        "lib_footprint_mismatch": 5,
+        "solder_mask_bridge": 1,
+        "copper_sliver": 4
+      }
+    },
+    "source_sha256": "82c2917ed54623da5fa4715339cf03901be7a16d472c1c5856e26dcca3ecfd07",
+    "sha256": {
+      "aio.kicad_dru": "11caf50fd899cdbc19ee0b158d651405379991e601dee7477a63f9b14ac09bd2",
+      "aio.kicad_pcb": "52e2b52af76a85eaa8936b01e802c473ee685406b6563cf25e001d2f7587f591",
+      "aio.kicad_pro": "bc83779a26038ffedb14f85e7221bc1f9b60eeef98c0e665f832602ff0c24039",
+      "aio.kicad_sch": "364df87bb8eaa06675dd0c2524ea438003f7aa8dbf7534ed0904a3f76a06636e",
+      "esc_channel.kicad_sch": "dfa5b2c19712289429d3536ba9407ceefa95ec5b79a619b802a85026b21c9370",
+      "fc_imu.kicad_sch": "ba469faaad4841c6286715d6e07ee130874d5c308deb80dea7afd7454f50292a",
+      "fc_power.kicad_sch": "7ea763a4ec116db958665dfe44d9ab3f38bfe0a2c715268e8fbfaf989ba12ebd",
+      "hwdef/Pavo20AIO/hwdef.dat": "fc26b2d985825d66f6d205f9d83643f5f49594b0a4983627ceba67c8b6ada6a6",
+      "mcu_h743.kicad_sch": "3420754a3dbe4c33e4288fec9b541d84d57a80504c8d595e3b0e530ecc4e5a0e",
+      "vtx.kicad_sch": "58296bad7133b0933f3a167202d84361f1936f3d3d543296b79b952ccd679f93"
+    }
+  },
+  "micoair-v2": {
+    "run": "build/aio/micoair-route-20261021",
+    "kicad": "10.0.7",
+    "status": "incomplete",
+    "score": {
+      "drc_errors": 0,
+      "unconnected": 21,
+      "unexpected_parity": 0,
+      "unexpected_erc": 0,
+      "warnings": {
+        "items_not_allowed": 1,
+        "track_dangling": 20,
+        "isolated_copper": 1,
+        "connection_width": 9,
+        "lib_footprint_mismatch": 5,
+        "solder_mask_bridge": 1,
+        "copper_sliver": 4
+      }
+    },
+    "source_sha256": "3587c0f3d268b6a66646fe5b47a6c0b7442d61c1b1b504434ceefcc968e2d406",
+    "sha256": {
+      "aio.kicad_dru": "11caf50fd899cdbc19ee0b158d651405379991e601dee7477a63f9b14ac09bd2",
+      "aio.kicad_pcb": "7cd789d58f495afbf154aed1bb417479bda5f9eac8a72332e2f37c036518dd88",
+      "aio.kicad_pro": "a2b8d37b7379ba0712a9df1024cd982adc2a9ada72c731bf12b98c3e91c60278",
+      "aio.kicad_sch": "364df87bb8eaa06675dd0c2524ea438003f7aa8dbf7534ed0904a3f76a06636e",
+      "esc_channel.kicad_sch": "dfa5b2c19712289429d3536ba9407ceefa95ec5b79a619b802a85026b21c9370",
+      "fc_imu.kicad_sch": "ba469faaad4841c6286715d6e07ee130874d5c308deb80dea7afd7454f50292a",
+      "fc_power.kicad_sch": "7ea763a4ec116db958665dfe44d9ab3f38bfe0a2c715268e8fbfaf989ba12ebd",
+      "hwdef/Pavo20AIO/hwdef.dat": "2f0d57bae3c1e66acd912b348d0a8d95dc9a1bd275028076df7656830024a216",
+      "mcu_h743.kicad_sch": "07cff74d50e50e67eef4336373db6a81a547b8161b508a6f18a322fdbf3841ce",
+      "vtx.kicad_sch": "58296bad7133b0933f3a167202d84361f1936f3d3d543296b79b952ccd679f93"
+    }
+  }
+}
